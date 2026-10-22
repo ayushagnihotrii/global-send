@@ -1,26 +1,74 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-main: #f5f5f7;
+    --surface: #ffffff;
+    --surface-secondary: #fbfbfd;
+    --surface-elevated: #ffffff;
+    --border-subtle: #e5e5ea;
+    --border-hover: #d1d1d6;
+    --text-primary: #1d1d1f;
+    --text-secondary: #86868b;
+    --text-tertiary: #aeaeb2;
+    --accent: #0071e3;
+    --accent-hover: #0077ed;
+    --accent-subtle: #e8f2fc;
+    --destructive: #ff3b30;
+    --destructive-subtle: #ffebe9;
+    --success: #34c759;
+    --success-subtle: #eafaf1;
+  }
+
+  .dark {
+    --bg-main: #000000;
+    --surface: #1c1c1e;
+    --surface-secondary: #2c2c2e;
+    --surface-elevated: #2c2c2e;
+    --border-subtle: #38383a;
+    --border-hover: #48484a;
+    --text-primary: #f5f5f7;
+    --text-secondary: #98989d;
+    --text-tertiary: #636366;
+    --accent: #2997ff;
+    --accent-hover: #47a6ff;
+    --accent-subtle: #112840;
+    --destructive: #ff453a;
+    --destructive-subtle: #3a1513;
+    --success: #30d158;
+    --success-subtle: #123419;
+  }
+
+  * {
+    border-color: var(--border-subtle);
+  }
+
+  html, body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Code block formatting */
+pre, code {
+  font-family: "SF Mono", "Fira Code", "Courier New", Courier, monospace;
 }
