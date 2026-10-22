@@ -14,8 +14,12 @@ declare global {
 let initialized = false;
 
 export function isPostgres(): boolean {
-  const config = getStorageConfig();
-  return config.database.driver === 'postgres';
+  try {
+    const config = getStorageConfig();
+    return config.database.driver === 'postgres';
+  } catch {
+    return false;
+  }
 }
 
 function getDatabase() {
