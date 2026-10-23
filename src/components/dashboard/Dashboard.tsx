@@ -63,6 +63,23 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Handle Google Drive OAuth callback redirect notifications
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const gdrive = url.searchParams.get('gdrive');
+    const gdriveError = url.searchParams.get('gdrive_error');
+    if (gdrive === 'connected') {
+      toast.success('Google Drive successfully connected!');
+      url.searchParams.delete('gdrive');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+    } else if (gdriveError) {
+      toast.error(`Google Drive connection error: ${gdriveError}`);
+      url.searchParams.delete('gdrive_error');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+    }
+  }, [toast]);
+
   // Fetch items based on active section and search
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
