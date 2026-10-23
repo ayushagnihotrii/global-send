@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/Toast';
 import { User as UserType, StorageUsage } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
+import { Logo } from '@/components/ui/Logo';
 
 interface SettingsViewProps {
   user: UserType;
@@ -606,6 +607,24 @@ export function SettingsView({ user, onLogout }: SettingsViewProps) {
           >
             Delete Account
           </Button>
+        </div>
+      </div>
+
+      {/* 5. ABOUT GLOBAL SEND */}
+      <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-[#e5e5ea] dark:border-[#2c2c2e] p-5 shadow-xs flex flex-col sm:flex-row items-center sm:items-start gap-4">
+        <Logo size={48} className="rounded-xl shadow-xs" withGlow />
+        <div className="flex-1 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+            <h4 className="font-semibold text-sm text-[#1d1d1f] dark:text-white">
+              {SITE_CONFIG.name}
+            </h4>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#0071e3]/10 text-[#0071e3] font-medium self-center">
+              v1.0.0
+            </span>
+          </div>
+          <p className="text-xs text-[#86868b] dark:text-[#98989d] mt-1">
+            {SITE_CONFIG.tagline}
+          </p>
         </div>
       </div>
 

@@ -11,12 +11,12 @@ import {
   Star,
   Trash2,
   Settings,
-  Lock,
   LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
 import { User } from '@/lib/types';
+import { Logo } from '@/components/ui/Logo';
 
 export type NavSection =
   | 'all'
@@ -69,9 +69,7 @@ export function DesktopSidebar({
       {/* Top Branding */}
       <div>
         <div className="flex items-center gap-2.5 px-3 py-3 mb-4">
-          <div className="w-8 h-8 rounded-xl bg-[#0071e3] text-white flex items-center justify-center shadow-xs">
-            <Lock className="w-4 h-4" />
-          </div>
+          <Logo size="sm" className="rounded-xl shadow-xs" withGlow />
           <div>
             <h1 className="text-base font-bold tracking-tight text-[#1d1d1f] dark:text-white leading-tight">
               {SITE_CONFIG.name}

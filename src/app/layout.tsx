@@ -4,8 +4,30 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { SITE_CONFIG } from "@/config/site";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || `https://${SITE_CONFIG.customDomain}`
+  ),
   title: `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
   description: SITE_CONFIG.description,
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    shortcut: '/icon.png',
+    apple: '/apple-touch-icon.png',
+  },
+  openGraph: {
+    title: `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
+    description: SITE_CONFIG.description,
+    images: [{ url: '/logo.png', width: 800, height: 800, alt: SITE_CONFIG.name }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
+    description: SITE_CONFIG.description,
+    images: ['/logo.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

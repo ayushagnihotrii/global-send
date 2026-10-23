@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { SITE_CONFIG } from '@/config/site';
+import { Logo } from '@/components/ui/Logo';
 
 interface AuthModalProps {
   onSuccess: (user: any) => void;
@@ -147,8 +148,8 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
       <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-[#1c1c1e] rounded-3xl shadow-xl border border-[#e5e5ea] dark:border-[#38383a] p-6 sm:p-8">
         {/* Branding header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] mb-3">
-            <Lock className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center mb-3">
+            <Logo size={60} withGlow className="rounded-2xl shadow-md" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">
             {SITE_CONFIG.name}

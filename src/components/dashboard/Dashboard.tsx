@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { groupItemsByDate } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
+import { Logo } from '@/components/ui/Logo';
 
 interface DashboardProps {
   user: User;
@@ -270,10 +271,8 @@ export function Dashboard({ user, onLogout }: DashboardProps) {
       <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:p-10 pb-24 md:pb-12 max-w-6xl mx-auto w-full">
         {/* Mobile Header Bar */}
         <div className="flex md:hidden items-center justify-between pb-4 mb-4 border-b border-[#e5e5ea] dark:border-[#2c2c2e]">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#0071e3] text-white flex items-center justify-center">
-              <Lock className="w-3.5 h-3.5" />
-            </div>
+          <div className="flex items-center gap-2.5">
+            <Logo size={28} className="rounded-lg shadow-xs" withGlow />
             <span className="font-bold text-base tracking-tight">{SITE_CONFIG.name}</span>
           </div>
 
