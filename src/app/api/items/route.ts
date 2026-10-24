@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth';
-import { getItems, createItem, syncItemTags } from '@/lib/db';
+import {
+  getItems,
+  createItem,
+  syncItemTags,
+  validateExpirationDuration,
+  getItemById,
+} from '@/lib/db';
 import { generateTitleFromContent } from '@/lib/utils';
-import { isR2Configured, createPresignedDownloadUrl } from '@/lib/r2';
+import { triggerOpportunisticCleanup } from '@/lib/cleanup';
 
 const createItemSchema = z.object({
   type: z.enum(['text', 'link', 'image', 'video', 'file']),
@@ -13,6 +19,8 @@ const createItemSchema = z.object({
   note: z.string().optional().nullable(),
   isFavourite: z.boolean().optional().default(false),
   tags: z.array(z.string()).optional().default([]),
+  expirationSeconds: z.number().optional().nullable(),
+  expirationDurationSec: z.number().optional().nullable(),
 });
 
 export async function GET(req: NextRequest) {
@@ -20,6 +28,9 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Trigger non-blocking background expiration cleanup opportunistically
+  triggerOpportunisticCleanup();
 
   try {
     const { searchParams } = new URL(req.url);
@@ -44,36 +55,23 @@ export async function GET(req: NextRequest) {
       offset,
     });
 
-    // Populate fresh signed download URLs for files
-    const enrichedItems = await Promise.all(
-      items.map(async (item) => {
-        if (item.file) {
-          try {
-            if (isR2Configured() && !item.file.storageKey.startsWith('gdrive://')) {
-              const url = await createPresignedDownloadUrl(
-                item.file.storageKey,
-                item.file.originalFilename,
-                false,
-                3600 // 1 hour
-              );
-              return { ...item, file: { ...item.file, downloadUrl: url } };
-            } else {
-              // Unified file streaming endpoint
-              const url = `/api/storage/file/${item.id}`;
-              return { ...item, file: { ...item.file, downloadUrl: url } };
-            }
-          } catch (e) {
-            console.error('Error signing download URL:', e);
-            return { ...item, file: { ...item.file, downloadUrl: `/api/storage/file/${item.id}` } };
-          }
-        }
-        return item;
-      })
-    );
+    // Route all file downloads through the authorized, expiration-enforced endpoint
+    const enrichedItems = items.map((item) => {
+      if (item.file && !item.isExpired) {
+        return {
+          ...item,
+          file: {
+            ...item.file,
+            downloadUrl: `/api/storage/file/${item.id}`,
+          },
+        };
+      }
+      return item;
+    });
 
     return NextResponse.json({ success: true, items: enrichedItems });
   } catch (err: any) {
-    console.error('List items error:', err);
+    console.error('List items error:', err?.message || 'Error');
     return NextResponse.json({ error: 'Failed to retrieve items' }, { status: 500 });
   }
 }
@@ -95,59 +93,90 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { type, textContent, url, note, isFavourite, tags } = result.data;
-    let title = result.data.title.trim();
-
-    // Auto-generate title if missing
-    if (!title) {
-      if (type === 'text') {
-        title = generateTitleFromContent(textContent, 'Untitled text');
-      } else if (type === 'link') {
-        try {
-          const parsed = new URL(url || '');
-          title = parsed.hostname.replace(/^www\./, '') || 'Saved link';
-        } catch {
-          title = 'Saved link';
-        }
-      } else {
-        title = 'Untitled item';
-      }
-    }
-
-    const itemId = crypto.randomUUID();
-    await createItem({
-      id: itemId,
-      userId: session.userId,
+    const {
       type,
-      title,
       textContent,
       url,
       note,
       isFavourite,
+      tags,
+      expirationSeconds,
+      expirationDurationSec,
+    } = result.data;
+
+    // Validate requested expiration duration on the server (default: 24 hours = 86400s)
+    const rawDuration = expirationSeconds ?? expirationDurationSec ?? undefined;
+    const expValidation = validateExpirationDuration(rawDuration);
+    if (!expValidation.valid) {
+      return NextResponse.json(
+        { error: expValidation.error || 'Invalid expiration duration' },
+        { status: 400 }
+      );
+    }
+
+    let title = result.data.title.trim();
+    if (!title) {
+      if (type === 'text' && textContent) {
+        title = generateTitleFromContent(textContent);
+      } else if (type === 'link' && url) {
+        title = url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60);
+      } else {
+        title = `Untitled ${type}`;
+      }
+    }
+
+    if (type === 'text' && (!textContent || !textContent.trim())) {
+      return NextResponse.json({ error: 'Text content is required' }, { status: 400 });
+    }
+
+    if (type === 'link' && (!url || !url.trim())) {
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+    }
+
+    const id = crypto.randomUUID();
+
+    await createItem({
+      id,
+      userId: session.userId,
+      type,
+      title,
+      textContent: textContent || null,
+      url: url || null,
+      note: note || null,
+      isFavourite,
+      expirationDurationSec: expValidation.durationSec,
+      expiresAt: expValidation.expiresAtIso,
     });
 
     if (tags && tags.length > 0) {
-      await syncItemTags(itemId, session.userId, tags);
+      await syncItemTags(id, session.userId, tags);
     }
 
-    return NextResponse.json({
-      success: true,
-      item: {
-        id: itemId,
-        userId: session.userId,
-        type,
-        title,
-        textContent,
-        url,
-        note,
-        isFavourite,
-        tags,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    const created = await getItemById(id, session.userId);
+
+    return NextResponse.json(
+      {
+        success: true,
+        item: created || {
+          id,
+          userId: session.userId,
+          type,
+          title,
+          textContent: textContent || null,
+          url: url || null,
+          note: note || null,
+          isFavourite,
+          expiresAt: expValidation.expiresAtIso,
+          expirationDurationSec: expValidation.durationSec,
+          tags,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
       },
-    });
+      { status: 201 }
+    );
   } catch (err: any) {
-    console.error('Create item error:', err);
-    return NextResponse.json({ error: 'Failed to save item' }, { status: 500 });
+    console.error('Create item error:', err?.message || 'Error');
+    return NextResponse.json({ error: 'Failed to create item' }, { status: 500 });
   }
 }

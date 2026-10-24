@@ -114,22 +114,19 @@ export function TextDetailModal({
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="3xl">
       <div className="space-y-5">
         {/* Top Control Bar */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#e5e5ea]/60 dark:border-[#38383a]/60">
-          <div className="flex items-center gap-2 text-xs text-[#86868b] dark:text-[#98989d]">
-            <Calendar className="w-3.5 h-3.5" />
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e5edf6] dark:border-[#344257]">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#65758b] dark:text-[#a4b5ce]">
+            <Calendar className="w-3.5 h-3.5 text-[#1677df] dark:text-[#60a5fa]" />
             <span>Saved {formatDate(item.createdAt)}</span>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <Button
               type="button"
-              variant="ghost"
+              variant={isMonospace ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => setIsMonospace(!isMonospace)}
-              className={cn(
-                'h-8 px-2.5 text-xs gap-1',
-                isMonospace && 'bg-[#0071e3]/10 text-[#0071e3]'
-              )}
+              className="h-8 px-2.5 text-xs gap-1"
               title="Toggle monospace font for code"
             >
               <Code className="w-3.5 h-3.5" />
@@ -138,7 +135,7 @@ export function TextDetailModal({
 
             <Button
               type="button"
-              variant={item.isFavourite ? 'secondary' : 'ghost'}
+              variant={item.isFavourite ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => onToggleFavourite(item)}
               className="h-8 px-2.5 text-xs"
@@ -147,7 +144,7 @@ export function TextDetailModal({
               <Star
                 className={cn(
                   'w-3.5 h-3.5',
-                  item.isFavourite && 'fill-[#ff9500] text-[#ff9500]'
+                  item.isFavourite && 'fill-[#f59e0b] text-[#f59e0b]'
                 )}
               />
             </Button>
@@ -155,7 +152,7 @@ export function TextDetailModal({
             {!isEditing ? (
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
                 className="h-8 px-2.5 text-xs gap-1"
@@ -196,7 +193,7 @@ export function TextDetailModal({
                 onDelete(item);
                 onClose();
               }}
-              className="h-8 w-8 p-0 text-[#ff3b30] hover:bg-red-50 dark:hover:bg-red-950/40"
+              className="h-8 w-8 p-0 text-[#e11d48] hover:bg-[#fff1f2] dark:hover:bg-[#3e2124]"
               title="Move to trash"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -211,7 +208,7 @@ export function TextDetailModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-lg font-bold bg-transparent border-b border-zinc-200 dark:border-zinc-700 pb-2 focus:outline-none focus:border-[#0071e3]"
+              className="w-full text-lg font-bold bg-[#fbfdff] dark:bg-[#17263b] border border-[#dfe8f3] dark:border-[#344b65] rounded-xl px-3.5 py-2 text-[#0f172b] dark:text-white focus:outline-none focus:border-[#1677df]"
               placeholder="Note title..."
             />
 
@@ -220,8 +217,8 @@ export function TextDetailModal({
               value={textContent}
               onChange={(e) => setTextContent(e.target.value)}
               className={cn(
-                'w-full bg-[#f8f8fa] dark:bg-[#252528] rounded-2xl p-4 text-sm text-[#1d1d1f] dark:text-white focus:outline-none border border-transparent focus:border-[#0071e3] transition-all resize-y leading-relaxed',
-                isMonospace && 'font-mono text-xs leading-5 whitespace-pre'
+                'w-full bg-[#fbfdff] dark:bg-[#17263b] rounded-2xl p-4 text-sm text-[#0f172b] dark:text-[#e9f1fc] focus:outline-none border border-[#dfe8f3] dark:border-[#344b65] focus:border-[#1677df] transition-all resize-y leading-relaxed',
+                isMonospace && 'font-mono text-xs leading-6 whitespace-pre'
               )}
             />
 
@@ -230,11 +227,11 @@ export function TextDetailModal({
               {tags.map((t, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#e5e5ea] dark:bg-[#2c2c2e]"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65]"
                 >
                   #{t}
-                  <button type="button" onClick={() => removeTag(idx)}>
-                    <X className="w-3 h-3 text-zinc-400 hover:text-red-500" />
+                  <button type="button" onClick={() => removeTag(idx)} className="cursor-pointer">
+                    <X className="w-3 h-3 hover:text-[#e11d48]" />
                   </button>
                 </span>
               ))}
@@ -249,14 +246,14 @@ export function TextDetailModal({
                     addTag(tagInput);
                   }
                 }}
-                className="text-xs bg-transparent focus:outline-none w-32 text-[#1d1d1f] dark:text-white"
+                className="text-xs bg-transparent focus:outline-none w-32 text-[#0f172b] dark:text-white"
               />
             </div>
           </div>
         ) : (
-          /* Apple Notes Comfortable Reading Layout */
+          /* Quick Share Reading Layout */
           <div className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172b] dark:text-white">
               {item.title}
             </h2>
 
@@ -265,7 +262,7 @@ export function TextDetailModal({
                 {item.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#f2f2f7] dark:bg-[#2c2c2e] text-[#86868b] dark:text-[#98989d]"
+                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65]"
                   >
                     #{tag}
                   </span>
@@ -276,7 +273,7 @@ export function TextDetailModal({
             {/* Complete Full Text preserving line breaks & indent */}
             <div
               className={cn(
-                'p-5 rounded-2xl bg-[#f8f8fa] dark:bg-[#252528] border border-[#e5e5ea]/50 dark:border-[#38383a]/50 text-sm sm:text-base leading-relaxed text-[#1d1d1f] dark:text-white select-text whitespace-pre-wrap overflow-x-auto',
+                'p-5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dce8f5] dark:border-[#344b65] text-sm sm:text-base leading-relaxed text-[#0f172b] dark:text-[#e9f1fc] select-text whitespace-pre-wrap overflow-x-auto',
                 isMonospace && 'font-mono text-xs sm:text-sm whitespace-pre'
               )}
             >

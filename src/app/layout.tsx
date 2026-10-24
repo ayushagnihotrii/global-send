@@ -40,7 +40,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#f5f5f7",
+  themeColor: "#f5f8fc",
 };
 
 export default function RootLayout({
@@ -50,7 +50,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className="min-h-full flex flex-col font-sans antialiased bg-[#f5f5f7] dark:bg-black text-[#1d1d1f] dark:text-white">
+      <body className="min-h-full flex flex-col font-sans antialiased bg-[#f5f8fc] dark:bg-[#0b1422] text-[#0f172b] dark:text-[#e9f1fc]">
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

@@ -48,11 +48,16 @@ export class ConfigurationError extends Error {
  * Supports Google Drive (primary), Cloudflare R2 (alternative), and local disk (dev only).
  * NEVER prints secret values into logs or exception messages.
  */
+function cleanEnvValue(val?: string): string | undefined {
+  if (!val) return undefined;
+  return val.trim().replace(/^['"]+|['"]+$/g, '').trim() || undefined;
+}
+
 export function validateStorageConfig(env: NodeJS.ProcessEnv = process.env): AppStorageConfig {
   const isProduction = env.NODE_ENV === 'production';
 
   // 1. DATABASE CONFIGURATION VALIDATION
-  const rawDbUrl = env.DATABASE_URL?.trim();
+  const rawDbUrl = cleanEnvValue(env.DATABASE_URL);
   let dbConfig: DatabaseConfig;
 
   if (isProduction) {
@@ -95,14 +100,14 @@ export function validateStorageConfig(env: NodeJS.ProcessEnv = process.env): App
   }
 
   // 2. PLUGGABLE STORAGE PROVIDER VALIDATION
-  const requestedProvider = env.STORAGE_PROVIDER?.trim().toLowerCase();
-  const gdriveClientId = (env.GDRIVE_CLIENT_ID || env.GOOGLE_CLIENT_ID)?.trim();
-  const gdriveClientSecret = (env.GDRIVE_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET)?.trim();
+  const requestedProvider = cleanEnvValue(env.STORAGE_PROVIDER)?.toLowerCase();
+  const gdriveClientId = cleanEnvValue(env.GDRIVE_CLIENT_ID || env.GOOGLE_CLIENT_ID);
+  const gdriveClientSecret = cleanEnvValue(env.GDRIVE_CLIENT_SECRET || env.GOOGLE_CLIENT_SECRET);
 
-  const r2AccountId = env.R2_ACCOUNT_ID?.trim();
-  const r2AccessKeyId = env.R2_ACCESS_KEY_ID?.trim();
-  const r2SecretAccessKey = env.R2_SECRET_ACCESS_KEY?.trim();
-  const r2BucketName = env.R2_BUCKET_NAME?.trim() || 'globalsend';
+  const r2AccountId = cleanEnvValue(env.R2_ACCOUNT_ID);
+  const r2AccessKeyId = cleanEnvValue(env.R2_ACCESS_KEY_ID);
+  const r2SecretAccessKey = cleanEnvValue(env.R2_SECRET_ACCESS_KEY);
+  const r2BucketName = cleanEnvValue(env.R2_BUCKET_NAME) || 'globalsend';
 
   let storageConfig: StorageConfig;
 

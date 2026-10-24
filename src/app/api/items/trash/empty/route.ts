@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { emptyTrash } from '@/lib/db';
-import { deleteStorageFile } from '@/lib/r2';
+import { deleteStorageFile } from '@/lib/storage';
 
 export async function POST() {
   const session = await getSession();

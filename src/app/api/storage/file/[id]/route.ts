@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { query } from '@/lib/db';
+import { authorizeFileAccess } from '@/lib/db';
 import { getStorageProvider, GoogleDriveStorageProvider } from '@/lib/storage';
 import { Readable } from 'stream';
 
@@ -17,35 +17,27 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const asAttachment = searchParams.get('download') === 'true';
 
-  // 1. Verify item ownership in database
-  const rows = await query<{
-    id: string;
-    item_id: string;
-    user_id: string;
-    storage_key: string;
-    original_filename: string;
-    mime_type: string;
-    file_size: number;
-  }>(
-    `SELECT f.*, i.user_id FROM files f
-     JOIN items i ON f.item_id = i.id
-     WHERE (i.id = $1 OR f.id = $1) AND i.deleted_at IS NULL
-     LIMIT 1`,
-    [id]
-  );
+  // 1. Strictly verify item existence, non-expiration, and owner/recipient permission
+  const authResult = await authorizeFileAccess(id, session.userId);
 
-  if (!rows || rows.length === 0) {
+  if (authResult.status === 'not_found') {
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 
-  const file = rows[0];
+  if (authResult.status === 'expired') {
+    return NextResponse.json(
+      { error: 'File has expired and is no longer available' },
+      { status: 410 }
+    );
+  }
 
-  // 2. Strict authorization check
-  if (file.user_id !== session.userId) {
+  if (authResult.status === 'forbidden' || !authResult.file) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // 3. Parse optional HTTP Range header (for video/audio scrubbing)
+  const file = authResult.file;
+
+  // 2. Parse optional HTTP Range header (for video/audio scrubbing)
   const rangeHeader = req.headers.get('range');
   let range: { start: number; end?: number } | undefined;
 
@@ -53,20 +45,18 @@ export async function GET(
     const parts = rangeHeader.replace('bytes=', '').split('-');
     const start = parseInt(parts[0], 10);
     const end = parts[1] ? parseInt(parts[1], 10) : undefined;
-    if (!isNaN(start)) {
+    if (!isNaN(start) && start >= 0) {
       range = { start, end };
     }
   }
 
   try {
-    // 4. Select appropriate provider
     const provider = file.storage_key.startsWith('gdrive://')
       ? new GoogleDriveStorageProvider()
       : getStorageProvider();
 
     const result = await provider.getDownloadStream(file.storage_key, range);
 
-    // 5. Convert stream to web ReadableStream if needed
     let webStream: ReadableStream;
     if (result.stream instanceof ReadableStream) {
       webStream = result.stream;
@@ -74,43 +64,50 @@ export async function GET(
       const nodeStream = result.stream as Readable;
       webStream = new ReadableStream({
         start(controller) {
-          nodeStream.on('data', chunk => controller.enqueue(chunk));
+          nodeStream.on('data', (chunk) => controller.enqueue(chunk));
           nodeStream.on('end', () => controller.close());
-          nodeStream.on('error', err => controller.error(err));
+          nodeStream.on('error', (err) => controller.error(err));
         },
         cancel() {
           nodeStream.destroy();
         },
       });
     } else {
-      throw new Error('Unsupported stream format returned from storage provider');
+      throw new Error('Unsupported stream type returned by storage provider');
     }
 
+    const safeFilename = (file.sanitized_filename || file.original_filename || 'file').replace(
+      /["\r\n]/g,
+      '_'
+    );
     const disposition = asAttachment
-      ? `attachment; filename="${encodeURIComponent(file.original_filename)}"`
-      : `inline; filename="${encodeURIComponent(file.original_filename)}"`;
+      ? `attachment; filename="${encodeURIComponent(safeFilename)}"`
+      : `inline; filename="${encodeURIComponent(safeFilename)}"`;
 
     const headers: Record<string, string> = {
-      'Content-Type': result.mimeType || file.mime_type || 'application/octet-stream',
+      'Content-Type': file.mime_type || result.mimeType || 'application/octet-stream',
       'Content-Disposition': disposition,
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'private, max-age=3600',
+      // Never cache expiring private files in shared or persistent browser caches
+      'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+      'X-Content-Type-Options': 'nosniff',
     };
-
-    if (result.size !== undefined) {
-      headers['Content-Length'] = result.size.toString();
-    }
 
     if (result.contentRange) {
       headers['Content-Range'] = result.contentRange;
+    } else if (result.size) {
+      headers['Content-Length'] = result.size.toString();
     }
 
     return new NextResponse(webStream, {
-      status: result.statusCode || (range ? 206 : 200),
+      status: result.statusCode || 200,
       headers,
     });
   } catch (err: any) {
-    console.error('Download stream error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to stream file' }, { status: 500 });
+    console.error(`Error streaming file (${file.storage_key}):`, err?.message || 'Error');
+    return NextResponse.json(
+      { error: err?.message || 'Failed to stream file from storage' },
+      { status: 500 }
+    );
   }
 }

@@ -33,18 +33,18 @@ export function SplashScreen({ onFinish, durationMs = 1000 }: SplashScreenProps)
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0d0e12] text-white transition-all duration-350 ease-out select-none ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0b1422] text-white transition-all duration-350 ease-out select-none ${
         isFadingOut ? 'opacity-0 scale-102 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
-      {/* Subtle iridescent background aura matching the logo's gradient waves */}
-      <div className="absolute w-72 h-72 rounded-full bg-gradient-to-tr from-orange-500/15 via-cyan-500/15 to-purple-500/15 blur-3xl pointer-events-none animate-pulse" />
+      {/* Subtle iridescent background aura matching the Quick Share sky/cobalt palette */}
+      <div className="absolute w-80 h-80 rounded-full bg-gradient-to-tr from-[#0875da]/25 via-[#249df1]/20 to-[#6366f1]/20 blur-3xl pointer-events-none animate-pulse" />
 
       {/* Centered Logo Container with dynamic entry */}
       <div className="relative flex flex-col items-center">
         <div className="relative group">
-          <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-orange-500/30 via-cyan-400/30 to-purple-500/30 blur-lg opacity-75 animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black/60 backdrop-blur-xl transition-transform transform active:scale-95">
+          <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-[#0875da]/40 via-[#249df1]/40 to-[#6366f1]/35 blur-lg opacity-80 animate-pulse" />
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shadow-2xl border border-[#34465e] bg-[#142033]/80 backdrop-blur-xl transition-transform transform active:scale-95">
             <Image
               src="/logo.png"
               alt={SITE_CONFIG.name}
@@ -60,14 +60,14 @@ export function SplashScreen({ onFinish, durationMs = 1000 }: SplashScreenProps)
         <h1 className="mt-5 text-xl sm:text-2xl font-bold tracking-tight text-white drop-shadow-sm">
           {SITE_CONFIG.name}
         </h1>
-        <p className="mt-1 text-xs text-[#98989d] tracking-wide font-medium">
+        <p className="mt-1 text-xs text-[#9cb1ca] tracking-wide font-medium">
           {SITE_CONFIG.tagline}
         </p>
 
         {/* 1-second Progress Bar Indicator */}
-        <div className="w-32 h-1 bg-white/10 rounded-full mt-6 overflow-hidden">
+        <div className="w-32 h-1.5 bg-[#1b2b42] rounded-full mt-6 overflow-hidden border border-[#2c3e57]">
           <div
-            className="h-full bg-gradient-to-r from-orange-400 via-cyan-400 to-purple-400 rounded-full transition-all ease-linear"
+            className="h-full bg-gradient-to-r from-[#0875da] via-[#249df1] to-[#6366f1] rounded-full transition-all ease-linear"
             style={{
               width: isFadingOut ? '100%' : '100%',
               transitionDuration: `${durationMs}ms`,

@@ -36,7 +36,7 @@ export function Logo({
     >
       {withGlow && (
         <div
-          className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-amber-500/30 via-cyan-500/30 to-purple-500/30 blur-md opacity-70 pointer-events-none transition-opacity"
+          className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-[#0875da]/35 via-[#249df1]/35 to-[#6366f1]/30 blur-md opacity-80 pointer-events-none transition-opacity"
           aria-hidden="true"
         />
       )}

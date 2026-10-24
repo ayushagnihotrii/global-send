@@ -18,14 +18,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold uppercase tracking-wider text-[#86868b] dark:text-[#98989d] mb-1.5 ml-1"
+            className="block text-xs font-semibold text-[#33465d] dark:text-[#c1d5ec] mb-1.5 ml-0.5"
           >
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {icon && (
-            <div className="absolute left-3.5 text-zinc-400 pointer-events-none flex items-center">
+            <div className="absolute left-3.5 text-[#68788c] dark:text-[#8bb5dc] pointer-events-none flex items-center">
               {icon}
             </div>
           )}
@@ -33,16 +33,16 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             className={cn(
-              'w-full bg-[#f2f2f7] dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-white placeholder:text-zinc-400 rounded-xl px-4 py-2.5 text-sm transition-all duration-150 border border-transparent focus:border-[#0071e3] focus:bg-white dark:focus:bg-[#1c1c1e] focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20',
+              'w-full bg-[#fbfdff] dark:bg-[#142237] text-[#0f172b] dark:text-[#e9f1fc] placeholder:text-[#8292a7] dark:placeholder:text-[#62748e] rounded-xl px-4 py-2.5 text-sm transition-all duration-200 border border-[#dfe8f3] dark:border-[#344b65] focus:border-[#1677df] dark:focus:border-[#60a5fa] focus:bg-white dark:focus:bg-[#17263b] focus:outline-none focus:ring-3 focus:ring-[#1677df]/12',
               icon && 'pl-10',
-              error && 'border-[#ff3b30] focus:border-[#ff3b30] focus:ring-[#ff3b30]/20',
+              error && 'border-[#e11d48] focus:border-[#e11d48] focus:ring-[#e11d48]/15',
               className
             )}
             {...props}
           />
         </div>
         {error && (
-          <p className="text-xs text-[#ff3b30] mt-1 ml-1 font-medium">{error}</p>
+          <p className="text-xs text-[#e11d48] mt-1 ml-1 font-medium">{error}</p>
         )}
       </div>
     );

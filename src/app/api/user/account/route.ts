@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, clearSessionCookie, verifyPassword } from '@/lib/auth';
-import { getUserByUsername, deleteUserAccount, emptyTrash } from '@/lib/db';
-import { deleteR2Object, isR2Configured } from '@/lib/r2';
+import { getSession, clearSessionCookie, verifyLoginKey } from '@/lib/auth';
+import { getRawUserById, deleteUserAccount } from '@/lib/db';
+import { deleteStorageFile } from '@/lib/storage';
+import { executeFullCleanup } from '@/lib/cleanup';
 
 export async function DELETE(req: NextRequest) {
   const session = await getSession();
@@ -10,36 +11,41 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const password = body.password;
+    const body = await req.json().catch(() => ({}));
+    const key = body.key || body.loginKey || body.password;
 
-    if (!password) {
-      return NextResponse.json({ error: 'Password confirmation is required' }, { status: 400 });
+    if (!key) {
+      return NextResponse.json(
+        { error: 'Login key confirmation is required to delete your account' },
+        { status: 400 }
+      );
     }
 
-    const user = await getUserByUsername(session.username);
+    const user = await getRawUserById(session.userId);
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const isMatch = await verifyPassword(password, user.password_hash);
+    const isMatch = await verifyLoginKey(key, user.password_hash);
     if (!isMatch) {
-      return NextResponse.json({ error: 'Password verification failed' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Login key verification failed' },
+        { status: 400 }
+      );
     }
 
-    // Clean up all R2 files first
-    const storageKeys = await emptyTrash(session.userId);
-    if (isR2Configured()) {
-      await Promise.allSettled(storageKeys.map(key => deleteR2Object(key)));
-    }
-
-    // Delete user (cascades to items, files, tags)
-    await deleteUserAccount(session.userId);
+    // Delete user account and enqueue all storage files + avatar for permanent deletion
+    const storageKeys = await deleteUserAccount(session.userId);
+    await Promise.allSettled(storageKeys.map((k) => deleteStorageFile(k)));
+    await executeFullCleanup().catch(() => {});
     await clearSessionCookie();
 
-    return NextResponse.json({ success: true, message: 'Account permanently deleted' });
+    return NextResponse.json({
+      success: true,
+      message: 'Account and all associated files permanently deleted',
+    });
   } catch (err: any) {
-    console.error('Delete account error:', err);
+    console.error('Delete account error:', err?.message || 'Error');
     return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
   }
 }

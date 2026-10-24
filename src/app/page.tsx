@@ -49,21 +49,25 @@ export default function Home() {
       )}
 
       {isCheckingAuth ? (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f5f7] dark:bg-black">
-          <div className="mb-3 animate-pulse">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#f8fbff] via-[#f5f8fc] to-[#fafbfe] dark:from-[#0c1c30] dark:via-[#0b1422] dark:to-[#0b1422]">
+          <div className="mb-3.5 animate-pulse">
             <Logo size="lg" withGlow />
           </div>
-          <p className="text-sm font-semibold tracking-tight text-[#1d1d1f] dark:text-white">
+          <p className="text-base font-bold tracking-tight text-[#0f172b] dark:text-white">
             {SITE_CONFIG.name}
           </p>
-          <p className="text-xs text-[#86868b] dark:text-[#98989d] mt-1">
-            Opening secure locker...
+          <p className="text-xs text-[#53667a] dark:text-[#a4b5ce] mt-1">
+            Opening your cloud workspace...
           </p>
         </div>
       ) : !user ? (
         <AuthModal onSuccess={(newUser) => setUser(newUser)} />
       ) : (
-        <Dashboard user={user} onLogout={handleLogout} />
+        <Dashboard
+          user={user}
+          onLogout={handleLogout}
+          onUserUpdated={(updatedUser) => setUser(updatedUser)}
+        />
       )}
     </>
   );

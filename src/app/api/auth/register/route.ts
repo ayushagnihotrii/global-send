@@ -1,24 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { getUserByUsername, createUser, getUserCount } from '@/lib/db';
-import { hashPassword, generateRecoveryCode, setSessionCookie, checkRateLimit, createSessionToken } from '@/lib/auth';
-
-const registerSchema = z.object({
-  username: z
-    .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(30, 'Username must be at most 30 characters')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(100, 'Password is too long'),
-  inviteCode: z.string().optional(),
-});
+import {
+  getUserByUsername,
+  getUserByKeyFingerprint,
+  createUser,
+  getUserCount,
+} from '@/lib/db';
+import {
+  validateUsername,
+  validateLoginKey,
+  computeKeyFingerprint,
+  hashLoginKey,
+  setSessionCookie,
+  checkRateLimit,
+  createSessionToken,
+} from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for') || 'local';
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
     if (!checkRateLimit(`reg_${ip}`, 10, 60000)) {
       return NextResponse.json(
         { error: 'Too many registration attempts. Please try again in a minute.' },
@@ -26,9 +25,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
 
-    // 1. Storage Protection Policy: Enforce Owner-Only or Invitation-Only in production
+    // 1. Optional instance-level registration policy
     const allowRegistration = process.env.ALLOW_REGISTRATION;
     const inviteCodeConfig = process.env.INVITE_CODE?.trim();
     const isOwnerOnly = process.env.REGISTRATION_MODE === 'owner_only';
@@ -60,44 +59,110 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = registerSchema.safeParse(body);
-
-    if (!result.success) {
+    // 2. Validate username
+    const rawUsername = typeof body.username === 'string' ? body.username : '';
+    const usernameCheck = validateUsername(rawUsername);
+    if (!usernameCheck.valid) {
       return NextResponse.json(
-        { error: result.error.issues[0]?.message || 'Invalid input' },
+        { error: usernameCheck.error || 'Invalid username' },
         { status: 400 }
       );
     }
 
-    const { username, password } = result.data;
-    const existing = await getUserByUsername(username);
+    // 3. Validate login key (supports 'key', 'loginKey', or 'password' field)
+    const rawKey =
+      typeof body.key === 'string'
+        ? body.key
+        : typeof body.loginKey === 'string'
+        ? body.loginKey
+        : typeof body.password === 'string'
+        ? body.password
+        : '';
 
-    if (existing) {
+    const keyCheck = validateLoginKey(rawKey, usernameCheck.display);
+    if (!keyCheck.valid) {
+      return NextResponse.json(
+        { error: keyCheck.error || 'Invalid login key' },
+        { status: 400 }
+      );
+    }
+
+    // 4. Require unrecoverable-key warning acknowledgment when provided in UI
+    if (body.acknowledgedWarning === false) {
+      return NextResponse.json(
+        {
+          error:
+            'You must acknowledge that your login key cannot be recovered if lost.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 5. Enforce case-insensitive username uniqueness
+    const existingUsername = await getUserByUsername(usernameCheck.normalized);
+    if (existingUsername) {
       return NextResponse.json(
         { error: 'This username is already taken. Please choose another.' },
         { status: 409 }
       );
     }
 
+    // 6. Enforce unique login key across accounts via HMAC-SHA-256 fingerprint
+    const keyFingerprint = computeKeyFingerprint(rawKey);
+    const existingKeyOwner = await getUserByKeyFingerprint(keyFingerprint);
+    if (existingKeyOwner) {
+      return NextResponse.json(
+        {
+          error:
+            'This login key is already in use. Please create a different, unique login key.',
+        },
+        { status: 409 }
+      );
+    }
+
+    // 7. Hash login key with salted Argon2id (never store plaintext or recovery codes)
     const userId = crypto.randomUUID();
-    const passwordHash = await hashPassword(password);
-    const recovery = generateRecoveryCode();
-    const recoveryCodeHash = await recovery.hash;
+    const keyHash = await hashLoginKey(rawKey);
 
-    const user = await createUser(userId, username, passwordHash, recoveryCodeHash);
+    let user;
+    try {
+      user = await createUser(userId, usernameCheck.normalized, keyHash, null, {
+        displayUsername: usernameCheck.display,
+        keyFingerprint,
+      });
+    } catch (dbErr: any) {
+      const msg = String(dbErr?.message || '').toLowerCase();
+      if (msg.includes('unique') || msg.includes('duplicate')) {
+        return NextResponse.json(
+          {
+            error:
+              'Username or login key is already registered. Please choose a different value.',
+          },
+          { status: 409 }
+        );
+      }
+      throw dbErr;
+    }
 
-    // Create session
-    const token = await createSessionToken({ userId: user.id, username: user.username }, true);
-    await setSessionCookie({ userId: user.id, username: user.username }, true);
+    const sessionPayload = {
+      userId: user.id,
+      username: user.username,
+      sessionVersion: 1,
+    };
 
-    return NextResponse.json({
-      success: true,
-      token,
-      user,
-      recoveryCode: recovery.plain,
-    });
+    const token = await createSessionToken(sessionPayload, false);
+    await setSessionCookie(sessionPayload, false);
+
+    return NextResponse.json(
+      {
+        success: true,
+        token,
+        user,
+      },
+      { status: 201 }
+    );
   } catch (err: any) {
-    console.error('Registration error:', err);
+    console.error('[Global Send Registration Error]:', err?.message || 'Unknown error');
     return NextResponse.json(
       { error: 'Failed to create account. Please try again.' },
       { status: 500 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Plus, Folder, Settings } from 'lucide-react';
+import { Home, Plus, Folder, User, MessageSquare } from 'lucide-react';
 import { NavSection } from './DesktopSidebar';
 import { cn } from '@/lib/utils';
 
@@ -16,45 +16,45 @@ export function MobileNavBar({
   onOpenComposer,
 }: MobileNavBarProps) {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#1c1c1e]/90 backdrop-blur-md border-t border-[#e5e5ea] dark:border-[#38383a] px-3 py-2 pb-safe">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#111b2c]/95 backdrop-blur-xl border-t border-[#dce7f4] dark:border-[#2b3f58] px-3 py-2 pb-safe shadow-[0_-4px_22px_rgba(27,55,85,0.06)]">
       <div className="flex items-center justify-around max-w-lg mx-auto">
-        {/* Home */}
+        {/* My Vault */}
         <button
           type="button"
           onClick={() => onSelectSection('all')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] transition-colors',
+            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
             currentSection === 'all'
-              ? 'text-[#0071e3] font-semibold'
-              : 'text-[#86868b] dark:text-[#98989d]'
+              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
+              : 'text-[#607187] dark:text-[#98b0c9]'
           )}
-          aria-label="Home / All items"
+          aria-label="My Vault"
         >
           <Home className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Home</span>
+          <span className="text-[10px] mt-0.5">Vault</span>
         </button>
 
-        {/* Texts / Notes */}
+        {/* Chats */}
         <button
           type="button"
-          onClick={() => onSelectSection('text')}
+          onClick={() => onSelectSection('chats')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] transition-colors',
-            currentSection === 'text'
-              ? 'text-[#0071e3] font-semibold'
-              : 'text-[#86868b] dark:text-[#98989d]'
+            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
+            currentSection === 'chats'
+              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
+              : 'text-[#607187] dark:text-[#98b0c9]'
           )}
-          aria-label="Texts and notes"
+          aria-label="Private Chats"
         >
-          <span className="text-[10px] uppercase font-bold tracking-wider">TXT</span>
-          <span className="text-[10px] mt-0.5">Texts</span>
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5">Chats</span>
         </button>
 
         {/* Floating Add Button */}
         <button
           type="button"
           onClick={onOpenComposer}
-          className="flex items-center justify-center w-11 h-11 rounded-full bg-[#0071e3] text-white shadow-md active:scale-95 transition-transform"
+          className="flex items-center justify-center w-11 h-11 rounded-2xl qs-primary-btn text-white active:scale-95 transition-transform cursor-pointer"
           aria-label="Save something new"
         >
           <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -65,10 +65,10 @@ export function MobileNavBar({
           type="button"
           onClick={() => onSelectSection('file')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] transition-colors',
+            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
             currentSection === 'file'
-              ? 'text-[#0071e3] font-semibold'
-              : 'text-[#86868b] dark:text-[#98989d]'
+              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
+              : 'text-[#607187] dark:text-[#98b0c9]'
           )}
           aria-label="Files and documents"
         >
@@ -76,20 +76,20 @@ export function MobileNavBar({
           <span className="text-[10px] mt-0.5">Files</span>
         </button>
 
-        {/* Settings */}
+        {/* Profile */}
         <button
           type="button"
           onClick={() => onSelectSection('settings')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] transition-colors',
+            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
             currentSection === 'settings'
-              ? 'text-[#0071e3] font-semibold'
-              : 'text-[#86868b] dark:text-[#98989d]'
+              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
+              : 'text-[#607187] dark:text-[#98b0c9]'
           )}
-          aria-label="Settings"
+          aria-label="Profile & Settings"
         >
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Settings</span>
+          <User className="w-5 h-5" />
+          <span className="text-[10px] mt-0.5">Profile</span>
         </button>
       </div>
     </div>

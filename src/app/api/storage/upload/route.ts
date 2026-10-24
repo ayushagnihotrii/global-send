@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { getUserStorageUsage, createItem, createFileRecord, syncItemTags, getItemById } from '@/lib/db';
-import { SITE_CONFIG } from '@/config/site';
+import {
+  reserveUploadSession,
+  updateUploadSession,
+  createItem,
+  createFileRecord,
+  syncItemTags,
+  getItemById,
+  validateExpirationDuration,
+  sanitizeFilenameForDisplay,
+} from '@/lib/db';
 import { getStorageProvider } from '@/lib/storage';
 
-export const maxDuration = 60; // Allow sufficient time for larger uploads
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  let reservedSessionId: string | null = null;
 
   try {
     const formData = await req.formData();
@@ -26,111 +36,166 @@ export async function POST(req: NextRequest) {
     if (!rawItemId) {
       rawItemId = crypto.randomUUID();
     }
+
     const customTitle = (formData.get('title') as string)?.trim();
     const rawTags = formData.get('tags');
+    const rawExpiration =
+      formData.get('expirationSeconds') ?? formData.get('expirationDurationSec');
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided in form-data' }, { status: 400 });
     }
 
-    const fileSize = file.size;
-    const filename = file.name || 'unnamed_file';
-    const mimeType = file.type || 'application/octet-stream';
-
-    // 1. Enforce individual file size limit
-    if (fileSize > SITE_CONFIG.maxUploadSizeBytes) {
+    // 1. Validate requested expiration duration on server (default: 24 hours = 86400s)
+    const parsedExp =
+      rawExpiration !== null && rawExpiration !== '' ? Number(rawExpiration) : undefined;
+    const expValidation = validateExpirationDuration(parsedExp);
+    if (!expValidation.valid) {
       return NextResponse.json(
-        { error: `File exceeds maximum allowed upload size of ${SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024)} MB.` },
+        { error: expValidation.error || 'Invalid expiration duration' },
         { status: 400 }
       );
     }
 
-    // 2. Enforce user total storage quota
-    const usage = await getUserStorageUsage(session.userId);
-    if (usage.usedBytes + fileSize > usage.limitBytes) {
+    const fileSize = file.size;
+    const filename = file.name || 'unnamed_file';
+    const sanitizedFilename = sanitizeFilenameForDisplay(filename);
+    const mimeType = file.type || 'application/octet-stream';
+
+    // 2. Check live Google Drive quota if active provider is google_drive
+    const provider = getStorageProvider();
+    let liveDriveAvailableBytes: number | undefined;
+    if (provider.name === 'google_drive' && provider.getQuota) {
+      const quota = await provider.getQuota();
+      if (typeof quota.availableBytes === 'number') {
+        liveDriveAvailableBytes = quota.availableBytes;
+      }
+    }
+
+    // 3. Atomically validate per-file, per-user, and global storage limits & reserve bytes
+    const reservation = await reserveUploadSession({
+      userId: session.userId,
+      itemId: rawItemId,
+      title: customTitle || sanitizedFilename,
+      originalFilename: filename,
+      mimeType,
+      fileSize,
+      expirationDurationSec: expValidation.durationSec,
+      storageProvider: provider.name,
+      liveDriveAvailableBytes,
+    });
+
+    if (!reservation.allowed || !reservation.sessionId) {
       return NextResponse.json(
-        { error: 'Storage quota exceeded. Please delete some files or empty trash to free up space.' },
-        { status: 403 }
+        { error: reservation.error || 'Storage quota exceeded' },
+        { status: reservation.statusCode || 403 }
       );
     }
 
-    // 3. Read file into buffer
+    reservedSessionId = reservation.sessionId;
+    await updateUploadSession(reservedSessionId, session.userId, { status: 'uploading' });
+
+    // 4. Read file into buffer and upload via active StorageProvider
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 4. Generate unique storage key
-    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeKeyName = sanitizedFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const uniquePrefix = crypto.randomUUID();
-    const storageKey = rawStorageKey || `users/${session.userId}/${rawItemId}/${uniquePrefix}-${safeFilename}`;
+    const storageKey =
+      rawStorageKey || `users/${session.userId}/${rawItemId}/${uniquePrefix}-${safeKeyName}`;
 
-    // 5. Upload via active StorageProvider (Google Drive, Cloudflare R2, or Local Disk)
-    const provider = getStorageProvider();
     const uploadResult = await provider.uploadFile({
       storageKey,
-      filename,
+      filename: sanitizedFilename,
       mimeType,
       buffer,
       userId: session.userId,
       itemId: rawItemId,
     });
 
-    // 6. Determine item type
+    // 5. Calculate expiration timestamp AFTER upload completes on the server
+    const completedAtMs = Date.now();
+    const expiresAtIso = new Date(
+      completedAtMs + expValidation.durationSec * 1000
+    ).toISOString();
+
     let itemType: 'image' | 'video' | 'file' = 'file';
     if (mimeType.startsWith('image/')) itemType = 'image';
     else if (mimeType.startsWith('video/')) itemType = 'video';
 
-    const itemTitle = customTitle || filename;
-
-    // 7. Persist item record in database
-    await createItem({
-      id: rawItemId,
-      userId: session.userId,
-      type: itemType,
-      title: itemTitle,
+    // 6. Create or update item and file metadata in database
+    const existingItem = await getItemById(rawItemId, session.userId, {
+      includeExpired: true,
     });
 
-    // 8. Persist file metadata record
-    const fileId = crypto.randomUUID();
-    await createFileRecord({
-      id: fileId,
-      itemId: rawItemId,
-      userId: session.userId,
+    if (!existingItem) {
+      await createItem({
+        id: rawItemId,
+        userId: session.userId,
+        type: itemType,
+        title: customTitle || sanitizedFilename,
+        isFavourite: false,
+        expirationDurationSec: expValidation.durationSec,
+        expiresAt: expiresAtIso,
+      });
+
+      await createFileRecord({
+        id: crypto.randomUUID(),
+        itemId: rawItemId,
+        userId: session.userId,
+        storageKey: uploadResult.storageKey,
+        originalFilename: filename,
+        sanitizedFilename,
+        mimeType,
+        fileSize: uploadResult.size || fileSize,
+        storageProvider: uploadResult.provider,
+        providerFileId: uploadResult.fileId,
+        uploadStatus: 'completed',
+      });
+    }
+
+    await updateUploadSession(reservedSessionId, session.userId, {
+      status: 'completed',
       storageKey: uploadResult.storageKey,
-      originalFilename: filename,
-      mimeType,
-      fileSize,
-      uploadStatus: 'completed',
+      providerFileId: uploadResult.fileId,
     });
 
-    // 9. Sync tags if provided
-    let tagList: string[] = [];
     if (rawTags) {
       try {
-        tagList = typeof rawTags === 'string' ? JSON.parse(rawTags) : [];
+        const parsedTags = typeof rawTags === 'string' ? JSON.parse(rawTags) : rawTags;
+        if (Array.isArray(parsedTags) && parsedTags.length > 0) {
+          await syncItemTags(rawItemId, session.userId, parsedTags);
+        }
       } catch {
-        tagList = String(rawTags)
-          .split(',')
-          .map(t => t.trim())
-          .filter(Boolean);
-      }
-      if (tagList.length > 0) {
-        await syncItemTags(rawItemId, session.userId, tagList);
+        // Ignore malformed tags JSON
       }
     }
 
-    // 10. Return full hydrated item
     const fullItem = await getItemById(rawItemId, session.userId);
-    if (fullItem?.file) {
+    if (fullItem && fullItem.file) {
       fullItem.file.downloadUrl = `/api/storage/file/${fullItem.id}`;
     }
 
-    return NextResponse.json({
-      success: true,
-      item: fullItem,
-      provider: uploadResult.provider,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        provider: uploadResult.provider,
+        storageKey: uploadResult.storageKey,
+        item: fullItem,
+      },
+      { status: 201 }
+    );
   } catch (err: any) {
-    console.error('Upload processing error:', err);
-    return NextResponse.json({ error: err.message || 'Failed to upload file' }, { status: 500 });
+    // Release reserved quota on failure and never create a falsely completed vault entry
+    if (reservedSessionId) {
+      await updateUploadSession(reservedSessionId, session.userId, {
+        status: 'failed',
+      }).catch(() => {});
+    }
+    console.error('Unified file upload error:', err?.message || 'Upload error');
+    return NextResponse.json(
+      { error: err?.message || 'File upload failed' },
+      { status: 500 }
+    );
   }
 }

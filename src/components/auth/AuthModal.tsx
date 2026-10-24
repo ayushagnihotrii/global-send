@@ -1,7 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Lock, User, Eye, EyeOff, ShieldCheck, KeyRound, Copy, Check } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  KeyRound,
+  User,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  ArrowRight,
+  ShieldCheck,
+  Clock,
+  MessageSquare,
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
@@ -12,32 +22,59 @@ interface AuthModalProps {
   onSuccess: (user: any) => void;
 }
 
-type AuthView = 'login' | 'register' | 'recovery' | 'show-recovery-code';
+type AuthView = 'login' | 'register';
+
+function computeClientKeyStrength(key: string): {
+  score: 0 | 1 | 2 | 3 | 4;
+  label: string;
+  colorClass: string;
+} {
+  const len = Array.from(key || '').length;
+  if (len === 0) {
+    return { score: 0, label: '8–128 characters required', colorClass: 'bg-zinc-200 dark:bg-zinc-800' };
+  }
+  if (len < 8) {
+    return { score: 0, label: `Too short (${len}/8 min)`, colorClass: 'bg-red-500' };
+  }
+
+  let variety = 0;
+  if (/[a-z]/.test(key)) variety++;
+  if (/[A-Z]/.test(key)) variety++;
+  if (/[0-9]/.test(key)) variety++;
+  if (/[^a-zA-Z0-9]/.test(key)) variety++;
+
+  const uniqueChars = new Set(Array.from(key)).size;
+
+  if (len >= 20 && uniqueChars >= 10) {
+    return { score: 4, label: 'Very strong key', colorClass: 'bg-emerald-500' };
+  }
+  if (len >= 14 && (variety >= 2 || uniqueChars >= 8)) {
+    return { score: 3, label: 'Strong key', colorClass: 'bg-emerald-500' };
+  }
+  if (len >= 10 && uniqueChars >= 5) {
+    return { score: 2, label: 'Moderate key', colorClass: 'bg-amber-500' };
+  }
+  return { score: 1, label: 'Basic — longer keys are safer', colorClass: 'bg-amber-500' };
+}
 
 export function AuthModal({ onSuccess }: AuthModalProps) {
   const { toast } = useToast();
   const [view, setView] = useState<AuthView>('login');
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [recoveryCodeInput, setRecoveryCodeInput] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
-  const [rememberMe, setRememberMe] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
+  const [loginKey, setLoginKey] = useState('');
+  const [acknowledgedWarning, setAcknowledgedWarning] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Recovery code created during registration
-  const [createdRecoveryCode, setCreatedRecoveryCode] = useState<string | null>(null);
-  const [createdUser, setCreatedUser] = useState<any | null>(null);
-  const [copiedCode, setCopiedCode] = useState(false);
+  const keyStrength = useMemo(() => computeClientKeyStrength(loginKey), [loginKey]);
 
-  const resetForm = () => {
+  const switchView = (nextView: AuthView) => {
     setError(null);
-    setPassword('');
-    setNewPassword('');
-    setRecoveryCodeInput('');
-    setInviteCode('');
+    setLoginKey('');
+    setShowKey(false);
+    setAcknowledgedWarning(false);
+    setView(nextView);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -49,19 +86,19 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, rememberMe }),
+        body: JSON.stringify({ key: loginKey }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Failed to sign in');
+        setError(data.error || 'Invalid key. Please check your key and try again.');
         return;
       }
 
-      toast.success(`Welcome back, ${data.user.username}!`);
+      toast.success(`Signed in as @${data.user.displayUsername || data.user.username}`);
       onSuccess(data.user);
     } catch {
-      setError('A network error occurred. Please try again.');
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +107,14 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!acknowledgedWarning) {
+      setError(
+        'Please acknowledge the warning that your login key cannot be recovered if lost.'
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -77,9 +122,9 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username,
-          password,
-          inviteCode: inviteCode.trim() || undefined,
+          username: username.trim(),
+          key: loginKey,
+          acknowledgedWarning: true,
         }),
       });
 
@@ -89,341 +134,278 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
         return;
       }
 
-      setCreatedRecoveryCode(data.recoveryCode);
-      setCreatedUser(data.user);
-      setView('show-recovery-code');
+      toast.success(
+        `Account created! Welcome, @${data.user.displayUsername || data.user.username}.`
+      );
+      onSuccess(data.user);
     } catch {
-      setError('A network error occurred. Please try again.');
+      setError('Network error. Please check your connection and try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleRecover = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/recover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username,
-          recoveryCode: recoveryCodeInput,
-          newPassword,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Recovery failed');
-        return;
-      }
-
-      toast.success('Password reset! Please sign in with your new password.');
-      setView('login');
-      setPassword('');
-    } catch {
-      setError('A network error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const copyRecoveryCode = async () => {
-    if (!createdRecoveryCode) return;
-    try {
-      await navigator.clipboard.writeText(createdRecoveryCode);
-      setCopiedCode(true);
-      toast.success('Recovery code copied to clipboard');
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch {
-      toast.info('Please copy the code manually');
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 bg-[#f5f5f7] dark:bg-black">
-      <div className="w-full max-w-sm sm:max-w-md bg-white dark:bg-[#1c1c1e] rounded-3xl shadow-xl border border-[#e5e5ea] dark:border-[#38383a] p-6 sm:p-8">
-        {/* Branding header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center mb-3">
-            <Logo size={60} withGlow className="rounded-2xl shadow-md" />
+    <div className="min-h-screen flex flex-col bg-[#f5f5f7] dark:bg-[#09090b] text-[#1d1d1f] dark:text-[#f4f4f5]">
+      {/* Minimal Header */}
+      <header className="h-16 bg-white/80 dark:bg-[#121215]/80 backdrop-blur-md border-b border-[#e5e5ea] dark:border-[#27272a]">
+        <div className="max-w-5xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Logo size={32} className="rounded-xl" />
+            <span className="text-base sm:text-lg font-semibold tracking-tight">
+              {SITE_CONFIG.name}
+            </span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1d1d1f] dark:text-white">
-            {SITE_CONFIG.name}
-          </h1>
-          <p className="text-sm text-[#86868b] dark:text-[#98989d] mt-1">
-            {SITE_CONFIG.tagline}
-          </p>
-        </div>
 
-        {error && (
-          <div className="mb-5 p-3 rounded-2xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900 text-xs text-red-700 dark:text-red-300">
-            {error}
-          </div>
-        )}
-
-        {/* 1. SIGN IN VIEW */}
-        {view === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Input
-              label="Username"
-              type="text"
-              autoComplete="username"
-              placeholder="e.g. alex24"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              icon={<User className="w-4 h-4" />}
-              required
-            />
-
-            <div>
-              <div className="relative">
-                <Input
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  icon={<KeyRound className="w-4 h-4" />}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-[34px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-[#86868b] dark:text-[#98989d]">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="rounded border-[#d1d1d6] text-[#0071e3] focus:ring-[#0071e3]"
-                />
-                Remember me
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  resetForm();
-                  setView('recovery');
-                }}
-                className="text-[#0071e3] hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
-
-            <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-              Sign In
-            </Button>
-
-            <div className="text-center pt-3 border-t border-[#e5e5ea]/60 dark:border-[#38383a]/60">
-              <p className="text-xs text-[#86868b] dark:text-[#98989d]">
-                Don&apos;t have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setView('register');
-                  }}
-                  className="text-[#0071e3] font-semibold hover:underline"
-                >
-                  Create one now
-                </button>
-              </p>
-            </div>
-          </form>
-        )}
-
-        {/* 2. REGISTRATION VIEW */}
-        {view === 'register' && (
-          <form onSubmit={handleRegister} className="space-y-4">
-            <Input
-              label="Choose Username"
-              type="text"
-              autoComplete="username"
-              placeholder="3-30 letters or numbers"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              icon={<User className="w-4 h-4" />}
-              required
-            />
-
-            <div>
-              <div className="relative">
-                <Input
-                  label="Create Password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  placeholder="At least 8 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  icon={<KeyRound className="w-4 h-4" />}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-[34px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <Input
-              label="Invite Code (Optional)"
-              type="text"
-              placeholder="Leave blank unless required"
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-            />
-
-            <p className="text-[11px] text-[#86868b] dark:text-[#98989d]">
-              No Google account needed. Your data is stored privately in your personal vault.
-            </p>
-
-            <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-              Create Account
-            </Button>
-
-            <div className="text-center pt-3 border-t border-[#e5e5ea]/60 dark:border-[#38383a]/60">
-              <p className="text-xs text-[#86868b] dark:text-[#98989d]">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetForm();
-                    setView('login');
-                  }}
-                  className="text-[#0071e3] font-semibold hover:underline"
-                >
-                  Sign In
-                </button>
-              </p>
-            </div>
-          </form>
-        )}
-
-        {/* 3. SHOW RECOVERY CODE AFTER REGISTRATION */}
-        {view === 'show-recovery-code' && (
-          <div className="space-y-4 text-center">
-            <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#34c759]/15 text-[#34c759] mb-1">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-
-            <h3 className="text-base font-semibold text-[#1d1d1f] dark:text-white">
-              Save Your Recovery Code
-            </h3>
-
-            <p className="text-xs text-[#86868b] dark:text-[#98989d]">
-              QuickVault does not use Google accounts or email verification. If you ever forget your password, this recovery code is the <strong>only way</strong> to restore access.
-            </p>
-
-            <div className="p-3.5 rounded-2xl bg-[#f2f2f7] dark:bg-[#2c2c2e] border border-[#e5e5ea] dark:border-[#38383a] flex items-center justify-between">
-              <span className="font-mono text-sm tracking-wider font-bold text-[#0071e3] select-all">
-                {createdRecoveryCode}
-              </span>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={copyRecoveryCode}
-                className="h-7 text-xs"
-              >
-                {copiedCode ? <Check className="w-3.5 h-3.5 text-[#34c759]" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedCode ? 'Copied' : 'Copy'}</span>
-              </Button>
-            </div>
-
-            <Button
+          <div className="flex items-center gap-2">
+            <button
               type="button"
-              className="w-full mt-3"
-              onClick={() => {
-                if (createdUser) {
-                  toast.success(`Account created! Welcome, ${createdUser.username}.`);
-                  onSuccess(createdUser);
-                }
-              }}
+              onClick={() => switchView('login')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                view === 'login'
+                  ? 'bg-[#1d1d1f] text-white dark:bg-white dark:text-[#1d1d1f]'
+                  : 'text-[#6e6e73] dark:text-[#a1a1aa] hover:text-[#1d1d1f] dark:hover:text-white'
+              }`}
             >
-              I&apos;ve Saved My Code — Open Locker
-            </Button>
+              Enter Key
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView('register')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                view === 'register'
+                  ? 'bg-[#1d1d1f] text-white dark:bg-white dark:text-[#1d1d1f]'
+                  : 'text-[#6e6e73] dark:text-[#a1a1aa] hover:text-[#1d1d1f] dark:hover:text-white'
+              }`}
+            >
+              Create Account
+            </button>
           </div>
-        )}
+        </div>
+      </header>
 
-        {/* 4. RECOVERY VIEW */}
-        {view === 'recovery' && (
-          <form onSubmit={handleRecover} className="space-y-4">
-            <div className="text-center mb-2">
-              <h3 className="text-base font-semibold text-[#1d1d1f] dark:text-white">
-                Account Recovery
-              </h3>
-              <p className="text-xs text-[#86868b] dark:text-[#98989d]">
-                Enter your username and the one-time code generated when you registered.
+      {/* Main Content */}
+      <main className="flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md">
+          <div className="bg-white dark:bg-[#141417] rounded-3xl border border-[#e5e5ea] dark:border-[#27272a] shadow-sm p-6 sm:p-8">
+            <div className="mb-6">
+              <h1 className="text-2xl font-semibold tracking-tight text-[#1d1d1f] dark:text-white">
+                {view === 'login' ? 'Unlock Your Vault' : 'Create Your Account'}
+              </h1>
+              <p className="text-xs sm:text-sm text-[#6e6e73] dark:text-[#a1a1aa] mt-1">
+                {view === 'login'
+                  ? 'Enter your private login key to open your personal vault and chats.'
+                  : 'Choose a unique public username and a private login key. No email or Google login required.'}
               </p>
             </div>
 
-            <Input
-              label="Username"
-              type="text"
-              placeholder="Your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              icon={<User className="w-4 h-4" />}
-              required
-            />
-
-            <Input
-              label="Recovery Code"
-              type="text"
-              placeholder="e.g. QV-ABCD-1234-EFGH"
-              value={recoveryCodeInput}
-              onChange={(e) => setRecoveryCodeInput(e.target.value)}
-              icon={<KeyRound className="w-4 h-4" />}
-              required
-            />
-
-            <Input
-              label="New Password"
-              type="password"
-              placeholder="At least 8 characters"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              icon={<Lock className="w-4 h-4" />}
-              required
-            />
-
-            <Button type="submit" className="w-full mt-2" isLoading={isLoading}>
-              Reset Password
-            </Button>
-
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  resetForm();
-                  setView('login');
-                }}
-                className="text-xs text-[#0071e3] hover:underline"
+            {error && (
+              <div
+                role="alert"
+                className="mb-5 p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs font-medium text-red-700 dark:text-red-300"
               >
-                Back to Sign In
-              </button>
+                {error}
+              </div>
+            )}
+
+            {/* RETURNING USER LOGIN: KEY ONLY */}
+            {view === 'login' && (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="relative">
+                  <Input
+                    label="Private Login Key"
+                    type={showKey ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    placeholder="Enter your login key"
+                    value={loginKey}
+                    onChange={(e) => setLoginKey(e.target.value)}
+                    icon={<KeyRound className="w-4 h-4" />}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-3.5 top-[34px] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+                    aria-label={showKey ? 'Hide login key' : 'Show login key'}
+                  >
+                    {showKey ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  isLoading={isLoading}
+                  disabled={!loginKey.trim()}
+                >
+                  <span>Unlock Vault</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+
+                <div className="pt-4 border-t border-[#f0f0f2] dark:border-[#27272a] text-center">
+                  <p className="text-xs text-[#6e6e73] dark:text-[#a1a1aa]">
+                    First time here?{' '}
+                    <button
+                      type="button"
+                      onClick={() => switchView('register')}
+                      className="text-[#0071e3] dark:text-[#3898ec] font-semibold hover:underline cursor-pointer"
+                    >
+                      Create a new account
+                    </button>
+                  </p>
+                </div>
+              </form>
+            )}
+
+            {/* FIRST VISIT REGISTRATION: USERNAME + PRIVATE KEY */}
+            {view === 'register' && (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <Input
+                    label="Public Username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="e.g. ayush_01 (3–24 characters)"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    icon={<User className="w-4 h-4" />}
+                    maxLength={24}
+                    required
+                  />
+                  <p className="mt-1 text-[11px] text-[#86868b] dark:text-[#a1a1aa]">
+                    Letters, numbers, underscores (_), and periods (.). Other users can find and message you by this username.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="relative">
+                    <Input
+                      label="Private Login Key"
+                      type={showKey ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      placeholder="8–128 characters (letters, numbers, or symbols)"
+                      value={loginKey}
+                      onChange={(e) => setLoginKey(e.target.value)}
+                      icon={<KeyRound className="w-4 h-4" />}
+                      maxLength={128}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowKey(!showKey)}
+                      className="absolute right-3.5 top-[34px] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+                      aria-label={showKey ? 'Hide login key' : 'Show login key'}
+                    >
+                      {showKey ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Key Strength Indicator */}
+                  <div className="mt-2 space-y-1">
+                    <div className="flex gap-1 h-1.5 w-full">
+                      {[1, 2, 3, 4].map((level) => (
+                        <div
+                          key={level}
+                          className={`flex-1 rounded-full transition-colors ${
+                            keyStrength.score >= level
+                              ? keyStrength.colorClass
+                              : 'bg-[#e5e5ea] dark:bg-[#27272a]'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-[#6e6e73] dark:text-[#a1a1aa]">
+                      <span>{keyStrength.label}</span>
+                      <span>Recommend 14+ unpredictable characters</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mandatory Unrecoverable Key Warning */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-xs font-medium text-amber-900 dark:text-amber-200 leading-relaxed">
+                      Your key cannot be recovered. If you forget it, you permanently lose access to this account. There is no password reset or account recovery. Save your key somewhere safe.
+                    </p>
+                  </div>
+
+                  <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={acknowledgedWarning}
+                      onChange={(e) => setAcknowledgedWarning(e.target.checked)}
+                      className="mt-0.5 rounded border-amber-400 text-[#0071e3] focus:ring-[#0071e3] accent-[#0071e3]"
+                      required
+                    />
+                    <span className="text-xs text-amber-950 dark:text-amber-100 font-semibold">
+                      I have saved my login key and understand it can never be recovered or reset.
+                    </span>
+                  </label>
+                </div>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full"
+                  isLoading={isLoading}
+                  disabled={!acknowledgedWarning || !username.trim() || loginKey.length < 8}
+                >
+                  <span>Create Account</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+
+                <div className="pt-3 border-t border-[#f0f0f2] dark:border-[#27272a] text-center">
+                  <p className="text-xs text-[#6e6e73] dark:text-[#a1a1aa]">
+                    Already have a login key?{' '}
+                    <button
+                      type="button"
+                      onClick={() => switchView('login')}
+                      className="text-[#0071e3] dark:text-[#3898ec] font-semibold hover:underline cursor-pointer"
+                    >
+                      Enter your key
+                    </button>
+                  </p>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Minimal Feature Summary */}
+          <div className="mt-6 grid grid-cols-3 gap-3 text-center">
+            <div className="p-3 rounded-2xl bg-white/70 dark:bg-[#141417]/70 border border-[#e5e5ea] dark:border-[#27272a]">
+              <ShieldCheck className="w-4 h-4 mx-auto text-[#0071e3] mb-1" />
+              <p className="text-[11px] font-medium text-[#1d1d1f] dark:text-white">
+                Key-Only Access
+              </p>
+              <p className="text-[10px] text-[#86868b]">No email or Google login</p>
             </div>
-          </form>
-        )}
-      </div>
+            <div className="p-3 rounded-2xl bg-white/70 dark:bg-[#141417]/70 border border-[#e5e5ea] dark:border-[#27272a]">
+              <Clock className="w-4 h-4 mx-auto text-[#0071e3] mb-1" />
+              <p className="text-[11px] font-medium text-[#1d1d1f] dark:text-white">
+                Auto-Expiring
+              </p>
+              <p className="text-[10px] text-[#86868b]">24h default lifetime</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-white/70 dark:bg-[#141417]/70 border border-[#e5e5ea] dark:border-[#27272a]">
+              <MessageSquare className="w-4 h-4 mx-auto text-[#0071e3] mb-1" />
+              <p className="text-[11px] font-medium text-[#1d1d1f] dark:text-white">
+                Private Chat
+              </p>
+              <p className="text-[10px] text-[#86868b]">1-to-1 file &amp; text sharing</p>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

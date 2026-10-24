@@ -22,6 +22,20 @@ export interface StorageUploadResult {
   fileId?: string;
 }
 
+export interface ResumableUploadInitParams {
+  filename: string;
+  mimeType: string;
+  totalBytes: number;
+  userId: string;
+  itemId: string;
+}
+
+export interface ResumableUploadInitResult {
+  uploadSessionUrl: string;
+  provider: StorageProviderType;
+  storageKeyPrefix?: string;
+}
+
 export interface StorageDownloadResult {
   stream: ReadableStream | NodeJS.ReadableStream | Readable;
   mimeType: string;
@@ -42,32 +56,56 @@ export interface StorageQuotaInfo {
 
 export interface StorageProvider {
   readonly name: StorageProviderType;
-  
+
   /**
    * Uploads a file buffer directly to the storage provider
    */
   uploadFile(params: StorageUploadParams): Promise<StorageUploadResult>;
-  
+
+  /**
+   * Initiates a resumable upload session (supported by Google Drive)
+   */
+  initiateResumableUpload?(params: ResumableUploadInitParams): Promise<ResumableUploadInitResult>;
+
+  /**
+   * Uploads a chunk or full payload to an active resumable session URL
+   */
+  uploadResumableChunk?(
+    sessionUrl: string,
+    chunk: Buffer,
+    startByte: number,
+    totalBytes: number,
+    mimeType: string
+  ): Promise<{ completed: boolean; storageKey?: string; fileId?: string; size?: number }>;
+
+  /**
+   * Aborts an in-progress resumable upload session
+   */
+  abortResumableUpload?(sessionUrl: string): Promise<boolean>;
+
   /**
    * Streams a file from the storage provider, supporting optional HTTP range queries
    */
-  getDownloadStream(storageKey: string, range?: { start: number; end?: number }): Promise<StorageDownloadResult>;
-  
+  getDownloadStream(
+    storageKey: string,
+    range?: { start: number; end?: number }
+  ): Promise<StorageDownloadResult>;
+
   /**
    * Generates a direct URL if supported (e.g. presigned S3 URL)
    */
   getDownloadUrl?(storageKey: string, filename: string, asAttachment?: boolean): Promise<string>;
-  
+
   /**
    * Deletes a file permanently from storage
    */
   deleteFile(storageKey: string): Promise<boolean>;
-  
+
   /**
    * Verifies that a file exists and retrieves its byte size
    */
   verifyFile(storageKey: string): Promise<{ exists: boolean; size: number }>;
-  
+
   /**
    * Retrieves account storage quota if supported
    */

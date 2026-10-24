@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/auth';
-import { getItemById, updateItem, softDeleteItem, permanentDeleteItem, syncItemTags } from '@/lib/db';
-import { isR2Configured, createPresignedDownloadUrl, deleteStorageFile } from '@/lib/r2';
+import {
+  getItemById,
+  updateItem,
+  softDeleteItem,
+  permanentDeleteItem,
+  syncItemTags,
+} from '@/lib/db';
+import { deleteStorageFile } from '@/lib/storage';
+import { executeFullCleanup } from '@/lib/cleanup';
 
 const updateSchema = z.object({
   title: z.string().optional(),
@@ -23,29 +30,15 @@ export async function GET(
   }
 
   const { id } = await params;
+  // getItemById strictly rejects expired or deleted items
   const item = await getItemById(id, session.userId);
 
   if (!item) {
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Item not found or has expired' }, { status: 404 });
   }
 
   if (item.file) {
-    try {
-      if (isR2Configured() && !item.file.storageKey.startsWith('gdrive://')) {
-        const url = await createPresignedDownloadUrl(
-          item.file.storageKey,
-          item.file.originalFilename,
-          false,
-          3600
-        );
-        item.file.downloadUrl = url;
-      } else {
-        item.file.downloadUrl = `/api/storage/file/${item.id}`;
-      }
-    } catch (e) {
-      console.error('Error signing download URL:', e);
-      item.file.downloadUrl = `/api/storage/file/${item.id}`;
-    }
+    item.file.downloadUrl = `/api/storage/file/${item.id}`;
   }
 
   return NextResponse.json({ success: true, item });
@@ -63,7 +56,7 @@ export async function PATCH(
   const { id } = await params;
   const existing = await getItemById(id, session.userId);
   if (!existing) {
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Item not found or has expired' }, { status: 404 });
   }
 
   try {
@@ -94,7 +87,7 @@ export async function PATCH(
     const updated = await getItemById(id, session.userId);
     return NextResponse.json({ success: true, item: updated });
   } catch (err: any) {
-    console.error('Update item error:', err);
+    console.error('Update item error:', err?.message || 'Error');
     return NextResponse.json({ error: 'Failed to update item' }, { status: 500 });
   }
 }
@@ -110,9 +103,10 @@ export async function DELETE(
 
   const { id } = await params;
   const { searchParams } = new URL(req.url);
-  const permanent = searchParams.get('permanent') === 'true';
+  // Default to permanent deletion or support soft delete if permanent=false
+  const permanent = searchParams.get('permanent') !== 'false';
 
-  const existing = await getItemById(id, session.userId);
+  const existing = await getItemById(id, session.userId, { includeExpired: true });
   if (!existing) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
@@ -121,7 +115,8 @@ export async function DELETE(
     if (permanent) {
       const storageKey = await permanentDeleteItem(id, session.userId);
       if (storageKey) {
-        await deleteStorageFile(storageKey);
+        await deleteStorageFile(storageKey).catch(() => false);
+        await executeFullCleanup().catch(() => {});
       }
       return NextResponse.json({ success: true, message: 'Item permanently deleted' });
     } else {
@@ -129,7 +124,7 @@ export async function DELETE(
       return NextResponse.json({ success: true, message: 'Item moved to trash' });
     }
   } catch (err: any) {
-    console.error('Delete item error:', err);
+    console.error('Delete item error:', err?.message || 'Error');
     return NextResponse.json({ error: 'Failed to delete item' }, { status: 500 });
   }
 }
