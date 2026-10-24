@@ -3,7 +3,6 @@ import {
   getUserByUsername,
   getUserByKeyFingerprint,
   createUser,
-  getUserCount,
 } from '@/lib/db';
 import {
   validateUsername,
@@ -28,25 +27,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
     // 1. Optional instance-level registration policy
-    const allowRegistration = process.env.ALLOW_REGISTRATION;
+    const allowRegistration = process.env.ALLOW_REGISTRATION?.trim().toLowerCase();
     const inviteCodeConfig = process.env.INVITE_CODE?.trim();
-    const isOwnerOnly = process.env.REGISTRATION_MODE === 'owner_only';
 
     if (allowRegistration === 'false') {
       return NextResponse.json(
         { error: 'Public registration is disabled on this private Global Send instance.' },
         { status: 403 }
       );
-    }
-
-    if (isOwnerOnly) {
-      const userCount = await getUserCount();
-      if (userCount > 0) {
-        return NextResponse.json(
-          { error: 'Registration is closed. This Global Send instance is restricted to the owner.' },
-          { status: 403 }
-        );
-      }
     }
 
     if (inviteCodeConfig) {
