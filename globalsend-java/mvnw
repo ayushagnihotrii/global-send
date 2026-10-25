@@ -1,0 +1,33 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# GlobalSend Maven Wrapper Shell Script for Unix/macOS/Linux
+# ----------------------------------------------------------------------------
+PRG="$0"
+while [ -h "$PRG" ]; do
+  ls=`ls -ld "$PRG"`
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    PRG="$link"
+  else
+    PRG=`dirname "$PRG"`/"$link"
+  fi
+done
+
+DIR=`dirname "$PRG"`
+MAVEN_HOME="$DIR/.mvn/apache-maven-3.9.6"
+
+if [ ! -f "$MAVEN_HOME/bin/mvn" ]; then
+  echo "[Maven Wrapper] Downloading portable Apache Maven 3.9.6..."
+  mkdir -p "$DIR/.mvn"
+  curl -s -L -o "$DIR/.mvn/maven.zip" "https://archive.apache.org/dist/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.zip"
+  unzip -q -o "$DIR/.mvn/maven.zip" -d "$DIR/.mvn"
+  rm -f "$DIR/.mvn/maven.zip"
+fi
+
+if [ ! -f "$MAVEN_HOME/bin/mvn" ]; then
+  echo "Error: Embedded Maven not found at $MAVEN_HOME"
+  exit 1
+fi
+
+chmod +x "$MAVEN_HOME/bin/mvn"
+exec "$MAVEN_HOME/bin/mvn" "$@"

@@ -1,0 +1,520 @@
+/* ==========================================================================
+   GlobalSend Apple HIG Design System (iOS 18 & macOS Sequoia Inspired)
+   Pure CSS Design with Glassmorphism, Micro-interactions, and Native Feel
+   ========================================================================== */
+
+:root {
+    --apple-system-bg: #f5f5f7;
+    --apple-card-bg: rgba(255, 255, 255, 0.82);
+    --apple-card-border: rgba(0, 0, 0, 0.08);
+    --apple-text-primary: #1d1d1f;
+    --apple-text-secondary: #86868b;
+    --apple-blue: #0071e3;
+    --apple-blue-hover: #0077ed;
+    --apple-blue-light: rgba(0, 113, 227, 0.1);
+    --apple-indigo: #5856d6;
+    --apple-mint: #00c7be;
+    --apple-green: #34c759;
+    --apple-red: #ff3b30;
+    --apple-orange: #ff9500;
+    --apple-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+    --apple-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+    --apple-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.08);
+    --apple-blur: blur(24px) saturate(180%);
+    --apple-radius-sm: 10px;
+    --apple-radius-md: 16px;
+    --apple-radius-lg: 24px;
+    --apple-radius-full: 9999px;
+    --apple-transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --apple-system-bg: #000000;
+        --apple-card-bg: rgba(28, 28, 30, 0.78);
+        --apple-card-border: rgba(255, 255, 255, 0.12);
+        --apple-text-primary: #f5f5f7;
+        --apple-text-secondary: #a1a1a6;
+        --apple-blue: #2997ff;
+        --apple-blue-hover: #40a9ff;
+        --apple-blue-light: rgba(41, 151, 255, 0.15);
+        --apple-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+        --apple-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+        --apple-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: var(--apple-system-bg);
+    color: var(--apple-text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+a {
+    color: var(--apple-blue);
+    text-decoration: none;
+    transition: var(--apple-transition);
+}
+
+a:hover {
+    color: var(--apple-blue-hover);
+}
+
+/* Glassmorphism Header */
+.apple-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--apple-card-bg);
+    backdrop-filter: var(--apple-blur);
+    -webkit-backdrop-filter: var(--apple-blur);
+    border-bottom: 1px solid var(--apple-card-border);
+    transition: var(--apple-transition);
+}
+
+.header-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--apple-text-primary);
+    letter-spacing: -0.02em;
+}
+
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--apple-blue), var(--apple-indigo));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-item {
+    padding: 8px 16px;
+    border-radius: var(--apple-radius-full);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--apple-text-secondary);
+    transition: var(--apple-transition);
+}
+
+.nav-item:hover, .nav-item.active {
+    color: var(--apple-text-primary);
+    background: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+    .nav-item:hover, .nav-item.active {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--apple-radius-full);
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: var(--apple-transition);
+    text-decoration: none;
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: var(--apple-blue);
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: var(--apple-blue-hover);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25);
+}
+
+.btn-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--apple-text-primary);
+    border: 1px solid var(--apple-card-border);
+}
+
+@media (prefers-color-scheme: dark) {
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.btn-secondary:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.btn-danger {
+    background: rgba(255, 59, 48, 0.1);
+    color: var(--apple-red);
+}
+
+.btn-danger:hover {
+    background: var(--apple-red);
+    color: #ffffff;
+}
+
+/* Apple Cards */
+.apple-card {
+    background: var(--apple-card-bg);
+    backdrop-filter: var(--apple-blur);
+    -webkit-backdrop-filter: var(--apple-blur);
+    border: 1px solid var(--apple-card-border);
+    border-radius: var(--apple-radius-lg);
+    box-shadow: var(--apple-shadow-sm);
+    padding: 24px;
+    transition: var(--apple-transition);
+}
+
+.apple-card:hover {
+    box-shadow: var(--apple-shadow-md);
+}
+
+/* Layout Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    width: 100%;
+    flex: 1;
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 70px 20px 40px;
+}
+
+.hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    background: var(--apple-blue-light);
+    color: var(--apple-blue);
+    border-radius: var(--apple-radius-full);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+.hero h1 {
+    font-size: 54px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+    margin-bottom: 20px;
+    background: linear-gradient(180deg, var(--apple-text-primary) 0%, var(--apple-text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero p {
+    font-size: 20px;
+    color: var(--apple-text-secondary);
+    max-width: 650px;
+    margin: 0 auto 36px;
+    line-height: 1.45;
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--apple-text-secondary);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--apple-radius-md);
+    border: 1px solid var(--apple-card-border);
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--apple-text-primary);
+    font-size: 15px;
+    outline: none;
+    transition: var(--apple-transition);
+}
+
+@media (prefers-color-scheme: dark) {
+    .form-control {
+        background: rgba(255, 255, 255, 0.05);
+    }
+}
+
+.form-control:focus {
+    border-color: var(--apple-blue);
+    box-shadow: 0 0 0 4px var(--apple-blue-light);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 120px;
+}
+
+/* Badges & Tags */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: var(--apple-radius-full);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.badge-blue { background: var(--apple-blue-light); color: var(--apple-blue); }
+.badge-green { background: rgba(52, 199, 89, 0.12); color: var(--apple-green); }
+.badge-orange { background: rgba(255, 149, 0, 0.12); color: var(--apple-orange); }
+.badge-red { background: rgba(255, 59, 48, 0.12); color: var(--apple-red); }
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 24px;
+}
+
+.item-card {
+    background: var(--apple-card-bg);
+    border: 1px solid var(--apple-card-border);
+    border-radius: var(--apple-radius-lg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: var(--apple-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--apple-shadow-md);
+}
+
+.item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.item-type-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--apple-blue-light);
+    color: var(--apple-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.item-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    word-break: break-word;
+}
+
+.item-preview {
+    color: var(--apple-text-secondary);
+    font-size: 14px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+    max-height: 4.2em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1px solid var(--apple-card-border);
+    font-size: 12px;
+    color: var(--apple-text-secondary);
+}
+
+/* Storage Bar */
+.storage-progress {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .storage-progress {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.storage-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--apple-blue), var(--apple-indigo));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+/* Chat Layout */
+.chat-container {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    height: calc(100vh - 160px);
+    min-height: 550px;
+}
+
+.chat-sidebar {
+    background: var(--apple-card-bg);
+    border: 1px solid var(--apple-card-border);
+    border-radius: var(--apple-radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-main {
+    background: var(--apple-card-bg);
+    border: 1px solid var(--apple-card-border);
+    border-radius: var(--apple-radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-bubble {
+    max-width: 70%;
+    padding: 10px 16px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.chat-bubble.sent {
+    align-self: flex-end;
+    background: var(--apple-blue);
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.received {
+    align-self: flex-start;
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--apple-text-primary);
+    border-bottom-left-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .chat-bubble.received {
+        background: rgba(255, 255, 255, 0.12);
+    }
+}
+
+/* Alerts */
+.alert {
+    padding: 14px 20px;
+    border-radius: var(--apple-radius-md);
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-danger {
+    background: rgba(255, 59, 48, 0.1);
+    color: var(--apple-red);
+    border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
+.alert-success {
+    background: rgba(52, 199, 89, 0.1);
+    color: var(--apple-green);
+    border: 1px solid rgba(52, 199, 89, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .hero h1 { font-size: 38px; }
+    .chat-container { grid-template-columns: 1fr; }
+    .dashboard-grid { grid-template-columns: 1fr; }
+}

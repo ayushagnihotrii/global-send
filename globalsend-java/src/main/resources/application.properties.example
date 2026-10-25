@@ -1,0 +1,24 @@
+# ============================================================================
+# GlobalSend Java Application Configuration (Example Template)
+# ============================================================================
+
+server.port=8080
+app.contextPath=/
+
+db.type=auto
+db.mysql.url=jdbc:mysql://localhost:3306/globalsend?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+db.mysql.username=root
+db.mysql.password=your_mysql_password_here
+
+db.sqlite.url=jdbc:sqlite:.data/globalsend.db
+
+db.pool.maxSize=10
+db.pool.minIdle=2
+db.pool.connectionTimeout=5000
+db.pool.idleTimeout=30000
+
+storage.upload.dir=.data/uploads
+storage.max.file.size.bytes=52428800
+
+expiration.cleanup.interval.seconds=60
+expiration.default.duration.seconds=86400

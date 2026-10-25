@@ -1,0 +1,23 @@
+# Maven build directory
+target/
+
+# Local databases and runtime files
+.data/
+.storage/
+temp/
+
+# Portable Maven distribution (auto-downloaded by mvnw / mvnw.cmd)
+.mvn/apache-maven-*/
+.mvn/*.zip
+
+# IDE configuration
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS files
+.DS_Store
+Thumbs.db
