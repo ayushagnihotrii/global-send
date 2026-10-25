@@ -28,7 +28,7 @@ export function SegmentedControl<T extends string>({
     <div
       role="tablist"
       className={cn(
-        'inline-flex p-1 bg-[#edf4fb] dark:bg-[#142237] border border-[#dce7f4] dark:border-[#34465e] rounded-2xl select-none',
+        'inline-flex p-[2px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] rounded-[9px] select-none',
         className
       )}
     >
@@ -42,11 +42,11 @@ export function SegmentedControl<T extends string>({
             aria-selected={isSelected}
             onClick={() => onChange(option.value)}
             className={cn(
-              'relative flex items-center justify-center gap-1.5 font-medium rounded-xl transition-all duration-200 text-xs sm:text-sm cursor-pointer',
-              size === 'sm' ? 'px-3 py-1.5' : 'px-4 py-2',
+              'relative flex-1 flex items-center justify-center gap-1.5 rounded-[7px] transition-all duration-150 cursor-pointer',
+              size === 'sm' ? 'px-2.5 py-1 text-[12px]' : 'px-3.5 py-1.5 text-[13px]',
               isSelected
-                ? 'bg-white dark:bg-[#1d304a] text-[#1677df] dark:text-[#78bbff] shadow-xs border border-[#dce8f5] dark:border-[#3b5675] font-semibold'
-                : 'text-[#53667a] dark:text-[#a4b5ce] hover:text-[#1677df] dark:hover:text-white border border-transparent'
+                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
+                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
             )}
           >
             {option.icon}

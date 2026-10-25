@@ -62,7 +62,7 @@ export function TextDetailModal({
     try {
       await navigator.clipboard.writeText(item.textContent || item.title);
       setCopied(true);
-      toast.success('Question copied to clipboard');
+      toast.success('Copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.info('Could not copy automatically');
@@ -88,7 +88,7 @@ export function TextDetailModal({
         return;
       }
 
-      toast.success('Updated successfully');
+      toast.success('Note updated');
       onUpdate(data.item);
       setIsEditing(false);
     } catch {
@@ -111,13 +111,13 @@ export function TextDetailModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="3xl">
-      <div className="space-y-5">
+    <Modal isOpen={isOpen} onClose={onClose} title="Note" maxWidth="3xl">
+      <div className="space-y-4">
         {/* Top Control Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#e5edf6] dark:border-[#344257]">
-          <div className="flex items-center gap-2 text-xs font-medium text-[#65758b] dark:text-[#a4b5ce]">
-            <Calendar className="w-3.5 h-3.5 text-[#1677df] dark:text-[#60a5fa]" />
-            <span>Saved {formatDate(item.createdAt)}</span>
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-black/[0.07] dark:border-white/[0.09]">
+          <div className="flex items-center gap-1.5 text-[12px] text-[#8e8e93] tabular-nums">
+            <Calendar className="w-3.5 h-3.5 text-[#ff9500]" />
+            <span>{formatDate(item.createdAt)}</span>
           </div>
 
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -126,11 +126,10 @@ export function TextDetailModal({
               variant={isMonospace ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => setIsMonospace(!isMonospace)}
-              className="h-8 px-2.5 text-xs gap-1"
-              title="Toggle monospace font for code"
+              title="Toggle monospace font"
             >
               <Code className="w-3.5 h-3.5" />
-              <span>Mono</span>
+              <span>Monospace</span>
             </Button>
 
             <Button
@@ -138,13 +137,12 @@ export function TextDetailModal({
               variant={item.isFavourite ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => onToggleFavourite(item)}
-              className="h-8 px-2.5 text-xs"
               title="Favourite"
             >
               <Star
                 className={cn(
                   'w-3.5 h-3.5',
-                  item.isFavourite && 'fill-[#f59e0b] text-[#f59e0b]'
+                  item.isFavourite && 'fill-[#ffcc00] text-[#ffcc00]'
                 )}
               />
             </Button>
@@ -155,7 +153,6 @@ export function TextDetailModal({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(true)}
-                className="h-8 px-2.5 text-xs gap-1"
               >
                 <Edit3 className="w-3.5 h-3.5" />
                 <span>Edit</span>
@@ -167,10 +164,9 @@ export function TextDetailModal({
                 size="sm"
                 onClick={handleSaveEdit}
                 isLoading={isSaving}
-                className="h-8 px-2.5 text-xs gap-1"
               >
                 <Save className="w-3.5 h-3.5" />
-                <span>Save</span>
+                <span>Done</span>
               </Button>
             )}
 
@@ -179,22 +175,21 @@ export function TextDetailModal({
               variant="primary"
               size="sm"
               onClick={handleCopyText}
-              className="h-8 px-3 text-xs gap-1"
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Copy Text'}</span>
+              <span>{copied ? 'Copied' : 'Copy'}</span>
             </Button>
 
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => {
                 onDelete(item);
                 onClose();
               }}
-              className="h-8 w-8 p-0 text-[#e11d48] hover:bg-[#fff1f2] dark:hover:bg-[#3e2124]"
-              title="Move to trash"
+              className="w-8 h-8 text-[#ff3b30] hover:bg-[#ff3b30]/10"
+              title="Move to Recently Deleted"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
@@ -203,13 +198,13 @@ export function TextDetailModal({
 
         {/* Content View / Edit */}
         {isEditing ? (
-          <div className="space-y-3.5">
+          <div className="space-y-3">
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-lg font-bold bg-[#fbfdff] dark:bg-[#17263b] border border-[#dfe8f3] dark:border-[#344b65] rounded-xl px-3.5 py-2 text-[#0f172b] dark:text-white focus:outline-none focus:border-[#1677df]"
-              placeholder="Note title..."
+              className="w-full text-[18px] font-bold tracking-[-0.02em] bg-[#767680]/[0.08] dark:bg-[#767680]/[0.24] rounded-[10px] px-3.5 py-2 text-[#1c1c1e] dark:text-[#f5f5f7] focus:outline-none focus:ring-2 focus:ring-[#007aff]/20"
+              placeholder="Note title…"
             />
 
             <textarea
@@ -217,8 +212,8 @@ export function TextDetailModal({
               value={textContent}
               onChange={(e) => setTextContent(e.target.value)}
               className={cn(
-                'w-full bg-[#fbfdff] dark:bg-[#17263b] rounded-2xl p-4 text-sm text-[#0f172b] dark:text-[#e9f1fc] focus:outline-none border border-[#dfe8f3] dark:border-[#344b65] focus:border-[#1677df] transition-all resize-y leading-relaxed',
-                isMonospace && 'font-mono text-xs leading-6 whitespace-pre'
+                'w-full bg-[#767680]/[0.07] dark:bg-[#767680]/[0.18] rounded-[12px] p-4 text-[14.5px] text-[#1c1c1e] dark:text-[#f5f5f7] focus:outline-none focus:bg-white dark:focus:bg-[#1c1c1e] border border-transparent focus:border-[#007aff] transition-all resize-y leading-relaxed',
+                isMonospace && 'font-mono text-[13px] leading-6 whitespace-pre'
               )}
             />
 
@@ -227,17 +222,17 @@ export function TextDetailModal({
               {tags.map((t, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65]"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[7px] text-[12px] font-medium bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#409cff]"
                 >
                   #{t}
                   <button type="button" onClick={() => removeTag(idx)} className="cursor-pointer">
-                    <X className="w-3 h-3 hover:text-[#e11d48]" />
+                    <X className="w-3 h-3 hover:text-[#ff3b30]" />
                   </button>
                 </span>
               ))}
               <input
                 type="text"
-                placeholder="Add tag + Enter..."
+                placeholder="Add tag + Enter…"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -246,14 +241,14 @@ export function TextDetailModal({
                     addTag(tagInput);
                   }
                 }}
-                className="text-xs bg-transparent focus:outline-none w-32 text-[#0f172b] dark:text-white"
+                className="text-[12px] bg-transparent focus:outline-none w-32 text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
               />
             </div>
           </div>
         ) : (
-          /* Quick Share Reading Layout */
-          <div className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0f172b] dark:text-white">
+          /* Apple Notes Reading Layout */
+          <div className="space-y-3.5">
+            <h2 className="text-[20px] sm:text-[22px] font-bold tracking-[-0.022em] text-[#1c1c1e] dark:text-[#f5f5f7]">
               {item.title}
             </h2>
 
@@ -262,7 +257,7 @@ export function TextDetailModal({
                 {item.tags.map((tag, idx) => (
                   <span
                     key={idx}
-                    className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65]"
+                    className="text-[12px] font-medium px-2.5 py-0.5 rounded-[7px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#409cff]"
                   >
                     #{tag}
                   </span>
@@ -270,11 +265,10 @@ export function TextDetailModal({
               </div>
             )}
 
-            {/* Complete Full Text preserving line breaks & indent */}
             <div
               className={cn(
-                'p-5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dce8f5] dark:border-[#344b65] text-sm sm:text-base leading-relaxed text-[#0f172b] dark:text-[#e9f1fc] select-text whitespace-pre-wrap overflow-x-auto',
-                isMonospace && 'font-mono text-xs sm:text-sm whitespace-pre'
+                'p-4 sm:p-5 rounded-[14px] bg-[#f2f2f7] dark:bg-[#2c2c2e] text-[14.5px] leading-relaxed text-[#1c1c1e] dark:text-[#f5f5f7] select-text whitespace-pre-wrap overflow-x-auto',
+                isMonospace && 'font-mono text-[13px] whitespace-pre'
               )}
             >
               {item.textContent || 'No text content.'}

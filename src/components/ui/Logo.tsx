@@ -14,39 +14,35 @@ export interface LogoProps {
 
 const SIZE_MAP = {
   xs: 24,
-  sm: 32,
-  md: 40,
-  lg: 56,
-  xl: 72,
+  sm: 30,
+  md: 38,
+  lg: 52,
+  xl: 68,
 };
 
 export function Logo({
   size = 'md',
   className,
-  withGlow = false,
   priority = false,
   alt = 'Global Send Logo',
 }: LogoProps) {
-  const pixelSize = typeof size === 'number' ? size : SIZE_MAP[size] || 40;
+  const pixelSize = typeof size === 'number' ? size : SIZE_MAP[size] || 38;
 
   return (
     <div
-      className={cn('relative inline-flex items-center justify-center shrink-0 select-none', className)}
+      className={cn(
+        'relative inline-flex items-center justify-center shrink-0 select-none rounded-[22%] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.12)] border border-black/[0.06] dark:border-white/[0.1]',
+        className
+      )}
       style={{ width: pixelSize, height: pixelSize }}
     >
-      {withGlow && (
-        <div
-          className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-[#0875da]/35 via-[#249df1]/35 to-[#6366f1]/30 blur-md opacity-80 pointer-events-none transition-opacity"
-          aria-hidden="true"
-        />
-      )}
       <Image
         src="/logo.png"
         alt={alt}
         width={pixelSize}
         height={pixelSize}
         priority={priority}
-        className="w-full h-full object-cover rounded-xl shadow-xs"
+        className="w-full h-full object-cover"
       />
     </div>
   );

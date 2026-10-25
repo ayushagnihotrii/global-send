@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { Item } from '@/lib/types';
 import { cn, formatBytes } from '@/lib/utils';
@@ -127,10 +128,10 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
           toast.info('Clipboard is empty');
         }
       } else {
-        toast.info('Please use Ctrl+V or Cmd+V to paste');
+        toast.info('Use Cmd+V or Ctrl+V to paste');
       }
     } catch {
-      toast.info('Please paste using Ctrl+V or Cmd+V');
+      toast.info('Use Cmd+V or Ctrl+V to paste');
     }
   };
 
@@ -174,7 +175,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         return;
       }
 
-      toast.success('Saved to your vault');
+      toast.success('Saved to Vault');
       onItemCreated(data.item);
       resetForm();
       setIsOpen(false);
@@ -217,7 +218,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         return;
       }
 
-      toast.success('Link saved to your vault');
+      toast.success('Link saved to Vault');
       onItemCreated(data.item);
       resetForm();
       setIsOpen(false);
@@ -267,7 +268,6 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
     setUploadProgress(1);
 
     try {
-      // Use resumable chunked session for files larger than 3.5 MiB so serverless request body limits are never exceeded
       const CHUNK_THRESHOLD = 3.5 * 1024 * 1024;
       if (file.size > CHUNK_THRESHOLD) {
         const abortCtrl = new AbortController();
@@ -333,12 +333,11 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         }
 
         setUploadProgress(100);
-        toast.success(`${file.name} uploaded to vault`);
+        toast.success(`${file.name} uploaded`);
         onItemCreated(finalItem);
         resetForm();
         setIsOpen(false);
       } else {
-        // Direct multipart upload with XHR progress tracking
         const formData = new FormData();
         formData.append('file', file);
         formData.append('expirationSeconds', String(effectiveExpirationSec));
@@ -376,7 +375,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         });
 
         setUploadProgress(100);
-        toast.success(`${file.name} uploaded to vault`);
+        toast.success(`${file.name} uploaded`);
         onItemCreated(uploadedItem);
         resetForm();
         setIsOpen(false);
@@ -396,97 +395,79 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
   return (
     <div className="mb-6">
       {!isOpen ? (
-        <div className="bg-white dark:bg-[#141417] rounded-2xl border border-[#e5e5ea] dark:border-[#27272a] p-3.5 sm:p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <button
+        <div className="ios-card rounded-[16px] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('text');
+              setIsOpen(true);
+            }}
+            className="flex-1 flex items-center gap-2.5 text-left px-3 py-2 rounded-[10px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+          >
+            <span className="w-6 h-6 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white flex items-center justify-center shrink-0">
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            </span>
+            <span className="text-[14px] text-[#6c6c70] dark:text-[#98989d]">
+              New note, code snippet, file upload, or web link…
+            </span>
+          </button>
+
+          <div className="flex items-center gap-1.5 px-1 sm:px-0">
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setMode('text');
                 setIsOpen(true);
               }}
-              className="flex-1 flex items-center gap-3 text-left px-3.5 py-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#1c1c21] hover:bg-[#ebebf0] dark:hover:bg-[#24242b] transition-colors cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-[#0071e3]" />
-              <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-[#a1a1aa]">
-                Save text, paste a question, upload a file, or add a link...
-              </span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setMode('text');
-                  setIsOpen(true);
-                }}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Text</span>
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setMode('upload');
-                  setIsOpen(true);
-                }}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Upload File</span>
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setMode('link');
-                  setIsOpen(true);
-                }}
-              >
-                <Link2 className="w-3.5 h-3.5" />
-                <span>Link</span>
-              </Button>
-            </div>
+              <FileText className="w-3.5 h-3.5" />
+              <span>Note</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setMode('upload');
+                setIsOpen(true);
+              }}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>File</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setMode('link');
+                setIsOpen(true);
+              }}
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>Link</span>
+            </Button>
           </div>
         </div>
       ) : (
         <div
           onKeyDown={handleKeyDown}
-          className="bg-white dark:bg-[#141417] rounded-3xl border border-[#e5e5ea] dark:border-[#27272a] p-4 sm:p-6 shadow-sm space-y-4"
+          className="ios-card rounded-[18px] p-4 sm:p-5 space-y-4 animate-ios-sheet"
         >
-          {/* Mode Tabs & Close */}
-          <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#f0f0f2] dark:border-[#27272a]">
-            <div className="flex items-center gap-1.5">
-              {(
-                [
-                  { id: 'text', label: 'Text / Note', icon: FileText },
-                  { id: 'upload', label: 'Upload File', icon: Upload },
-                  { id: 'link', label: 'Save Link', icon: Link2 },
-                ] as const
-              ).map((tab) => {
-                const Icon = tab.icon;
-                const active = mode === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setMode(tab.id)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer',
-                      active
-                        ? 'bg-[#1d1d1f] text-white dark:bg-white dark:text-[#1d1d1f]'
-                        : 'text-[#6e6e73] dark:text-[#a1a1aa] hover:bg-[#f5f5f7] dark:hover:bg-[#1c1c21]'
-                    )}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          {/* Mode Switcher & Close */}
+          <div className="flex items-center justify-between gap-3 pb-3 border-b border-black/[0.07] dark:border-white/[0.09]">
+            <SegmentedControl
+              size="sm"
+              value={mode}
+              onChange={(v) => setMode(v)}
+              options={[
+                { value: 'text', label: 'Note', icon: <FileText className="w-3.5 h-3.5" /> },
+                { value: 'upload', label: 'Upload File', icon: <Upload className="w-3.5 h-3.5" /> },
+                { value: 'link', label: 'Web Link', icon: <Link2 className="w-3.5 h-3.5" /> },
+              ]}
+            />
 
             <button
               type="button"
@@ -494,10 +475,10 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 if (isUploading) handleCancelUpload();
                 setIsOpen(false);
               }}
-              className="p-1.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+              className="w-7 h-7 rounded-full flex items-center justify-center bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
               aria-label="Close composer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5 stroke-[2.25]" />
             </button>
           </div>
 
@@ -507,20 +488,20 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               <div className="flex items-center justify-between gap-2">
                 <input
                   type="text"
-                  placeholder="Optional title (auto-generated if left blank)"
+                  placeholder="Title (optional)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 text-sm font-medium bg-transparent border-b border-transparent focus:border-[#0071e3] pb-1 focus:outline-none text-[#1d1d1f] dark:text-white placeholder:text-[#86868b]"
+                  className="flex-1 text-[16px] font-semibold tracking-[-0.015em] bg-transparent pb-1 focus:outline-none text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
                 />
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setIsCodeFont(!isCodeFont)}
                     className={cn(
-                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer',
+                      'inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-medium transition-colors cursor-pointer',
                       isCodeFont
-                        ? 'bg-[#0071e3]/10 text-[#0071e3] border-[#0071e3]/30'
-                        : 'text-[#6e6e73] border-[#e5e5ea] dark:border-[#27272a]'
+                        ? 'bg-[#007aff]/12 text-[#007aff] dark:bg-[#0a84ff]/20 dark:text-[#409cff]'
+                        : 'bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] text-[#6c6c70] dark:text-[#98989d]'
                     )}
                   >
                     <Code className="w-3.5 h-3.5" />
@@ -529,7 +510,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                   <button
                     type="button"
                     onClick={handlePasteClipboard}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-[#e5e5ea] dark:border-[#27272a] text-[#6e6e73] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
                   >
                     <Clipboard className="w-3.5 h-3.5" />
                     <span>Paste</span>
@@ -540,12 +521,12 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               <textarea
                 ref={textAreaRef}
                 rows={6}
-                placeholder="Paste your question, code snippet, or note here..."
+                placeholder="Write a note, paste a question, or drop a code snippet…"
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
                 className={cn(
-                  'w-full rounded-2xl border border-[#e5e5ea] dark:border-[#27272a] bg-[#f9f9fb] dark:bg-[#1c1c21] p-3.5 text-sm text-[#1d1d1f] dark:text-white placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20 focus:border-[#0071e3] resize-y',
-                  isCodeFont && 'font-mono text-xs leading-relaxed'
+                  'w-full rounded-[12px] border border-transparent bg-[#767680]/[0.07] dark:bg-[#767680]/[0.18] p-3.5 text-[14.5px] leading-relaxed text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93] focus:bg-white dark:focus:bg-[#1c1c1e] focus:outline-none focus:border-[#007aff] dark:focus:border-[#0a84ff] focus:ring-3 focus:ring-[#007aff]/12 resize-y transition-all',
+                  isCodeFont && 'font-mono text-[13px] leading-relaxed'
                 )}
               />
             </div>
@@ -559,7 +540,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 placeholder="Custom display title (optional)"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-sm font-medium bg-transparent border-b border-[#e5e5ea] dark:border-[#27272a] focus:border-[#0071e3] pb-1.5 focus:outline-none text-[#1d1d1f] dark:text-white placeholder:text-[#86868b]"
+                className="w-full text-[15px] font-semibold bg-transparent border-b border-black/[0.07] dark:border-white/[0.09] focus:border-[#007aff] pb-1.5 focus:outline-none text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
               />
 
               <div
@@ -579,10 +560,10 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 }}
                 onClick={() => !isUploading && fileInputRef.current?.click()}
                 className={cn(
-                  'border-2 border-dashed rounded-2xl p-6 text-center transition-colors cursor-pointer',
+                  'border border-dashed rounded-[14px] p-6 text-center transition-colors cursor-pointer',
                   isDragging
-                    ? 'border-[#0071e3] bg-[#0071e3]/5'
-                    : 'border-[#d2d2d7] dark:border-[#38383a] hover:border-[#0071e3]'
+                    ? 'border-[#007aff] bg-[#007aff]/[0.06]'
+                    : 'border-black/[0.16] dark:border-white/[0.18] bg-[#767680]/[0.04] dark:bg-[#767680]/[0.12] hover:border-[#007aff]'
                 )}
               >
                 <input
@@ -597,49 +578,53 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                     }
                   }}
                 />
-                <Upload className="w-7 h-7 mx-auto text-[#0071e3] mb-2" />
+                <div className="w-10 h-10 rounded-[12px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto mb-2">
+                  <Upload className="w-5 h-5" />
+                </div>
                 {selectedFile ? (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-[#1d1d1f] dark:text-white truncate max-w-md mx-auto">
+                  <div className="space-y-0.5">
+                    <p className="text-[14px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate max-w-md mx-auto">
                       {selectedFile.name}
                     </p>
-                    <p className="text-xs text-[#6e6e73]">
+                    <p className="text-[12px] text-[#8e8e93] tabular-nums">
                       {formatBytes(selectedFile.size)} · Ready to upload
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-[#1d1d1f] dark:text-white">
-                      Click to choose a file or drag and drop
+                  <div className="space-y-0.5">
+                    <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                      Choose a file or drag and drop here
                     </p>
-                    <p className="text-xs text-[#86868b]">
-                      Photos, videos, PDFs, documents, and archives up to{' '}
-                      {Math.round(SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024))} MiB
+                    <p className="text-[12px] text-[#8e8e93]">
+                      Photos, videos, PDFs, and archives up to{' '}
+                      {Math.round(SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024))} MB
                     </p>
                   </div>
                 )}
               </div>
 
               {isUploading && uploadProgress !== null && (
-                <div className="p-3.5 rounded-2xl bg-[#f5f5f7] dark:bg-[#1c1c21] space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-[#1d1d1f] dark:text-white">
-                      Uploading {selectedFile?.name}...
+                <div className="p-3.5 rounded-[12px] bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] space-y-2">
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="font-medium text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+                      Uploading {selectedFile?.name}…
                     </span>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-[#0071e3]">{uploadProgress}%</span>
+                    <div className="flex items-center gap-3 shrink-0 tabular-nums">
+                      <span className="font-semibold text-[#007aff] dark:text-[#0a84ff]">
+                        {uploadProgress}%
+                      </span>
                       <button
                         type="button"
                         onClick={handleCancelUpload}
-                        className="text-red-600 dark:text-red-400 hover:underline font-medium cursor-pointer"
+                        className="text-[#ff3b30] dark:text-[#ff453a] hover:underline font-medium cursor-pointer"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
-                  <div className="h-1.5 w-full bg-[#e5e5ea] dark:bg-[#27272a] rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-black/[0.08] dark:bg-white/[0.12] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#0071e3] transition-all duration-200"
+                      className="h-full bg-[#007aff] dark:bg-[#0a84ff] transition-all duration-200"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
@@ -647,7 +632,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               )}
 
               {uploadError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300">
+                <div className="flex items-center gap-2 p-3 rounded-[12px] bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-[12px] text-[#ff3b30] dark:text-[#ff453a]">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{uploadError}</span>
                 </div>
@@ -665,36 +650,38 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
               />
-              <Input
-                label="Title (optional)"
-                type="text"
-                placeholder="Clean title for this link"
-                value={linkTitle}
-                onChange={(e) => setLinkTitle(e.target.value)}
-              />
-              <Input
-                label="Note (optional)"
-                type="text"
-                placeholder="Context or description"
-                value={linkNote}
-                onChange={(e) => setLinkNote(e.target.value)}
-              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Title (optional)"
+                  type="text"
+                  placeholder="Clean title for this link"
+                  value={linkTitle}
+                  onChange={(e) => setLinkTitle(e.target.value)}
+                />
+                <Input
+                  label="Note (optional)"
+                  type="text"
+                  placeholder="Context or description"
+                  value={linkNote}
+                  onChange={(e) => setLinkNote(e.target.value)}
+                />
+              </div>
             </div>
           )}
 
-          {/* MANDATORY EXPIRATION SELECTOR (24h selected by default) */}
-          <div className="p-3.5 rounded-2xl bg-[#f5f5f7] dark:bg-[#1c1c21] border border-[#e5e5ea] dark:border-[#27272a] space-y-2.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-[#1d1d1f] dark:text-white">
-                <Clock className="w-3.5 h-3.5 text-[#0071e3]" />
-                <span>Auto-Expires After:</span>
-              </div>
-              <span className="text-[11px] text-[#6e6e73] dark:text-[#a1a1aa]">
-                Expires {previewExpirationLabel} (permanent deletion)
+          {/* EXPIRATION SELECTOR (iOS Grouped Row) */}
+          <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 text-[12px]">
+              <Clock className="w-3.5 h-3.5 text-[#007aff] dark:text-[#0a84ff] shrink-0" />
+              <span className="font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                Auto-Delete:
+              </span>
+              <span className="text-[#8e8e93] tabular-nums">
+                {previewExpirationLabel}
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1">
               {EXPIRATION_PRESETS.map((preset) => {
                 const isSelected = selectedPresetSec === preset.seconds;
                 return (
@@ -703,10 +690,10 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                     type="button"
                     onClick={() => setSelectedPresetSec(preset.seconds)}
                     className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                      'px-2.5 py-1 rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer',
                       isSelected
-                        ? 'bg-[#0071e3] text-white'
-                        : 'bg-white dark:bg-[#141417] text-[#6e6e73] dark:text-[#a1a1aa] border border-[#e5e5ea] dark:border-[#27272a] hover:text-[#1d1d1f] dark:hover:text-white'
+                        ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
+                        : 'bg-white dark:bg-[#2c2c2e] text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
                     )}
                   >
                     {preset.label}
@@ -717,26 +704,26 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 type="button"
                 onClick={() => setSelectedPresetSec('custom')}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                  'px-2.5 py-1 rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer',
                   selectedPresetSec === 'custom'
-                    ? 'bg-[#0071e3] text-white'
-                    : 'bg-white dark:bg-[#141417] text-[#6e6e73] dark:text-[#a1a1aa] border border-[#e5e5ea] dark:border-[#27272a] hover:text-[#1d1d1f] dark:hover:text-white'
+                    ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
+                    : 'bg-white dark:bg-[#2c2c2e] text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
                 )}
               >
                 Custom
               </button>
 
               {selectedPresetSec === 'custom' && (
-                <div className="flex items-center gap-1.5 ml-1">
+                <div className="flex items-center gap-1 ml-1">
                   <input
                     type="number"
                     min="1"
                     max="720"
                     value={customHours}
                     onChange={(e) => setCustomHours(e.target.value)}
-                    className="w-20 px-2 py-1 rounded-lg text-xs border border-[#d2d2d7] dark:border-[#38383a] bg-white dark:bg-[#141417] text-[#1d1d1f] dark:text-white"
+                    className="w-16 px-2 py-1 rounded-[7px] text-[12px] border border-black/[0.12] dark:border-white/[0.16] bg-white dark:bg-[#1c1c1e] text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums"
                   />
-                  <span className="text-xs text-[#6e6e73]">hours (max 720h)</span>
+                  <span className="text-[11px] text-[#8e8e93]">hrs</span>
                 </div>
               )}
             </div>
@@ -745,8 +732,8 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
           {/* Tags & Submit Row */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              <div className="flex items-center gap-1 bg-[#f5f5f7] dark:bg-[#1c1c21] px-2.5 py-1 rounded-xl border border-[#e5e5ea] dark:border-[#27272a]">
-                <Tag className="w-3 h-3 text-[#86868b]" />
+              <div className="flex items-center gap-1.5 bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] px-2.5 py-1 rounded-[8px]">
+                <Tag className="w-3 h-3 text-[#8e8e93]" />
                 <input
                   type="text"
                   placeholder="Add tag + Enter"
@@ -758,19 +745,19 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                       addTag(tagInput);
                     }
                   }}
-                  className="bg-transparent text-xs focus:outline-none w-28 text-[#1d1d1f] dark:text-white placeholder:text-[#86868b]"
+                  className="bg-transparent text-[12px] focus:outline-none w-28 text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
                 />
               </div>
               {tags.map((t, i) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs bg-[#0071e3]/10 text-[#0071e3]"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[7px] text-[12px] font-medium bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#409cff]"
                 >
                   #{t}
                   <button
                     type="button"
                     onClick={() => removeTag(i)}
-                    className="hover:text-red-500 cursor-pointer"
+                    className="hover:text-[#ff3b30] cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -781,7 +768,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
             <div className="flex items-center justify-end gap-2">
               <Button
                 type="button"
-                variant="secondary"
+                variant="ghost"
                 size="sm"
                 onClick={() => {
                   if (isUploading) handleCancelUpload();
@@ -799,7 +786,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                   isLoading={isSaving}
                   disabled={!textContent.trim()}
                 >
-                  Save to Vault
+                  Save Note
                 </Button>
               )}
 
@@ -811,7 +798,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                   isLoading={isUploading}
                   disabled={!selectedFile || isUploading}
                 >
-                  Upload to Vault
+                  Upload File
                 </Button>
               )}
 

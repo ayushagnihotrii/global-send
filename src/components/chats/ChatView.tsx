@@ -51,7 +51,7 @@ function UserAvatar({
   size?: 'sm' | 'md' | 'lg';
 }) {
   const dims =
-    size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-11 h-11 text-base' : 'w-9 h-9 text-sm';
+    size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-11 h-11 text-base' : 'w-9 h-9 text-[13px]';
 
   if (avatarUrl) {
     return (
@@ -61,7 +61,7 @@ function UserAvatar({
         alt={`@${username}`}
         className={cn(
           dims,
-          'rounded-full object-cover border border-[#e5e5ea] dark:border-[#27272a] shrink-0 bg-[#f5f5f7] dark:bg-[#1c1c21]'
+          'rounded-full object-cover border border-black/[0.08] dark:border-white/[0.12] shrink-0 bg-[#f2f2f7] dark:bg-[#2c2c2e]'
         )}
       />
     );
@@ -72,7 +72,7 @@ function UserAvatar({
     <div
       className={cn(
         dims,
-        'rounded-full bg-[#0071e3]/12 text-[#0071e3] font-semibold flex items-center justify-center shrink-0 border border-[#0071e3]/20'
+        'rounded-full bg-[#8e8e93]/20 dark:bg-[#636366]/40 text-[#1c1c1e] dark:text-[#f5f5f7] font-semibold flex items-center justify-center shrink-0'
       )}
     >
       {initial}
@@ -268,7 +268,7 @@ export function ChatView({
         return;
       }
 
-      toast.success(`Shared "${item.title}" in chat`);
+      toast.success(`Shared "${item.title}"`);
       setShowAttachmentModal(false);
       if (onClearPendingShareItem) onClearPendingShareItem();
       if (convId === activeConversationId) {
@@ -320,7 +320,7 @@ export function ChatView({
     if (!activeConversationId) return;
     if (
       !window.confirm(
-        'Remove this conversation from your chat list? Note: This clears the conversation from your screen without erasing the other participant’s copy.'
+        'Remove this conversation from your list? This clears it from your screen without erasing the other participant’s copy.'
       )
     ) {
       return;
@@ -336,7 +336,7 @@ export function ChatView({
         return;
       }
 
-      toast.success('Conversation removed from your list');
+      toast.success('Conversation removed');
       setActiveConversationId(null);
       setActiveConversation(null);
       setMessages([]);
@@ -351,49 +351,49 @@ export function ChatView({
   );
 
   return (
-    <div className="bg-white dark:bg-[#141417] rounded-3xl border border-[#e5e5ea] dark:border-[#27272a] overflow-hidden shadow-xs min-h-[580px] flex flex-col md:flex-row">
-      {/* Pending Share Banner if user clicked "Share in Chat" from Vault */}
+    <div className="ios-card rounded-[20px] overflow-hidden min-h-[600px] flex flex-col md:flex-row">
+      {/* Pending Share Banner */}
       {pendingShareItem && (
-        <div className="md:hidden p-3 bg-[#0071e3]/10 border-b border-[#0071e3]/20 flex items-center justify-between gap-2 text-xs">
-          <span className="font-medium text-[#0071e3] truncate">
-            Select a chat to send &ldquo;{pendingShareItem.title}&rdquo;
+        <div className="md:hidden p-3 bg-[#007aff]/10 border-b border-[#007aff]/20 flex items-center justify-between gap-2 text-[12px]">
+          <span className="font-medium text-[#007aff] dark:text-[#0a84ff] truncate">
+            Select a conversation to send &ldquo;{pendingShareItem.title}&rdquo;
           </span>
           <button
             type="button"
             onClick={onClearPendingShareItem}
-            className="text-[#6e6e73] hover:text-[#1d1d1f]"
+            className="text-[#8e8e93] hover:text-[#1c1c1e]"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* LEFT SIDEBAR: User Search & Conversation List */}
+      {/* LEFT SIDEBAR: iMessage Conversation List */}
       <div
         className={cn(
-          'w-full md:w-80 border-b md:border-b-0 md:border-r border-[#e5e5ea] dark:border-[#27272a] flex flex-col',
+          'w-full md:w-80 border-b md:border-b-0 md:border-r border-black/[0.07] dark:border-white/[0.09] flex flex-col bg-[#fbfbfd] dark:bg-[#161618]',
           activeConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
-        <div className="p-4 border-b border-[#f0f0f2] dark:border-[#27272a] space-y-3">
+        <div className="p-4 border-b border-black/[0.06] dark:border-white/[0.08] space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#1d1d1f] dark:text-white">
-              Private Chats
+            <h2 className="text-[18px] font-bold tracking-[-0.02em] text-[#1c1c1e] dark:text-[#f5f5f7]">
+              Messages
             </h2>
-            <span className="text-[11px] text-[#86868b]">
+            <span className="text-[12px] text-[#8e8e93]">
               @{currentUser.displayUsername || currentUser.username}
             </span>
           </div>
 
-          {/* Search username box */}
+          {/* Native iOS Search Box */}
           <div className="relative">
-            <Search className="w-4 h-4 text-[#86868b] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#8e8e93] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search username..."
+              placeholder="Search username…"
               value={userSearchQuery}
               onChange={(e) => setUserSearchQuery(e.target.value)}
-              className="w-full h-9 pl-9 pr-8 rounded-xl bg-[#f5f5f7] dark:bg-[#1c1c21] border border-transparent focus:border-[#0071e3] text-xs text-[#1d1d1f] dark:text-white placeholder:text-[#86868b] focus:outline-none"
+              className="w-full h-8.5 pl-9 pr-8 rounded-[9px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[13px] text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93] focus:outline-none focus:ring-2 focus:ring-[#007aff]/25"
             />
             {userSearchQuery && (
               <button
@@ -402,21 +402,21 @@ export function ChatView({
                   setUserSearchQuery('');
                   setSearchResults([]);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#86868b] hover:text-[#1d1d1f] cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8e8e93] hover:text-[#1c1c1e] cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Search Results Dropdown */}
+          {/* Search Results */}
           {userSearchQuery.trim().length >= 2 && (
-            <div className="rounded-2xl border border-[#e5e5ea] dark:border-[#27272a] bg-[#f9f9fb] dark:bg-[#1c1c21] p-2 space-y-1 max-h-52 overflow-y-auto">
+            <div className="rounded-[12px] border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] p-1.5 space-y-0.5 max-h-52 overflow-y-auto shadow-sm">
               {isSearchingUsers ? (
-                <p className="text-xs text-[#86868b] p-2 text-center">Searching users...</p>
+                <p className="text-[12px] text-[#8e8e93] p-2 text-center">Searching…</p>
               ) : searchResults.length === 0 ? (
-                <p className="text-xs text-[#86868b] p-2 text-center">
-                  No user found matching &ldquo;{userSearchQuery}&rdquo;
+                <p className="text-[12px] text-[#8e8e93] p-2 text-center">
+                  No user found for &ldquo;{userSearchQuery}&rdquo;
                 </p>
               ) : (
                 searchResults.map((u) => (
@@ -424,15 +424,17 @@ export function ChatView({
                     key={u.username}
                     type="button"
                     onClick={() => handleStartConversation(u.username)}
-                    className="w-full flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-white dark:hover:bg-[#27272a] transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center justify-between gap-2.5 p-2 rounded-[9px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
                       <UserAvatar username={u.username} avatarUrl={u.avatarUrl} size="sm" />
-                      <span className="text-xs font-semibold text-[#1d1d1f] dark:text-white truncate">
+                      <span className="text-[13px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
                         @{u.username}
                       </span>
                     </div>
-                    <span className="text-[11px] font-medium text-[#0071e3]">Message</span>
+                    <span className="text-[12px] font-medium text-[#007aff] dark:text-[#0a84ff]">
+                      Message
+                    </span>
                   </button>
                 ))
               )}
@@ -441,19 +443,19 @@ export function ChatView({
         </div>
 
         {/* Conversations List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-[#f0f0f2] dark:divide-[#27272a]">
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {isLoadingConversations ? (
-            <div className="p-6 text-center text-xs text-[#86868b]">
-              Loading conversations...
+            <div className="p-6 text-center text-[13px] text-[#8e8e93]">
+              Loading…
             </div>
           ) : conversations.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <MessageSquare className="w-7 h-7 mx-auto text-[#86868b]" />
-              <p className="text-xs font-medium text-[#1d1d1f] dark:text-white">
-                No conversations yet
+            <div className="p-8 text-center space-y-1.5">
+              <MessageSquare className="w-6 h-6 mx-auto text-[#8e8e93]" />
+              <p className="text-[13px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                No Conversations
               </p>
-              <p className="text-[11px] text-[#86868b]">
-                Search for a friend&apos;s username above to start a private conversation.
+              <p className="text-[12px] text-[#8e8e93] leading-relaxed">
+                Search for a username above to start a conversation or send a vault item.
               </p>
             </div>
           ) : (
@@ -469,10 +471,10 @@ export function ChatView({
                     fetchMessages(conv.id);
                   }}
                   className={cn(
-                    'w-full p-3.5 flex items-center gap-3 text-left transition-colors cursor-pointer',
+                    'w-full px-3 py-2.5 rounded-[11px] flex items-center gap-3 text-left transition-colors cursor-pointer',
                     isSelected
-                      ? 'bg-[#0071e3]/8 dark:bg-[#0071e3]/15'
-                      : 'hover:bg-[#f5f5f7] dark:hover:bg-[#1c1c21]'
+                      ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
+                      : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.06] text-[#1c1c1e] dark:text-[#f5f5f7]'
                   )}
                 >
                   <UserAvatar
@@ -482,17 +484,32 @@ export function ChatView({
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-semibold text-[#1d1d1f] dark:text-white truncate">
+                      <span
+                        className={cn(
+                          'text-[14px] font-semibold truncate',
+                          isSelected ? 'text-white' : 'text-[#1c1c1e] dark:text-[#f5f5f7]'
+                        )}
+                      >
                         @{conv.peer.username}
                       </span>
-                      <span className="text-[10px] text-[#86868b] shrink-0">
+                      <span
+                        className={cn(
+                          'text-[11px] tabular-nums shrink-0',
+                          isSelected ? 'text-white/80' : 'text-[#8e8e93]'
+                        )}
+                      >
                         {new Date(conv.lastMessageAt).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
                         })}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#6e6e73] dark:text-[#a1a1aa] truncate mt-0.5">
+                    <p
+                      className={cn(
+                        'text-[12px] truncate mt-0.5',
+                        isSelected ? 'text-white/85' : 'text-[#8e8e93]'
+                      )}
+                    >
                       {conv.isBlockedByMe
                         ? 'Blocked'
                         : conv.lastMessagePreview || 'No messages yet'}
@@ -508,31 +525,31 @@ export function ChatView({
       {/* RIGHT PANE: Active Conversation Messages & Composer */}
       <div
         className={cn(
-          'flex-1 flex flex-col min-h-[500px]',
+          'flex-1 flex flex-col min-h-[520px] bg-white dark:bg-[#1c1c1e]',
           !activeConversationId ? 'hidden md:flex' : 'flex'
         )}
       >
         {!activeConversation ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#f5f5f7] dark:bg-[#1c1c21] flex items-center justify-center mb-3">
-              <MessageSquare className="w-6 h-6 text-[#86868b]" />
+            <div className="w-11 h-11 rounded-full bg-[#767680]/[0.1] dark:bg-[#767680]/[0.2] flex items-center justify-center mb-3">
+              <MessageSquare className="w-5 h-5 text-[#8e8e93]" />
             </div>
-            <h3 className="text-sm font-semibold text-[#1d1d1f] dark:text-white">
-              Select a Conversation
+            <h3 className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+              No Conversation Selected
             </h3>
-            <p className="text-xs text-[#86868b] max-w-xs mt-1">
-              Search for any Global Send user by their public username to send messages or share items from your vault.
+            <p className="text-[13px] text-[#8e8e93] max-w-xs mt-1 leading-relaxed">
+              Choose a conversation from the sidebar or search for a username to begin messaging.
             </p>
           </div>
         ) : (
           <>
             {/* Conversation Header */}
-            <div className="h-16 px-4 sm:px-6 border-b border-[#f0f0f2] dark:border-[#27272a] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="h-14 px-4 sm:px-5 border-b border-black/[0.07] dark:border-white/[0.09] ios-material flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
                   onClick={() => setActiveConversationId(null)}
-                  className="md:hidden p-1.5 rounded-lg text-[#6e6e73] hover:text-[#1d1d1f]"
+                  className="md:hidden p-1.5 rounded-[8px] text-[#007aff] dark:text-[#0a84ff]"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -540,18 +557,18 @@ export function ChatView({
                 <UserAvatar
                   username={activeConversation.peer.username}
                   avatarUrl={activeConversation.peer.avatarUrl}
-                  size="md"
+                  size="sm"
                 />
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-[#1d1d1f] dark:text-white truncate">
+                  <h3 className="text-[14px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate leading-tight">
                     @{activeConversation.peer.username}
                   </h3>
-                  <p className="text-[11px] text-[#86868b]">
+                  <p className="text-[11px] text-[#8e8e93] leading-tight mt-0.5">
                     {activeConversation.isBlockedByMe
-                      ? 'You have blocked this user'
+                      ? 'Blocked'
                       : activeConversation.hasBlockedMe
-                      ? 'Messaging unavailable'
-                      : 'Private 1-to-1 conversation'}
+                      ? 'Unavailable'
+                      : 'Direct Message'}
                   </p>
                 </div>
               </div>
@@ -566,7 +583,7 @@ export function ChatView({
                     }
                     isLoading={isSending}
                   >
-                    Send &ldquo;{pendingShareItem.title.slice(0, 18)}&rdquo;
+                    Send &ldquo;{pendingShareItem.title.slice(0, 16)}&rdquo;
                   </Button>
                 )}
 
@@ -574,14 +591,11 @@ export function ChatView({
                   type="button"
                   onClick={handleToggleBlock}
                   className={cn(
-                    'px-2.5 py-1.5 rounded-xl text-xs font-medium inline-flex items-center gap-1 transition-colors cursor-pointer',
+                    'px-2.5 py-1 rounded-[8px] text-[12px] font-medium inline-flex items-center gap-1 transition-colors cursor-pointer',
                     activeConversation.isBlockedByMe
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
-                      : 'text-[#6e6e73] hover:bg-[#f5f5f7] dark:hover:bg-[#1c1c21]'
+                      ? 'bg-[#ff9500]/15 text-[#ff9500]'
+                      : 'text-[#6c6c70] dark:text-[#98989d] hover:bg-black/[0.05] dark:hover:bg-white/[0.08]'
                   )}
-                  title={
-                    activeConversation.isBlockedByMe ? 'Unblock user' : 'Block user'
-                  }
                 >
                   <Ban className="w-3.5 h-3.5" />
                   <span>{activeConversation.isBlockedByMe ? 'Unblock' : 'Block'}</span>
@@ -590,27 +604,27 @@ export function ChatView({
                 <button
                   type="button"
                   onClick={handleDeleteConversation}
-                  className="p-2 rounded-xl text-[#6e6e73] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
-                  title="Remove conversation from my list"
+                  className="p-1.5 rounded-[8px] text-[#8e8e93] hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors cursor-pointer"
+                  title="Delete Conversation"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Messages Scroll Area */}
-            <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-3 bg-[#f9f9fb] dark:bg-[#0e0e11]">
+            {/* Messages Scroll Area (iMessage Canvas) */}
+            <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-2.5 bg-white dark:bg-[#000000]">
               {isLoadingMessages ? (
-                <p className="text-xs text-center text-[#86868b] py-8">
-                  Loading messages...
+                <p className="text-[13px] text-center text-[#8e8e93] py-8">
+                  Loading messages…
                 </p>
               ) : messages.length === 0 ? (
                 <div className="text-center py-12 space-y-1">
-                  <p className="text-xs font-medium text-[#1d1d1f] dark:text-white">
-                    No messages with @{activeConversation.peer.username} yet
+                  <p className="text-[13px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                    Message @{activeConversation.peer.username}
                   </p>
-                  <p className="text-[11px] text-[#86868b]">
-                    Send a message or click the paperclip icon to share an item from your vault.
+                  <p className="text-[12px] text-[#8e8e93]">
+                    Send a text message or tap the attachment icon to share an item from your vault.
                   </p>
                 </div>
               ) : (
@@ -625,16 +639,16 @@ export function ChatView({
                     <div
                       key={msg.id}
                       className={cn(
-                        'flex flex-col max-w-[82%] sm:max-w-[70%]',
+                        'flex flex-col max-w-[82%] sm:max-w-[68%]',
                         isMine ? 'ml-auto items-end' : 'mr-auto items-start'
                       )}
                     >
                       <div
                         className={cn(
-                          'rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm leading-relaxed',
+                          'rounded-[18px] px-3.5 py-2 text-[14px] leading-snug',
                           isMine
-                            ? 'bg-[#0071e3] text-white rounded-br-sm'
-                            : 'bg-white dark:bg-[#1c1c21] text-[#1d1d1f] dark:text-white border border-[#e5e5ea] dark:border-[#27272a] rounded-bl-sm'
+                            ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white rounded-br-[4px]'
+                            : 'bg-[#e9e9eb] dark:bg-[#262629] text-[#1c1c1e] dark:text-[#f5f5f7] rounded-bl-[4px]'
                         )}
                       >
                         {msg.messageType === 'text' && (
@@ -646,33 +660,31 @@ export function ChatView({
                         {msg.messageType === 'attachment' && att && (
                           <div className="space-y-2 min-w-[210px]">
                             {!att.isAvailable ? (
-                              /* EXPIRED OR DELETED ATTACHMENT PLACEHOLDER */
                               <div
                                 className={cn(
-                                  'flex items-center gap-2.5 p-2.5 rounded-xl border',
+                                  'flex items-center gap-2.5 p-2.5 rounded-[12px]',
                                   isMine
-                                    ? 'bg-white/10 border-white/20 text-white/90'
-                                    : 'bg-[#f5f5f7] dark:bg-[#141417] border-[#e5e5ea] dark:border-[#27272a] text-[#86868b]'
+                                    ? 'bg-white/15 text-white/90'
+                                    : 'bg-black/[0.05] dark:bg-white/[0.06] text-[#8e8e93]'
                                 )}
                               >
                                 <AlertCircle className="w-4 h-4 shrink-0" />
                                 <div>
-                                  <p className="text-xs font-semibold">
-                                    {att.isExpired ? 'File expired' : 'Item unavailable'}
+                                  <p className="text-[12px] font-semibold">
+                                    {att.isExpired ? 'Attachment Expired' : 'Unavailable'}
                                   </p>
-                                  <p className="text-[10px] opacity-80">
-                                    This shared item has expired and is no longer accessible.
+                                  <p className="text-[11px] opacity-80">
+                                    This item has expired and been removed.
                                   </p>
                                 </div>
                               </div>
                             ) : (
-                              /* ACTIVE SHARED ATTACHMENT CARD */
                               <div
                                 className={cn(
-                                  'p-3 rounded-xl border space-y-2',
+                                  'p-2.5 rounded-[12px] space-y-2',
                                   isMine
-                                    ? 'bg-white/12 border-white/20 text-white'
-                                    : 'bg-[#f5f5f7] dark:bg-[#141417] border-[#e5e5ea] dark:border-[#27272a] text-[#1d1d1f] dark:text-white'
+                                    ? 'bg-white/15 text-white'
+                                    : 'bg-white dark:bg-[#1c1c1e] text-[#1c1c1e] dark:text-[#f5f5f7]'
                                 )}
                               >
                                 <div className="flex items-start justify-between gap-2">
@@ -688,27 +700,27 @@ export function ChatView({
                                     ) : (
                                       <FileCode className="w-4 h-4 shrink-0" />
                                     )}
-                                    <span className="text-xs font-semibold truncate">
+                                    <span className="text-[13px] font-semibold truncate">
                                       {att.filename || att.title}
                                     </span>
                                   </div>
 
                                   {att.fileSize ? (
-                                    <span className="text-[10px] font-mono opacity-80 shrink-0">
+                                    <span className="text-[11px] font-mono tabular-nums opacity-80 shrink-0">
                                       {formatBytes(att.fileSize)}
                                     </span>
                                   ) : null}
                                 </div>
 
                                 {att.type === 'text' && att.textContent && (
-                                  <p className="text-xs opacity-90 line-clamp-4 whitespace-pre-wrap font-mono bg-black/10 p-2 rounded-lg">
+                                  <p className="text-[12px] opacity-90 line-clamp-4 whitespace-pre-wrap font-mono bg-black/10 p-2 rounded-[8px]">
                                     {att.textContent}
                                   </p>
                                 )}
 
-                                <div className="flex items-center justify-between gap-2 pt-1">
+                                <div className="flex items-center justify-between gap-2 pt-0.5">
                                   {expStatus && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] opacity-80">
+                                    <span className="inline-flex items-center gap-1 text-[11px] tabular-nums opacity-80">
                                       <Clock className="w-3 h-3" />
                                       <span>{expStatus.label}</span>
                                     </span>
@@ -719,14 +731,14 @@ export function ChatView({
                                       href={`${att.downloadUrl}?download=true`}
                                       download={att.filename || att.title}
                                       className={cn(
-                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors',
+                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold transition-colors',
                                         isMine
-                                          ? 'bg-white text-[#0071e3] hover:bg-white/90'
-                                          : 'bg-[#0071e3] text-white hover:bg-[#0077ed]'
+                                          ? 'bg-white text-[#007aff]'
+                                          : 'bg-[#007aff] text-white'
                                       )}
                                     >
                                       <Download className="w-3 h-3" />
-                                      <span>Download</span>
+                                      <span>Save</span>
                                     </a>
                                   )}
 
@@ -742,10 +754,10 @@ export function ChatView({
                                         setTimeout(() => setCopiedId(null), 2000);
                                       }}
                                       className={cn(
-                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer',
+                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold cursor-pointer',
                                         isMine
-                                          ? 'bg-white text-[#0071e3]'
-                                          : 'bg-[#0071e3] text-white'
+                                          ? 'bg-white text-[#007aff]'
+                                          : 'bg-[#007aff] text-white'
                                       )}
                                     >
                                       {copiedId === msg.id ? (
@@ -763,10 +775,10 @@ export function ChatView({
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className={cn(
-                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold',
+                                        'inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold',
                                         isMine
-                                          ? 'bg-white text-[#0071e3]'
-                                          : 'bg-[#0071e3] text-white'
+                                          ? 'bg-white text-[#007aff]'
+                                          : 'bg-[#007aff] text-white'
                                       )}
                                     >
                                       <ExternalLink className="w-3 h-3" />
@@ -778,13 +790,13 @@ export function ChatView({
                             )}
 
                             {msg.textContent && (
-                              <p className="text-xs whitespace-pre-wrap">{msg.textContent}</p>
+                              <p className="text-[13px] whitespace-pre-wrap">{msg.textContent}</p>
                             )}
                           </div>
                         )}
                       </div>
 
-                      <span className="text-[10px] text-[#86868b] mt-1 px-1">
+                      <span className="text-[10px] text-[#8e8e93] mt-1 px-1 tabular-nums">
                         {new Date(msg.createdAt).toLocaleTimeString([], {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -797,76 +809,75 @@ export function ChatView({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input Bar */}
+            {/* iMessage Input Bar */}
             {activeConversation.isBlockedByMe || activeConversation.hasBlockedMe ? (
-              <div className="p-4 border-t border-[#f0f0f2] dark:border-[#27272a] text-center text-xs text-[#86868b]">
-                Messaging is disabled because one of the participants has blocked this conversation.
+              <div className="p-3.5 border-t border-black/[0.07] dark:border-white/[0.09] text-center text-[12px] text-[#8e8e93]">
+                Messaging is disabled for this conversation.
               </div>
             ) : (
               <form
                 onSubmit={handleSendText}
-                className="p-3 sm:p-4 border-t border-[#f0f0f2] dark:border-[#27272a] bg-white dark:bg-[#141417] flex items-center gap-2"
+                className="p-3 border-t border-black/[0.07] dark:border-white/[0.09] bg-white dark:bg-[#1c1c1e] flex items-center gap-2"
               >
                 <button
                   type="button"
                   onClick={() => setShowAttachmentModal(true)}
-                  className="p-2.5 rounded-xl bg-[#f5f5f7] dark:bg-[#1c1c21] text-[#6e6e73] hover:text-[#0071e3] transition-colors cursor-pointer shrink-0"
-                  title="Share an item from your Vault"
+                  className="w-8.5 h-8.5 rounded-full bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[#6c6c70] dark:text-[#ebebf5]/80 hover:text-[#007aff] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                  title="Share from Vault"
                   aria-label="Attach vault item"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
 
-                <input
-                  type="text"
-                  placeholder={`Message @${activeConversation.peer.username}...`}
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  className="flex-1 h-10 px-3.5 rounded-xl bg-[#f5f5f7] dark:bg-[#1c1c21] text-xs sm:text-sm text-[#1d1d1f] dark:text-white placeholder:text-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#0071e3]/20"
-                />
-
-                <Button
-                  type="submit"
-                  size="sm"
-                  isLoading={isSending}
-                  disabled={!messageText.trim() || isSending}
-                  className="h-10 px-4"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Send</span>
-                </Button>
+                <div className="flex-1 flex items-center bg-[#767680]/[0.08] dark:bg-[#767680]/[0.22] border border-black/[0.08] dark:border-white/[0.1] rounded-full pl-4 pr-1.5 py-1">
+                  <input
+                    type="text"
+                    placeholder={`iMessage @${activeConversation.peer.username}…`}
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    className="flex-1 bg-transparent text-[14px] text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93] focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!messageText.trim() || isSending}
+                    className="w-7 h-7 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white flex items-center justify-center disabled:opacity-35 transition-opacity cursor-pointer shrink-0"
+                    aria-label="Send message"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </form>
             )}
           </>
         )}
       </div>
 
-      {/* MODAL: Select Existing Vault Item to Share */}
+      {/* SHEET: Select Existing Vault Item to Share */}
       {showAttachmentModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#141417] rounded-3xl border border-[#e5e5ea] dark:border-[#27272a] w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden shadow-xl">
-            <div className="p-4 sm:p-5 border-b border-[#f0f0f2] dark:border-[#27272a] flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[4px] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#1c1c1e] rounded-[20px] border border-black/[0.08] dark:border-white/[0.12] w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden ios-sheet-shadow animate-ios-sheet">
+            <div className="px-5 py-3.5 border-b border-black/[0.07] dark:border-white/[0.09] flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-[#1d1d1f] dark:text-white">
-                  Share from Your Vault
+                <h3 className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  Share from Vault
                 </h3>
-                <p className="text-[11px] text-[#86868b]">
-                  Sharing links directly to your vault item without duplicating files or extending its expiration time.
+                <p className="text-[12px] text-[#8e8e93]">
+                  Shares a direct reference without duplicating storage quota.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAttachmentModal(false)}
-                className="p-1.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] flex items-center justify-center text-[#6c6c70] hover:text-[#1c1c1e] cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             <div className="p-4 overflow-y-auto space-y-2 flex-1">
               {activeShareableItems.length === 0 ? (
-                <p className="text-xs text-[#86868b] text-center py-8">
-                  You have no active items in your vault to share. Upload a file or save a note in My Vault first.
+                <p className="text-[13px] text-[#8e8e93] text-center py-8">
+                  Your vault has no active items. Add a file or note in Vault first.
                 </p>
               ) : (
                 activeShareableItems.map((item) => {
@@ -874,14 +885,14 @@ export function ChatView({
                   return (
                     <div
                       key={item.id}
-                      className="p-3 rounded-2xl border border-[#e5e5ea] dark:border-[#27272a] hover:border-[#0071e3] flex items-center justify-between gap-3"
+                      className="p-3 rounded-[12px] border border-black/[0.07] dark:border-white/[0.1] hover:border-[#007aff] flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[#1d1d1f] dark:text-white truncate">
+                        <p className="text-[13.5px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
                           {item.title}
                         </p>
-                        <div className="flex items-center gap-2 text-[11px] text-[#86868b] mt-0.5">
-                          <span className="uppercase">{item.type}</span>
+                        <div className="flex items-center gap-2 text-[11px] text-[#8e8e93] mt-0.5 tabular-nums">
+                          <span className="capitalize">{item.type}</span>
                           {item.file && <span>· {formatBytes(item.file.fileSize)}</span>}
                           <span>· {exp.label}</span>
                         </div>
@@ -892,7 +903,7 @@ export function ChatView({
                         onClick={() => handleShareVaultItem(item)}
                         isLoading={isSending}
                       >
-                        Share
+                        Send
                       </Button>
                     </div>
                   );

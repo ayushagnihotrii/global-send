@@ -75,7 +75,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
     const gdrive = url.searchParams.get('gdrive');
     const gdriveError = url.searchParams.get('gdrive_error');
     if (gdrive === 'connected') {
-      toast.success('Google Drive successfully connected!');
+      toast.success('Google Drive connected');
       url.searchParams.delete('gdrive');
       window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
     } else if (gdriveError) {
@@ -200,7 +200,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         setItems((prev) =>
           prev.map((i) => (i.id === item.id ? { ...i, isFavourite: nextState } : i))
         );
-        toast.success(nextState ? 'Added to favourites' : 'Removed from favourites');
+        toast.success(nextState ? 'Added to Favourites' : 'Removed from Favourites');
       }
     } catch {
       toast.error('Could not update favourite');
@@ -222,7 +222,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
       if (res.ok) {
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-        toast.success(data.message || (permanent ? 'Permanently deleted' : 'Moved to trash'));
+        toast.success(data.message || (permanent ? 'Deleted permanently' : 'Moved to Recently Deleted'));
       } else {
         toast.error('Failed to delete item');
       }
@@ -237,7 +237,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
       const res = await fetch(`/api/items/${item.id}/restore`, { method: 'POST' });
       if (res.ok) {
         setItems((prev) => prev.filter((i) => i.id !== item.id));
-        toast.success('Restored to vault');
+        toast.success('Restored to Vault');
       } else {
         const data = await res.json();
         toast.error(data.error || 'Could not restore item');
@@ -256,34 +256,28 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   const getSectionTitle = () => {
     switch (currentSection) {
       case 'text':
-        return 'Texts & Notes';
+        return 'Notes & Code';
       case 'image':
-        return 'Photos & Screenshots';
+        return 'Photos';
       case 'video':
         return 'Videos';
       case 'file':
-        return 'Files & Documents';
+        return 'Documents';
       case 'link':
-        return 'Website Links';
+        return 'Web Links';
       case 'favourites':
         return 'Favourites';
       case 'trash':
-        return 'Trash';
+        return 'Recently Deleted';
       default:
-        return 'My Vault';
+        return 'All Items';
     }
   };
 
   const displayUsername = user.displayUsername || user.username;
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-b from-[#f8fbff] via-[#f5f8fc] to-[#fafbfe] dark:from-[#0c1c30] dark:via-[#0b1422] dark:to-[#0b1422] text-[#0f172b] dark:text-[#e9f1fc] relative">
-      {/* Subtle Ambient Top Glow */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[420px] overflow-hidden z-0">
-        <div className="absolute -top-36 left-1/3 w-[520px] h-[340px] rounded-full bg-radial from-[#cceaff]/45 to-transparent blur-3xl dark:from-[#1d4ed8]/15" />
-        <div className="absolute -top-24 right-10 w-[400px] h-[300px] rounded-full bg-radial from-[#d8d4ff]/35 to-transparent blur-3xl dark:from-[#4f46e5]/10" />
-      </div>
-
+    <div className="min-h-screen flex bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7]">
       {/* 1. DESKTOP SIDEBAR */}
       <DesktopSidebar
         currentSection={currentSection}
@@ -294,12 +288,12 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
       />
 
       {/* 2. MAIN WORKSPACE */}
-      <main className="relative z-10 flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:p-10 pb-24 md:pb-12 max-w-6xl mx-auto w-full">
-        {/* Mobile Header Bar */}
-        <div className="flex md:hidden items-center justify-between pb-4 mb-5 border-b border-[#dce7f4] dark:border-[#2b3f58]">
-          <div className="flex items-center gap-2.5">
-            <Logo size={30} className="rounded-xl shadow-xs" withGlow />
-            <span className="font-bold text-base tracking-tight text-[#0f172b] dark:text-white">
+      <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:px-10 lg:py-8 pb-24 md:pb-12 max-w-6xl mx-auto w-full">
+        {/* Mobile Top Navigation Bar */}
+        <div className="flex md:hidden items-center justify-between pb-3.5 mb-4 border-b border-black/[0.07] dark:border-white/[0.09]">
+          <div className="flex items-center gap-2">
+            <Logo size={26} />
+            <span className="font-semibold text-[16px] tracking-[-0.015em] text-[#1c1c1e] dark:text-[#f5f5f7]">
               {SITE_CONFIG.name}
             </span>
           </div>
@@ -307,7 +301,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           <button
             type="button"
             onClick={() => setCurrentSection('settings')}
-            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-[#eaf4ff] dark:bg-[#1d304a] text-[#1677df] dark:text-[#78bbff] border border-[#dbe9fa] dark:border-[#3b5675] cursor-pointer"
+            className="flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.12] text-[#1c1c1e] dark:text-[#f5f5f7] cursor-pointer"
           >
             {user.avatarUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -334,92 +328,88 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           />
         ) : (
           <>
-            {/* WORKSPACE TOP HEADER */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+            {/* iOS Large Title Header & Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-[#5481aa] dark:text-[#8bb5dc] mb-1">
-                  TEMPORARY CLOUD VAULT
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0f172b] dark:text-white">
+                <h2 className="text-[26px] sm:text-[30px] font-bold tracking-[-0.025em] text-[#1c1c1e] dark:text-[#f5f5f7] leading-tight">
                   {getSectionTitle()}
                 </h2>
-                <p className="text-xs sm:text-sm text-[#53667a] dark:text-[#a4b5ce] mt-1">
+                <p className="text-[13px] text-[#8e8e93] mt-0.5 tabular-nums">
                   {currentSection === 'trash'
-                    ? 'Items here can be restored before expiration or permanently removed.'
-                    : 'Save temporary files, notes, and links with automatic expiration or share them in chat.'}
+                    ? `${items.length} ${items.length === 1 ? 'item' : 'items'} · Items expire on schedule`
+                    : `${items.length} ${items.length === 1 ? 'item' : 'items'} in vault`}
                 </p>
               </div>
 
-              {/* Sort selector */}
-              <div className="flex items-center gap-2 self-start md:self-auto">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchItems}
-                  className="h-9 px-2.5 text-xs"
-                  title="Refresh items"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </Button>
+              {/* Search & Sort Controls */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {/* Native iOS Search Field */}
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="w-4 h-4 text-[#8e8e93] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="search-input"
+                    type="text"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full h-9 pl-9 pr-14 rounded-[10px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[14px] text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93] focus:bg-white dark:focus:bg-[#1c1c1e] focus:outline-none focus:ring-2 focus:ring-[#007aff]/25 border border-transparent focus:border-[#007aff] transition-all"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#8e8e93] font-mono">
+                      ⌘K
+                    </span>
+                  )}
+                </div>
 
-                <div className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-[#19263a] border border-[#dce7f4] dark:border-[#34465e] text-xs font-semibold text-[#263a50] dark:text-[#e9f1fc] shadow-2xs">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-[#418fd0] dark:text-[#7eb9ec]" />
+                {/* Sort Pill */}
+                <div className="inline-flex items-center gap-1 h-9 px-3 rounded-[10px] bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.12] text-[13px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7] shrink-0">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-[#8e8e93]" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="bg-transparent focus:outline-none cursor-pointer"
+                    className="bg-transparent focus:outline-none cursor-pointer pr-1"
+                    aria-label="Sort items"
                   >
-                    <option value="created_desc">Newest First</option>
-                    <option value="created_asc">Oldest First</option>
-                    <option value="title_asc">Name (A-Z)</option>
+                    <option value="created_desc">Newest</option>
+                    <option value="created_asc">Oldest</option>
+                    <option value="title_asc">Name</option>
                   </select>
                 </div>
-              </div>
-            </div>
 
-            {/* SEARCH BAR */}
-            <div className="relative mb-6">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#649dd3] pointer-events-none">
-                <Search className="w-4 h-4" />
-              </div>
-              <input
-                id="search-input"
-                type="text"
-                placeholder="Search titles, text questions, links, code, and tags..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-[#19263a] text-[#0f172b] dark:text-white placeholder:text-[#8292a7] rounded-2xl pl-11 pr-24 py-3.5 text-sm border border-[#dbe6f2] dark:border-[#34465e] shadow-[0_8px_24px_-16px_rgba(30,95,168,0.18)] focus:outline-none focus:border-[#1677df] dark:focus:border-[#60a5fa] focus:ring-3 focus:ring-[#1677df]/12 transition-all"
-              />
-
-              {searchQuery ? (
-                <button
+                <Button
                   type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#74859d] hover:text-[#0f172b] dark:hover:text-white cursor-pointer"
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchItems}
+                  className="h-9 w-9 rounded-[10px] shrink-0"
+                  title="Refresh"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 items-center gap-1 text-[11px] font-mono font-semibold text-[#5481aa] dark:text-[#8bb5dc] px-2 py-0.5 rounded-lg bg-[#f1f6fd] dark:bg-[#203149] border border-[#dce8f6] dark:border-[#3b5675]">
-                  <span>⌘K</span>
-                </div>
-              )}
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
 
             {/* TAG FILTER CHIPS */}
             {availableTags.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-3 mb-4 scrollbar-none text-xs">
-                <span className="text-[#65758b] dark:text-[#98b0c9] text-[11px] font-semibold mr-1 flex items-center gap-1">
-                  <Tag className="w-3 h-3 text-[#418fd0]" /> Tags:
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
+                <span className="text-[#8e8e93] text-[12px] font-medium mr-1 flex items-center gap-1">
+                  <Tag className="w-3 h-3" />
                 </span>
                 <button
                   type="button"
                   onClick={() => setSelectedTag(null)}
-                  className={`px-3 py-1 rounded-full font-semibold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
                     selectedTag === null
-                      ? 'bg-[#1677df] text-white shadow-xs'
-                      : 'bg-white dark:bg-[#19263a] text-[#53667a] dark:text-[#a4b5ce] border border-[#dce7f4] dark:border-[#34465e] hover:border-[#1677df]'
+                      ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
+                      : 'bg-white dark:bg-[#1c1c1e] text-[#6c6c70] dark:text-[#98989d] border border-black/[0.07] dark:border-white/[0.1]'
                   }`}
                 >
                   All
@@ -429,10 +419,10 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                     key={tag}
                     type="button"
                     onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                    className={`px-3 py-1 rounded-full font-semibold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
                       selectedTag === tag
-                        ? 'bg-[#1677df] text-white shadow-xs'
-                        : 'bg-white dark:bg-[#19263a] text-[#53667a] dark:text-[#a4b5ce] border border-[#dce7f4] dark:border-[#34465e] hover:border-[#1677df]'
+                        ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
+                        : 'bg-white dark:bg-[#1c1c1e] text-[#6c6c70] dark:text-[#98989d] border border-black/[0.07] dark:border-white/[0.1]'
                     }`}
                   >
                     #{tag}
@@ -441,55 +431,55 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
               </div>
             )}
 
-            {/* TRASH WARNING BANNER */}
+            {/* RECENTLY DELETED BANNER */}
             {currentSection === 'trash' && (
-              <div className="mb-6 p-4 rounded-2xl bg-[#fff8e9] dark:bg-[#342c1d] border border-[#efcc8a] dark:border-[#6d5630] flex items-center justify-between text-xs font-medium text-[#805719] dark:text-[#e7c68d]">
-                <span>Items in Trash still expire on schedule or can be permanently deleted now.</span>
+              <div className="mb-5 px-4 py-3 rounded-[14px] bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-between gap-3 text-[13px] text-[#6c6c70] dark:text-[#98989d]">
+                <span>Items in Recently Deleted continue to expire on schedule.</span>
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
                   onClick={async () => {
-                    if (window.confirm('Permanently delete all items in trash?')) {
+                    if (window.confirm('Permanently delete all items in Recently Deleted?')) {
                       await fetch('/api/items/trash/empty', { method: 'POST' });
-                      toast.success('Trash emptied');
+                      toast.success('Recently Deleted emptied');
                       fetchItems();
                     }
                   }}
-                  className="h-7 text-xs text-[#e11d48]"
+                  className="text-[#ff3b30] dark:text-[#ff453a] hover:bg-[#ff3b30]/10 shrink-0"
                 >
-                  Empty Trash
+                  Delete All
                 </Button>
               </div>
             )}
 
-            {/* QUICK COMPOSER (Visible in normal sections) */}
+            {/* QUICK COMPOSER */}
             {currentSection !== 'trash' && (
               <QuickComposer onItemCreated={handleItemCreated} />
             )}
 
-            {/* ITEMS LIST (Grouped by Date) */}
+            {/* ITEMS LIST */}
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <div
                     key={n}
-                    className="h-36 rounded-[20px] bg-white/75 dark:bg-[#19263a]/75 border border-[#dce7f4] dark:border-[#34465e] animate-pulse p-4"
+                    className="h-36 rounded-[16px] bg-white/70 dark:bg-[#1c1c1e]/70 border border-black/[0.06] dark:border-white/[0.08] animate-pulse p-4"
                   />
                 ))}
               </div>
             ) : items.length === 0 ? (
-              /* EMPTY STATE */
-              <div className="text-center py-16 px-4 bg-[#f8fbff] dark:bg-[#17263b]/70 rounded-[24px] border border-dashed border-[#bfd4ec] dark:border-[#3b5675]">
-                <div className="w-14 h-14 rounded-2xl bg-[#eaf4ff] dark:bg-[#203954] border border-[#dbe9fa] dark:border-[#344b65] text-[#1677df] dark:text-[#60a5fa] flex items-center justify-center mx-auto mb-3.5 shadow-2xs">
-                  <FolderOpen className="w-7 h-7" />
+              /* NATIVE iOS EMPTY STATE */
+              <div className="text-center py-16 px-4 ios-card rounded-[18px]">
+                <div className="w-12 h-12 rounded-[14px] bg-[#767680]/[0.1] dark:bg-[#767680]/[0.22] text-[#8e8e93] flex items-center justify-center mx-auto mb-3">
+                  <FolderOpen className="w-6 h-6" />
                 </div>
-                <h3 className="text-base font-bold text-[#0f172b] dark:text-white">
-                  {searchQuery ? 'No matches found' : 'Your personal vault is empty'}
+                <h3 className="text-[16px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  {searchQuery ? 'No Results' : 'No Items'}
                 </h3>
-                <p className="text-xs text-[#65758b] dark:text-[#a4b5ce] mt-1 max-w-sm mx-auto leading-relaxed">
+                <p className="text-[13px] text-[#8e8e93] mt-1 max-w-xs mx-auto leading-relaxed">
                   {searchQuery
-                    ? `No items matched "${searchQuery}". Try clearing your search filter.`
-                    : 'Save your first temporary note, code snippet, photo, video, or document above.'}
+                    ? `No items matched "${searchQuery}".`
+                    : 'Add a note, code snippet, document, photo, or web link above.'}
                 </p>
                 {searchQuery && (
                   <Button
@@ -497,7 +487,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                     variant="secondary"
                     size="sm"
                     onClick={() => setSearchQuery('')}
-                    className="mt-4 text-xs"
+                    className="mt-4"
                   >
                     Clear Search
                   </Button>
@@ -505,16 +495,18 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
               </div>
             ) : (
               /* TIMELINE DATE GROUPS */
-              <div className="space-y-8">
+              <div className="space-y-7">
                 {dateGroups.map((group) => (
-                  <section key={group.key} className="space-y-3.5">
-                    <div className="flex items-center gap-2 ml-1">
-                      <span className="w-1.5 h-4 rounded-full bg-[#1677df]" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#5481aa] dark:text-[#8bb5dc]">
+                  <section key={group.key} className="space-y-2.5">
+                    <div className="flex items-center justify-between px-0.5">
+                      <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[#6c6c70] dark:text-[#98989d]">
                         {group.title}
                       </h3>
+                      <span className="text-[12px] text-[#8e8e93] tabular-nums">
+                        {group.items.length}
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                       {group.items.map((item) => (
                         <ItemCard
                           key={item.id}
@@ -545,7 +537,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
             setCurrentSection('all');
           }
           window.scrollTo({ top: 0, behavior: 'smooth' });
-          toast.info('Composer ready at the top');
+          toast.info('Ready to add a new item');
         }}
       />
 

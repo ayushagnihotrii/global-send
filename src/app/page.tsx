@@ -49,15 +49,15 @@ export default function Home() {
       )}
 
       {isCheckingAuth ? (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#f8fbff] via-[#f5f8fc] to-[#fafbfe] dark:from-[#0c1c30] dark:via-[#0b1422] dark:to-[#0b1422]">
-          <div className="mb-3.5 animate-pulse">
-            <Logo size="lg" withGlow />
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#f2f2f7] dark:bg-[#000000]">
+          <div className="mb-3">
+            <Logo size="lg" />
           </div>
-          <p className="text-base font-bold tracking-tight text-[#0f172b] dark:text-white">
+          <p className="text-[15px] font-semibold tracking-tight text-[#1c1c1e] dark:text-[#f5f5f7]">
             {SITE_CONFIG.name}
           </p>
-          <p className="text-xs text-[#53667a] dark:text-[#a4b5ce] mt-1">
-            Opening your cloud workspace...
+          <p className="text-[13px] text-[#8e8e93] dark:text-[#636366] mt-0.5">
+            Verifying session…
           </p>
         </div>
       ) : !user ? (
@@ -72,4 +72,3 @@ export default function Home() {
     </>
   );
 }
-

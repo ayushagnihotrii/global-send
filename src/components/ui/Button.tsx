@@ -20,21 +20,26 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer';
+    'inline-flex items-center justify-center font-medium tracking-[-0.01em] transition-all duration-150 active:scale-[0.98] disabled:opacity-45 disabled:pointer-events-none select-none cursor-pointer';
 
   const variantClasses = {
-    primary: 'qs-primary-btn text-white',
-    secondary: 'bg-[#eaf4ff] hover:bg-[#dbe9fa] text-[#1677df] border border-[#dbe9fa] dark:bg-[#1d304a] dark:hover:bg-[#243c5c] dark:text-[#78bbff] dark:border-[#344b65]',
-    outline: 'border border-[#dce7f4] dark:border-[#34465e] bg-white/80 dark:bg-[#17263b]/80 hover:border-[#a7cdf6] dark:hover:border-[#4778ae] hover:bg-[#f0f7ff] dark:hover:bg-[#1e324d] text-[#263a50] dark:text-[#e9f1fc] shadow-2xs',
-    ghost: 'hover:bg-[#edf5fd] dark:hover:bg-[#1e324d] text-[#53667a] hover:text-[#1677df] dark:text-[#a4b5ce] dark:hover:text-[#78bbff]',
-    destructive: 'bg-[#e11d48] hover:bg-[#be123c] text-white shadow-sm shadow-rose-500/20',
+    primary:
+      'bg-[#007aff] hover:bg-[#0062cc] active:bg-[#0051a8] dark:bg-[#0a84ff] dark:hover:bg-[#409cff] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
+    secondary:
+      'bg-[#007aff]/10 hover:bg-[#007aff]/16 text-[#007aff] dark:bg-[#0a84ff]/16 dark:hover:bg-[#0a84ff]/24 dark:text-[#409cff]',
+    outline:
+      'border border-black/[0.1] dark:border-white/[0.12] bg-white dark:bg-[#2c2c2e] hover:bg-[#f2f2f7] dark:hover:bg-[#3a3a3c] text-[#1c1c1e] dark:text-[#f5f5f7] shadow-[0_1px_1px_rgba(0,0,0,0.03)]',
+    ghost:
+      'hover:bg-black/[0.05] dark:hover:bg-white/[0.08] text-[#6c6c70] hover:text-[#1c1c1e] dark:text-[#98989d] dark:hover:text-[#f5f5f7]',
+    destructive:
+      'bg-[#ff3b30] hover:bg-[#e03025] dark:bg-[#ff453a] dark:hover:bg-[#ff6259] text-white shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
   };
 
   const sizeClasses = {
-    sm: 'text-xs px-3.5 py-1.5 h-8.5 gap-1.5 rounded-xl',
-    md: 'text-sm px-4.5 py-2.5 h-10.5 gap-2 rounded-xl',
-    lg: 'text-base px-6 py-3 h-12 gap-2.5 rounded-2xl',
-    icon: 'w-9 h-9 p-0 rounded-xl',
+    sm: 'text-[13px] px-3 py-1.5 h-8 gap-1.5 rounded-[8px]',
+    md: 'text-[14px] px-4 py-2 h-9.5 gap-2 rounded-[10px]',
+    lg: 'text-[15px] font-semibold px-5 py-2.5 h-11 gap-2 rounded-[12px]',
+    icon: 'w-8.5 h-8.5 p-0 rounded-[9px]',
   };
 
   return (

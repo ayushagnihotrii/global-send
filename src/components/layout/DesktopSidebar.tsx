@@ -10,9 +10,8 @@ import {
   Link2,
   Star,
   Trash2,
-  User as UserIcon,
+  Settings,
   LogOut,
-  ShieldCheck,
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -60,86 +59,134 @@ export function DesktopSidebar({
     id: NavSection;
     label: string;
     icon: React.ReactNode;
+    tintClass: string;
     countKey?: keyof NonNullable<typeof itemCounts>;
   }[] = [
-    { id: 'all', label: 'My Vault (All)', icon: <Layers className="w-4 h-4" />, countKey: 'all' },
-    { id: 'text', label: 'Texts & Notes', icon: <FileText className="w-4 h-4" />, countKey: 'text' },
-    { id: 'image', label: 'Photos', icon: <ImageIcon className="w-4 h-4" />, countKey: 'image' },
-    { id: 'video', label: 'Videos', icon: <Film className="w-4 h-4" />, countKey: 'video' },
-    { id: 'file', label: 'Files & Docs', icon: <Folder className="w-4 h-4" />, countKey: 'file' },
-    { id: 'link', label: 'Links', icon: <Link2 className="w-4 h-4" />, countKey: 'link' },
-    { id: 'favourites', label: 'Favourites', icon: <Star className="w-4 h-4" />, countKey: 'favourites' },
-    { id: 'trash', label: 'Trash', icon: <Trash2 className="w-4 h-4" />, countKey: 'trash' },
+    {
+      id: 'all',
+      label: 'All Items',
+      icon: <Layers className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#007aff] dark:text-[#0a84ff]',
+      countKey: 'all',
+    },
+    {
+      id: 'text',
+      label: 'Notes & Code',
+      icon: <FileText className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#ff9500] dark:text-[#ff9f0a]',
+      countKey: 'text',
+    },
+    {
+      id: 'image',
+      label: 'Photos',
+      icon: <ImageIcon className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#34c759] dark:text-[#30d158]',
+      countKey: 'image',
+    },
+    {
+      id: 'video',
+      label: 'Videos',
+      icon: <Film className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#af52de] dark:text-[#bf5af2]',
+      countKey: 'video',
+    },
+    {
+      id: 'file',
+      label: 'Documents',
+      icon: <Folder className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#007aff] dark:text-[#0a84ff]',
+      countKey: 'file',
+    },
+    {
+      id: 'link',
+      label: 'Web Links',
+      icon: <Link2 className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#5856d6] dark:text-[#5e5ce6]',
+      countKey: 'link',
+    },
+    {
+      id: 'favourites',
+      label: 'Favourites',
+      icon: <Star className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#ffcc00] dark:text-[#ffd60a]',
+      countKey: 'favourites',
+    },
+    {
+      id: 'trash',
+      label: 'Recently Deleted',
+      icon: <Trash2 className="w-[17px] h-[17px]" />,
+      tintClass: 'text-[#8e8e93]',
+      countKey: 'trash',
+    },
   ];
 
   const displayUsername = user.displayUsername || user.username;
 
   return (
-    <aside className="hidden md:flex flex-col w-68 h-screen sticky top-0 bg-white/85 dark:bg-[#111b2c]/90 backdrop-blur-xl border-r border-[#dce7f4] dark:border-[#2b3f58] p-4 select-none shrink-0 justify-between shadow-[4px_0_24px_-12px_rgba(27,55,85,0.06)]">
+    <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 ios-sidebar-material border-r border-black/[0.08] dark:border-white/[0.1] px-3 py-4 select-none shrink-0 justify-between">
       <div>
-        <div className="flex items-center justify-between px-3 py-2.5 mb-2">
-          <div className="flex items-center gap-2.5">
-            <Logo size={36} className="rounded-xl shadow-xs" withGlow />
-            <div>
-              <h1 className="text-base font-bold tracking-tight text-[#0f172b] dark:text-white leading-tight">
-                {SITE_CONFIG.name}
-              </h1>
-              <p className="text-[11px] font-medium text-[#607187] dark:text-[#98b0c9]">
-                Private Vault &amp; Chat
-              </p>
-            </div>
+        {/* Brand Title */}
+        <div className="flex items-center gap-2.5 px-2.5 pb-3.5">
+          <Logo size={30} />
+          <div className="min-w-0">
+            <h1 className="text-[15px] font-semibold tracking-[-0.015em] text-[#1c1c1e] dark:text-[#f5f5f7] leading-tight truncate">
+              {SITE_CONFIG.name}
+            </h1>
+            <p className="text-[11px] text-[#8e8e93] leading-tight mt-0.5">
+              iCloud-grade Vault
+            </p>
           </div>
         </div>
 
-        {/* Primary Mode Switcher: My Vault | Chats | Profile */}
-        <div className="grid grid-cols-3 gap-1 p-1 mb-4 rounded-2xl bg-[#edf4fb] dark:bg-[#152338] border border-[#dce7f4] dark:border-[#2b3f58]">
+        {/* iOS Segmented Mode Switcher */}
+        <div className="grid grid-cols-3 p-[2px] mb-5 rounded-[9px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24]">
           <button
             type="button"
             onClick={() => onSelectSection('all')}
             className={cn(
-              'py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center',
+              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
               currentSection !== 'chats' && currentSection !== 'settings'
-                ? 'bg-white dark:bg-[#1f3452] text-[#1677df] dark:text-[#78bbff] shadow-2xs'
-                : 'text-[#53667a] dark:text-[#98b0c9] hover:text-[#0f172b] dark:hover:text-white'
+                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
+                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
             )}
           >
-            My Vault
+            Vault
           </button>
           <button
             type="button"
             onClick={() => onSelectSection('chats')}
             className={cn(
-              'py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-1',
+              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
               currentSection === 'chats'
-                ? 'bg-white dark:bg-[#1f3452] text-[#1677df] dark:text-[#78bbff] shadow-2xs'
-                : 'text-[#53667a] dark:text-[#98b0c9] hover:text-[#0f172b] dark:hover:text-white'
+                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
+                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
             )}
           >
-            <MessageSquare className="w-3 h-3" />
-            <span>Chats</span>
+            Chats
           </button>
           <button
             type="button"
             onClick={() => onSelectSection('settings')}
             className={cn(
-              'py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer text-center',
+              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
               currentSection === 'settings'
-                ? 'bg-white dark:bg-[#1f3452] text-[#1677df] dark:text-[#78bbff] shadow-2xs'
-                : 'text-[#53667a] dark:text-[#98b0c9] hover:text-[#0f172b] dark:hover:text-white'
+                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
+                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
             )}
           >
-            Profile
+            Settings
           </button>
         </div>
 
-        <div className="px-3 mb-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#74859d] dark:text-[#8bb5dc]">
-            My Vault Filters
+        {/* macOS / iPadOS Source List Section Header */}
+        <div className="px-2.5 mb-1">
+          <span className="text-[11px] font-semibold text-[#8e8e93] tracking-[-0.005em]">
+            Library
           </span>
         </div>
 
         {/* Vault Categories */}
-        <nav className="space-y-1">
+        <nav className="space-y-0.5">
           {vaultItems.map((item) => {
             const isActive = currentSection === item.id;
             const count = itemCounts && item.countKey ? itemCounts[item.countKey] : undefined;
@@ -150,33 +197,26 @@ export function DesktopSidebar({
                 type="button"
                 onClick={() => onSelectSection(item.id)}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all duration-150 cursor-pointer',
+                  'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
                   isActive
-                    ? 'bg-gradient-to-r from-[#eaf4ff] to-[#f3f8ff] dark:from-[#1d304a] dark:to-[#192940] text-[#0876cf] dark:text-[#8ac5fb] font-semibold border border-[#cde3fa] dark:border-[#3b5675] shadow-2xs'
-                    : 'text-[#536174] dark:text-[#c3cfdd] hover:bg-[#edf5fd]/80 dark:hover:bg-[#19283d] hover:text-[#1677df] dark:hover:text-white border border-transparent'
+                    ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
+                    : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] font-normal'
                 )}
               >
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={cn(
-                      'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                      isActive
-                        ? 'bg-[#1677df] text-white shadow-2xs'
-                        : 'bg-[#f1f6fd] dark:bg-[#19283d] text-[#418fd0] dark:text-[#7eb9ec]'
-                    )}
-                  >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={cn('shrink-0', isActive ? 'text-white' : item.tintClass)}>
                     {item.icon}
                   </span>
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
                 </div>
 
                 {count !== undefined && count > 0 && (
                   <span
                     className={cn(
-                      'text-[11px] font-semibold px-2 py-0.5 rounded-full tabular-nums',
+                      'text-[12px] tabular-nums ml-2',
                       isActive
-                        ? 'bg-[#1677df]/15 text-[#0876cf] dark:bg-[#38bdf8]/20 dark:text-[#8ac5fb]'
-                        : 'bg-[#f1f5f9] dark:bg-[#19283d] text-[#68788c] dark:text-[#98b0c9]'
+                        ? 'text-white/90 font-medium'
+                        : 'text-[#8e8e93]'
                     )}
                   >
                     {count}
@@ -187,94 +227,92 @@ export function DesktopSidebar({
           })}
         </nav>
 
-        <div className="px-3 mt-4 mb-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#74859d] dark:text-[#8bb5dc]">
-            Direct Messaging
+        {/* Direct Messages Section */}
+        <div className="px-2.5 mt-5 mb-1">
+          <span className="text-[11px] font-semibold text-[#8e8e93] tracking-[-0.005em]">
+            Messages
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onSelectSection('chats')}
-          className={cn(
-            'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer',
-            currentSection === 'chats'
-              ? 'bg-gradient-to-r from-[#eaf4ff] to-[#f3f8ff] dark:from-[#1d304a] dark:to-[#192940] text-[#0876cf] dark:text-[#8ac5fb] font-semibold border border-[#cde3fa] dark:border-[#3b5675] shadow-2xs'
-              : 'text-[#536174] dark:text-[#c3cfdd] hover:bg-[#edf5fd]/80 dark:hover:bg-[#19283d] hover:text-[#1677df] dark:hover:text-white border border-transparent'
-          )}
-        >
-          <div className="flex items-center gap-2.5">
-            <span
-              className={cn(
-                'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
-                currentSection === 'chats'
-                  ? 'bg-[#1677df] text-white shadow-2xs'
-                  : 'bg-[#f1f6fd] dark:bg-[#19283d] text-[#418fd0] dark:text-[#7eb9ec]'
-              )}
-            >
-              <MessageSquare className="w-4 h-4" />
-            </span>
-            <span>Private Chats</span>
-          </div>
-        </button>
-      </div>
-
-      {/* Bottom User & Profile */}
-      <div className="pt-3 border-t border-[#e5edf7] dark:border-[#2b3f58] space-y-2">
-        <button
-          type="button"
-          onClick={() => onSelectSection('settings')}
-          className={cn(
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer',
-            currentSection === 'settings'
-              ? 'bg-gradient-to-r from-[#eaf4ff] to-[#f3f8ff] dark:from-[#1d304a] dark:to-[#192940] text-[#0876cf] dark:text-[#8ac5fb] font-semibold border border-[#cde3fa] dark:border-[#3b5675]'
-              : 'text-[#536174] dark:text-[#c3cfdd] hover:bg-[#edf5fd]/80 dark:hover:bg-[#19283d] hover:text-[#1677df] dark:hover:text-white border border-transparent'
-          )}
-        >
-          <span
+        <div className="space-y-0.5">
+          <button
+            type="button"
+            onClick={() => onSelectSection('chats')}
             className={cn(
-              'w-7 h-7 rounded-lg flex items-center justify-center',
-              currentSection === 'settings'
-                ? 'bg-[#1677df] text-white'
-                : 'bg-[#f1f6fd] dark:bg-[#19283d] text-[#418fd0] dark:text-[#7eb9ec]'
+              'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
+              currentSection === 'chats'
+                ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
+                : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]'
             )}
           >
-            <UserIcon className="w-4 h-4" />
-          </span>
-          <span>Profile &amp; Settings</span>
-        </button>
+            <div className="flex items-center gap-2.5">
+              <MessageSquare
+                className={cn(
+                  'w-[17px] h-[17px]',
+                  currentSection === 'chats'
+                    ? 'text-white'
+                    : 'text-[#34c759] dark:text-[#30d158]'
+                )}
+              />
+              <span>Private Chats</span>
+            </div>
+          </button>
 
-        {/* Identity Card */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-br from-[#f3f8ff] to-white dark:from-[#19283d] dark:to-[#142033] border border-[#dce7f4] dark:border-[#34465e] shadow-2xs">
+          <button
+            type="button"
+            onClick={() => onSelectSection('settings')}
+            className={cn(
+              'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
+              currentSection === 'settings'
+                ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
+                : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]'
+            )}
+          >
+            <div className="flex items-center gap-2.5">
+              <Settings
+                className={cn(
+                  'w-[17px] h-[17px]',
+                  currentSection === 'settings' ? 'text-white' : 'text-[#8e8e93]'
+                )}
+              />
+              <span>Settings</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Apple Account Row */}
+      <div className="pt-3 border-t border-black/[0.07] dark:border-white/[0.09]">
+        <div className="flex items-center justify-between p-2 rounded-[12px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors">
           <div
             onClick={() => onSelectSection('settings')}
-            className="flex items-center gap-2.5 overflow-hidden cursor-pointer"
+            className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
           >
             {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.avatarUrl}
                 alt={displayUsername}
-                className="w-9 h-9 rounded-xl object-cover border border-[#d3e5f7] dark:border-[#3b5675] shrink-0"
+                className="w-8 h-8 rounded-full object-cover border border-black/[0.08] dark:border-white/[0.12] shrink-0"
               />
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-[#eaf4ff] dark:bg-[#223b54] border border-[#d3e5f7] dark:border-[#3b5675] text-[#1677df] dark:text-[#78bbff] font-bold text-xs flex items-center justify-center shrink-0 uppercase">
+              <div className="w-8 h-8 rounded-full bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#409cff] font-semibold text-[12px] flex items-center justify-center shrink-0 uppercase">
                 {displayUsername.slice(0, 2)}
               </div>
             )}
-            <div className="overflow-hidden">
-              <p className="text-xs font-bold text-[#0f172b] dark:text-white truncate">
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate leading-tight">
                 @{displayUsername}
               </p>
-              <p className="text-[10px] font-medium text-[#607187] dark:text-[#98b0c9] flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-[#1677df] dark:text-[#60a5fa] shrink-0" />
-                Key Protected
+              <p className="text-[11px] text-[#8e8e93] truncate leading-tight mt-0.5">
+                Account &amp; Storage
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onLogout}
-            className="text-[#74859d] hover:text-[#e11d48] hover:bg-[#fff1f2] dark:hover:bg-[#3e2124] p-2 rounded-xl transition-colors cursor-pointer shrink-0"
+            className="text-[#8e8e93] hover:text-[#ff3b30] dark:hover:text-[#ff453a] p-1.5 rounded-[8px] transition-colors cursor-pointer shrink-0"
             title="Sign Out"
           >
             <LogOut className="w-4 h-4" />

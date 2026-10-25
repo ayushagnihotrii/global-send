@@ -38,18 +38,13 @@ export function MediaViewerModal({
   const isVideo = item.type === 'video';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} maxWidth="4xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={item.title} maxWidth="4xl">
       <div className="space-y-4">
-        {/* Top Control Bar (Quick Share Stage Toolbar style) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[#e5edf6] dark:border-[#344257]">
-          <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-bold text-[#0f172b] dark:text-white truncate max-w-sm sm:max-w-md tracking-tight">
-              {item.title}
-            </h3>
-            <p className="text-xs text-[#65758b] dark:text-[#a4b5ce] tabular-nums mt-0.5">
-              {item.file.originalFilename} · {formatBytes(item.file.fileSize)} · Saved {formatDate(item.createdAt)}
-            </p>
-          </div>
+        {/* Top Quick Look Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-black/[0.07] dark:border-white/[0.09]">
+          <p className="text-[12px] text-[#8e8e93] tabular-nums truncate">
+            {item.file.originalFilename} · {formatBytes(item.file.fileSize)} · {formatDate(item.createdAt)}
+          </p>
 
           <div className="flex items-center gap-1.5 flex-wrap">
             {isImage && (
@@ -57,22 +52,22 @@ export function MediaViewerModal({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="icon"
                   onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8"
                   title="Zoom Out"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </Button>
-                <span className="text-xs font-mono font-semibold text-[#53667a] dark:text-[#a4b5ce] px-1 tabular-nums">
+                <span className="text-[12px] font-mono text-[#6c6c70] dark:text-[#98989d] px-1 tabular-nums">
                   {Math.round(zoomLevel * 100)}%
                 </span>
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="icon"
                   onClick={() => setZoomLevel((z) => Math.min(3, z + 0.25))}
-                  className="h-8 w-8 p-0"
+                  className="h-8 w-8"
                   title="Zoom In"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
@@ -85,18 +80,17 @@ export function MediaViewerModal({
               variant={item.isFavourite ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => onToggleFavourite(item)}
-              className="h-8 px-2.5 text-xs"
               title="Favourite"
             >
               <Star
-                className={`w-3.5 h-3.5 ${item.isFavourite ? 'fill-[#f59e0b] text-[#f59e0b]' : ''}`}
+                className={`w-3.5 h-3.5 ${item.isFavourite ? 'fill-[#ffcc00] text-[#ffcc00]' : ''}`}
               />
             </Button>
 
             <a
               href={downloadUrl}
               download={item.file.originalFilename}
-              className="qs-primary-btn inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 h-8.5 px-3.5 text-xs gap-1.5 text-white"
+              className="inline-flex items-center justify-center font-medium rounded-[8px] transition-colors h-8 px-3 text-[13px] gap-1.5 bg-[#007aff] hover:bg-[#0062cc] dark:bg-[#0a84ff] text-white"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -107,28 +101,29 @@ export function MediaViewerModal({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => {
                 onDelete(item);
                 onClose();
               }}
-              className="h-8 w-8 p-0 text-[#e11d48] hover:bg-[#fff1f2] dark:hover:bg-[#3e2124]"
-              title="Move to Trash"
+              className="h-8 w-8 text-[#ff3b30] hover:bg-[#ff3b30]/10"
+              title="Move to Recently Deleted"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Media Preview Area */}
-        <div className="min-h-[320px] max-h-[65vh] flex items-center justify-center bg-[#f5f8fb] dark:bg-[#172235] border border-[#dce8f5] dark:border-[#34465e] rounded-2xl overflow-hidden p-3 relative">
+        {/* Quick Look Stage */}
+        <div className="min-h-[320px] max-h-[65vh] flex items-center justify-center bg-[#f2f2f7] dark:bg-[#000000] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] overflow-hidden p-3 relative">
           {isImage ? (
             <div className="relative overflow-auto max-h-[60vh] max-w-full flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={downloadUrl}
                 alt={item.title}
                 style={{ transform: `scale(${zoomLevel})` }}
-                className="max-h-[58vh] max-w-full object-contain transition-transform duration-150 rounded-xl select-none"
+                className="max-h-[58vh] max-w-full object-contain transition-transform duration-150 rounded-[10px] select-none"
               />
             </div>
           ) : isVideo ? (
@@ -137,28 +132,27 @@ export function MediaViewerModal({
               controls
               playsInline
               preload="metadata"
-              className="max-h-[58vh] max-w-full rounded-xl shadow-lg bg-[#081220]"
+              className="max-h-[58vh] max-w-full rounded-[10px] bg-black"
             >
               Your browser does not support HTML5 video playback.
             </video>
           ) : (
-            /* Document / File Preview (Quick Share File Stage style) */
-            <div className="text-center p-8 space-y-4">
-              <div className="w-18 h-18 rounded-2xl bg-[#eaf4ff] dark:bg-[#203954] border border-[#dbe9fa] dark:border-[#344b65] text-[#1677df] dark:text-[#60a5fa] flex items-center justify-center mx-auto shadow-2xs">
-                <FileCode className="w-9 h-9" />
+            <div className="text-center p-8 space-y-3.5">
+              <div className="w-16 h-16 rounded-[16px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto">
+                <FileCode className="w-8 h-8" />
               </div>
               <div>
-                <h4 className="text-base font-bold text-[#0f172b] dark:text-white">
+                <h4 className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
                   {item.file.originalFilename}
                 </h4>
-                <p className="text-xs text-[#65758b] dark:text-[#a4b5ce] mt-1 tabular-nums">
+                <p className="text-[12px] text-[#8e8e93] mt-0.5 tabular-nums">
                   {formatBytes(item.file.fileSize)} · {item.file.mimeType}
                 </p>
               </div>
               <a
                 href={downloadUrl}
                 download={item.file.originalFilename}
-                className="qs-primary-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-[10px] bg-[#007aff] hover:bg-[#0062cc] dark:bg-[#0a84ff] text-white text-[14px] font-medium transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Download File

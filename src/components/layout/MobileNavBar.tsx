@@ -1,6 +1,6 @@
 'use client';
 
-import { Home, Plus, Folder, User, MessageSquare } from 'lucide-react';
+import { Layers, Plus, Folder, User, MessageSquare } from 'lucide-react';
 import { NavSection } from './DesktopSidebar';
 import { cn } from '@/lib/utils';
 
@@ -16,22 +16,22 @@ export function MobileNavBar({
   onOpenComposer,
 }: MobileNavBarProps) {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-[#111b2c]/95 backdrop-blur-xl border-t border-[#dce7f4] dark:border-[#2b3f58] px-3 py-2 pb-safe shadow-[0_-4px_22px_rgba(27,55,85,0.06)]">
-      <div className="flex items-center justify-around max-w-lg mx-auto">
-        {/* My Vault */}
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 ios-material border-t border-black/[0.08] dark:border-white/[0.1] px-2 pt-1.5 pb-safe">
+      <div className="flex items-center justify-around max-w-md mx-auto">
+        {/* Vault */}
         <button
           type="button"
           onClick={() => onSelectSection('all')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
             currentSection === 'all'
-              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
-              : 'text-[#607187] dark:text-[#98b0c9]'
+              ? 'text-[#007aff] dark:text-[#0a84ff]'
+              : 'text-[#8e8e93]'
           )}
-          aria-label="My Vault"
+          aria-label="Vault"
         >
-          <Home className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Vault</span>
+          <Layers className="w-[21px] h-[21px]" />
+          <span className="text-[10px] font-medium mt-0.5">Vault</span>
         </button>
 
         {/* Chats */}
@@ -39,57 +39,57 @@ export function MobileNavBar({
           type="button"
           onClick={() => onSelectSection('chats')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
             currentSection === 'chats'
-              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
-              : 'text-[#607187] dark:text-[#98b0c9]'
+              ? 'text-[#007aff] dark:text-[#0a84ff]'
+              : 'text-[#8e8e93]'
           )}
-          aria-label="Private Chats"
+          aria-label="Chats"
         >
-          <MessageSquare className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Chats</span>
+          <MessageSquare className="w-[21px] h-[21px]" />
+          <span className="text-[10px] font-medium mt-0.5">Chats</span>
         </button>
 
-        {/* Floating Add Button */}
+        {/* New Item Button */}
         <button
           type="button"
           onClick={onOpenComposer}
-          className="flex items-center justify-center w-11 h-11 rounded-2xl qs-primary-btn text-white active:scale-95 transition-transform cursor-pointer"
-          aria-label="Save something new"
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white shadow-[0_2px_8px_rgba(0,122,255,0.35)] active:scale-95 transition-transform cursor-pointer"
+          aria-label="New vault item"
         >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
+          <Plus className="w-5 h-5 stroke-[2.5]" />
         </button>
 
-        {/* Files / Photos */}
+        {/* Files */}
         <button
           type="button"
           onClick={() => onSelectSection('file')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
             currentSection === 'file'
-              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
-              : 'text-[#607187] dark:text-[#98b0c9]'
+              ? 'text-[#007aff] dark:text-[#0a84ff]'
+              : 'text-[#8e8e93]'
           )}
-          aria-label="Files and documents"
+          aria-label="Documents"
         >
-          <Folder className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Files</span>
+          <Folder className="w-[21px] h-[21px]" />
+          <span className="text-[10px] font-medium mt-0.5">Files</span>
         </button>
 
-        {/* Profile */}
+        {/* Settings */}
         <button
           type="button"
           onClick={() => onSelectSection('settings')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] min-h-[44px] rounded-xl transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
             currentSection === 'settings'
-              ? 'text-[#1677df] dark:text-[#78bbff] font-semibold'
-              : 'text-[#607187] dark:text-[#98b0c9]'
+              ? 'text-[#007aff] dark:text-[#0a84ff]'
+              : 'text-[#8e8e93]'
           )}
-          aria-label="Profile & Settings"
+          aria-label="Settings"
         >
-          <User className="w-5 h-5" />
-          <span className="text-[10px] mt-0.5">Profile</span>
+          <User className="w-[21px] h-[21px]" />
+          <span className="text-[10px] font-medium mt-0.5">Settings</span>
         </button>
       </div>
     </div>

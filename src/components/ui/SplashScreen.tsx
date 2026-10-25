@@ -9,11 +9,10 @@ interface SplashScreenProps {
   durationMs?: number;
 }
 
-export function SplashScreen({ onFinish, durationMs = 1000 }: SplashScreenProps) {
+export function SplashScreen({ onFinish, durationMs = 700 }: SplashScreenProps) {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
-    // Hold on screen for the requested duration (1 sec)
     const timer = setTimeout(() => {
       setIsFadingOut(true);
     }, durationMs);
@@ -23,57 +22,37 @@ export function SplashScreen({ onFinish, durationMs = 1000 }: SplashScreenProps)
 
   useEffect(() => {
     if (isFadingOut) {
-      // Allow 350ms for smooth crossfade out before unmounting
       const fadeTimer = setTimeout(() => {
         onFinish?.();
-      }, 350);
+      }, 280);
       return () => clearTimeout(fadeTimer);
     }
   }, [isFadingOut, onFinish]);
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0b1422] text-white transition-all duration-350 ease-out select-none ${
-        isFadingOut ? 'opacity-0 scale-102 pointer-events-none' : 'opacity-100 scale-100'
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7] transition-opacity duration-280 ease-out select-none ${
+        isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* Subtle iridescent background aura matching the Quick Share sky/cobalt palette */}
-      <div className="absolute w-80 h-80 rounded-full bg-gradient-to-tr from-[#0875da]/25 via-[#249df1]/20 to-[#6366f1]/20 blur-3xl pointer-events-none animate-pulse" />
-
-      {/* Centered Logo Container with dynamic entry */}
       <div className="relative flex flex-col items-center">
-        <div className="relative group">
-          <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-[#0875da]/40 via-[#249df1]/40 to-[#6366f1]/35 blur-lg opacity-80 animate-pulse" />
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shadow-2xl border border-[#34465e] bg-[#142033]/80 backdrop-blur-xl transition-transform transform active:scale-95">
-            <Image
-              src="/logo.png"
-              alt={SITE_CONFIG.name}
-              width={112}
-              height={112}
-              priority
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-
-        {/* Brand Name & Tagline */}
-        <h1 className="mt-5 text-xl sm:text-2xl font-bold tracking-tight text-white drop-shadow-sm">
-          {SITE_CONFIG.name}
-        </h1>
-        <p className="mt-1 text-xs text-[#9cb1ca] tracking-wide font-medium">
-          {SITE_CONFIG.tagline}
-        </p>
-
-        {/* 1-second Progress Bar Indicator */}
-        <div className="w-32 h-1.5 bg-[#1b2b42] rounded-full mt-6 overflow-hidden border border-[#2c3e57]">
-          <div
-            className="h-full bg-gradient-to-r from-[#0875da] via-[#249df1] to-[#6366f1] rounded-full transition-all ease-linear"
-            style={{
-              width: isFadingOut ? '100%' : '100%',
-              transitionDuration: `${durationMs}ms`,
-            }}
+        <div className="w-20 h-20 rounded-[22%] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-black/[0.06] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e]">
+          <Image
+            src="/logo.png"
+            alt={SITE_CONFIG.name}
+            width={80}
+            height={80}
+            priority
+            className="w-full h-full object-cover"
           />
         </div>
+
+        <h1 className="mt-4 text-[19px] font-semibold tracking-[-0.02em] text-[#1c1c1e] dark:text-[#f5f5f7]">
+          {SITE_CONFIG.name}
+        </h1>
+        <p className="mt-0.5 text-[13px] text-[#8e8e93]">
+          {SITE_CONFIG.tagline}
+        </p>
       </div>
     </div>
   );

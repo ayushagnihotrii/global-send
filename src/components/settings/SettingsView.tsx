@@ -2,17 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  User,
-  HardDrive,
   Download,
   Sun,
   Moon,
   LogOut,
-  ShieldAlert,
-  FileText,
-  Image as ImageIcon,
-  Film,
-  FileCode,
   Cloud,
   CheckCircle2,
   AlertCircle,
@@ -20,10 +13,12 @@ import {
   Trash2,
   Sparkles,
   KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { User as UserType, StorageUsage } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
@@ -156,7 +151,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
       setSelectedAvatarFile(null);
       setAvatarPreviewUrl(null);
-      setAvatarError('Only JPEG, PNG, and WebP images are allowed (SVG is not permitted).');
+      setAvatarError('Only JPEG, PNG, and WebP images are allowed.');
       return;
     }
 
@@ -248,7 +243,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
         return;
       }
 
-      toast.success('Profile picture updated');
+      toast.success('Profile photo updated');
       setSelectedAvatarFile(null);
       if (avatarPreviewUrl) {
         URL.revokeObjectURL(avatarPreviewUrl);
@@ -276,7 +271,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
     try {
       const res = await fetch('/api/user/avatar', { method: 'DELETE' });
       if (res.ok) {
-        toast.success('Profile picture removed');
+        toast.success('Profile photo removed');
         if (onUserUpdated) {
           onUserUpdated({
             ...user,
@@ -311,7 +306,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
   };
 
   const handleDisconnectGdrive = async () => {
-    if (!confirm('Are you sure you want to disconnect Google Drive? Active file storage will stop working until reconnected.')) return;
+    if (!confirm('Disconnect Google Drive? Active file storage will stop working until reconnected.')) return;
     setIsDisconnectingGdrive(true);
     try {
       const res = await fetch('/api/admin/gdrive/disconnect', { method: 'POST' });
@@ -347,7 +342,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
         return;
       }
 
-      toast.success('Private login key updated. Save it safely!');
+      toast.success('Login key updated');
       setShowKeyModal(false);
       setCurrentKey('');
       setNewKey('');
@@ -376,7 +371,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
         return;
       }
 
-      toast.success('Your account and vault have been permanently deleted');
+      toast.success('Account deleted');
       onLogout();
     } catch {
       setDeleteError('A network error occurred');
@@ -386,7 +381,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
   };
 
   const handleEmptyTrash = async () => {
-    if (!window.confirm('Are you sure you want to permanently delete all items in Trash? This cannot be undone.')) {
+    if (!window.confirm('Permanently delete all items in Recently Deleted? This cannot be undone.')) {
       return;
     }
 
@@ -394,19 +389,19 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
       const res = await fetch('/api/items/trash/empty', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Trash emptied');
+        toast.success(data.message || 'Recently Deleted emptied');
         fetchStorageUsage();
       } else {
-        toast.error('Failed to empty trash');
+        toast.error('Failed to empty Recently Deleted');
       }
     } catch {
-      toast.error('Could not empty trash');
+      toast.error('Could not empty Recently Deleted');
     }
   };
 
   const handleExportData = () => {
     window.location.href = '/api/user/export';
-    toast.success('Preparing JSON metadata export...');
+    toast.success('Preparing JSON metadata export…');
   };
 
   const usedBytes = storageUsage?.usedBytes || 0;
@@ -415,398 +410,361 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
   const displayUsername = user.displayUsername || user.username;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-7 pb-16">
-      {/* Page Header */}
+    <div className="max-w-2xl mx-auto space-y-6 pb-16">
+      {/* iOS Large Title Header */}
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-[#5481aa] dark:text-[#8bb5dc] mb-1">
-          PROFILE &amp; VAULT PREFERENCES
-        </p>
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0f172b] dark:text-white">
-          Profile &amp; Settings
+        <h2 className="text-[28px] sm:text-[32px] font-bold tracking-[-0.025em] text-[#1c1c1e] dark:text-[#f5f5f7]">
+          Settings
         </h2>
-        <p className="text-xs sm:text-sm text-[#53667a] dark:text-[#a4b5ce] mt-1">
-          Manage your public profile picture (max 100 KB), private login key, and temporary vault storage.
-        </p>
       </div>
 
-      {/* 1. PROFILE PICTURE (DP) & IDENTITY SECTION */}
-      <div className="bg-white dark:bg-[#19263a] rounded-[24px] border border-[#dbe6f2] dark:border-[#34465e] qs-panel-shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#f1f7ff] via-[#fbfdff] to-white dark:from-[#1a304b] dark:via-[#19263a] dark:to-[#19263a] border-b border-[#e3ecf7] dark:border-[#34465e] px-5 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#eaf4ff] dark:bg-[#223b54] border border-[#dbe9fa] dark:border-[#3b5675] text-[#1677df] dark:text-[#78bbff] flex items-center justify-center shrink-0">
-              <User className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[#15263e] dark:text-white">
-                Public Profile &amp; Identity
-              </h3>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Visible to other users in Chats as <span className="font-semibold text-[#1677df] dark:text-[#78bbff]">@{displayUsername}</span>
-              </p>
-            </div>
-          </div>
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-[#f1f6fd] dark:bg-[#203149] text-[#5481aa] dark:text-[#8bb5dc] border border-[#dce8f6] dark:border-[#3b5675]">
-            Max DP: 100 KB
-          </span>
-        </div>
-
-        <div className="p-5 sm:p-6 space-y-5">
-          {/* Profile Picture (DP) Uploader */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pb-5 border-b border-[#e5edf6] dark:border-[#34465e]">
-            <div className="relative group shrink-0">
+      {/* 1. APPLE ACCOUNT-STYLE PROFILE CARD */}
+      <section className="space-y-1.5">
+        <div className="ios-card rounded-[16px] divide-y divide-black/[0.06] dark:divide-white/[0.08] overflow-hidden">
+          {/* Top Identity Row */}
+          <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="relative shrink-0">
               {avatarPreviewUrl || user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarPreviewUrl || user.avatarUrl || ''}
                   alt={displayUsername}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-[#cde3fa] dark:border-[#3b5675] shadow-xs"
+                  className="w-16 h-16 rounded-full object-cover border border-black/[0.08] dark:border-white/[0.12]"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#eaf4ff] to-[#dbeafe] dark:from-[#223b54] dark:to-[#1d304a] border-2 border-[#cde3fa] dark:border-[#3b5675] text-[#1677df] dark:text-[#78bbff] font-bold text-xl flex items-center justify-center uppercase">
+                <div className="w-16 h-16 rounded-full bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#409cff] font-bold text-[20px] flex items-center justify-center uppercase">
                   {displayUsername.slice(0, 2)}
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => avatarInputRef.current?.click()}
-                className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-xl bg-[#1677df] text-white flex items-center justify-center shadow-md hover:bg-[#1264c0] transition-colors cursor-pointer"
-                title="Choose profile picture"
+                className="absolute -bottom-0.5 -right-0.5 w-6.5 h-6.5 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white flex items-center justify-center shadow-xs cursor-pointer"
+                title="Change Profile Photo"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="flex-1 space-y-2 w-full">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-bold text-[#0f172b] dark:text-white">
-                    Profile Picture (DP)
-                  </p>
-                  <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                    JPEG, PNG, or WebP • Strict maximum size <span className="font-semibold text-[#0f172b] dark:text-white">100 KB (102,400 bytes)</span>
-                  </p>
-                </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-[18px] font-semibold tracking-[-0.018em] text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+                @{displayUsername}
+              </h3>
+              <p className="text-[13px] text-[#8e8e93] mt-0.5">
+                Key-Protected Vault · Profile photo max 100 KB
+              </p>
+            </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleAvatarFileSelect}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => avatarInputRef.current?.click()}
-                    className="text-xs gap-1.5"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                    <span>Choose Image</span>
-                  </Button>
-
-                  {user.avatarUrl && !selectedAvatarFile && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleRemoveAvatar}
-                      isLoading={isRemovingAvatar}
-                      className="text-xs text-[#e11d48] hover:text-[#be123c]"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {selectedAvatarFile && (
-                <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-[#f8fbff] dark:bg-[#152236] border border-[#dce7f4] dark:border-[#34465e]">
-                  <div className="text-xs">
-                    <span className="font-semibold text-[#0f172b] dark:text-white">
-                      {selectedAvatarFile.name}
-                    </span>{' '}
-                    <span
-                      className={`font-mono font-semibold ${
-                        selectedAvatarFile.size > MAX_AVATAR_BYTES
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-emerald-600 dark:text-emerald-400'
-                      }`}
-                    >
-                      ({(selectedAvatarFile.size / 1024).toFixed(1)} KB / 100 KB)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {selectedAvatarFile.size > MAX_AVATAR_BYTES && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        onClick={handleAutoCompressAvatar}
-                        isLoading={isCompressingAvatar}
-                        className="text-xs gap-1 h-7"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Auto-Resize &lt;100 KB</span>
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedAvatarFile(null);
-                        setAvatarError(null);
-                        if (avatarPreviewUrl) {
-                          URL.revokeObjectURL(avatarPreviewUrl);
-                          setAvatarPreviewUrl(null);
-                        }
-                        if (avatarInputRef.current) avatarInputRef.current.value = '';
-                      }}
-                      className="text-xs h-7"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleUploadAvatar}
-                      disabled={selectedAvatarFile.size > MAX_AVATAR_BYTES}
-                      isLoading={isUploadingAvatar}
-                      className="text-xs h-7"
-                    >
-                      Save DP
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {avatarError && (
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900/60 text-xs text-red-600 dark:text-red-300">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{avatarError}</span>
-                </div>
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleAvatarFileSelect}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                Edit Photo
+              </Button>
+              {user.avatarUrl && !selectedAvatarFile && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleRemoveAvatar}
+                  isLoading={isRemovingAvatar}
+                  className="text-[#ff3b30] hover:bg-[#ff3b30]/10 w-8 h-8"
+                  title="Remove Photo"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
               )}
             </div>
           </div>
 
-          {/* Login Key Management */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
-            <div>
-              <p className="font-semibold text-[#0f172b] dark:text-white flex items-center gap-1.5">
-                <KeyRound className="w-4 h-4 text-[#1677df]" />
-                Private Login Key
-              </p>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Rotate your secret login key. Keys are never stored in plain text and cannot be recovered if lost.
-              </p>
+          {/* Pending Avatar Selection Bar */}
+          {selectedAvatarFile && (
+            <div className="px-4 sm:px-5 py-3 bg-[#767680]/[0.05] dark:bg-[#767680]/[0.14] flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[13px]">
+                <span className="font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  {selectedAvatarFile.name}
+                </span>{' '}
+                <span
+                  className={`font-mono text-[12px] tabular-nums ${
+                    selectedAvatarFile.size > MAX_AVATAR_BYTES
+                      ? 'text-[#ff3b30] font-semibold'
+                      : 'text-[#34c759]'
+                  }`}
+                >
+                  ({(selectedAvatarFile.size / 1024).toFixed(1)} KB / 100 KB)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {selectedAvatarFile.size > MAX_AVATAR_BYTES && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAutoCompressAvatar}
+                    isLoading={isCompressingAvatar}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Compress &lt;100 KB</span>
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedAvatarFile(null);
+                    setAvatarError(null);
+                    if (avatarPreviewUrl) {
+                      URL.revokeObjectURL(avatarPreviewUrl);
+                      setAvatarPreviewUrl(null);
+                    }
+                    if (avatarInputRef.current) avatarInputRef.current.value = '';
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleUploadAvatar}
+                  disabled={selectedAvatarFile.size > MAX_AVATAR_BYTES}
+                  isLoading={isUploadingAvatar}
+                >
+                  Save Photo
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {avatarError && (
+            <div className="px-4 sm:px-5 py-2.5 bg-[#ff3b30]/10 text-[12px] text-[#ff3b30] flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{avatarError}</span>
+            </div>
+          )}
+
+          {/* Private Login Key Row */}
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-7 h-7 rounded-[7px] bg-[#007aff] text-white flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  Private Login Key
+                </p>
+                <p className="text-[12px] text-[#8e8e93] truncate">
+                  Rotate your secret login key
+                </p>
+              </div>
             </div>
             <Button
               type="button"
               variant="secondary"
               size="sm"
               onClick={() => setShowKeyModal(true)}
-              className="self-start sm:self-auto text-xs shrink-0"
             >
-              Change Login Key
+              Change Key
             </Button>
           </div>
 
-          {/* Sign Out */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm pt-4 border-t border-[#e5edf6] dark:border-[#34465e]">
-            <div>
-              <p className="font-semibold text-[#0f172b] dark:text-white">Sign Out</p>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                End your current session and invalidate active tokens on this account
-              </p>
+          {/* Appearance Row */}
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-[7px] bg-[#5856d6] text-white flex items-center justify-center shrink-0">
+                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </div>
+              <div>
+                <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  Appearance
+                </p>
+                <p className="text-[12px] text-[#8e8e93]">
+                  Light or Dark interface style
+                </p>
+              </div>
             </div>
-            <Button
-              type="button"
-              variant="outline"
+
+            <SegmentedControl
               size="sm"
-              onClick={onLogout}
-              className="self-start sm:self-auto text-xs gap-1.5"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sign Out</span>
-            </Button>
+              value={theme}
+              onChange={(v) => handleThemeChange(v)}
+              options={[
+                { value: 'light', label: 'Light', icon: <Sun className="w-3.5 h-3.5" /> },
+                { value: 'dark', label: 'Dark', icon: <Moon className="w-3.5 h-3.5" /> },
+              ]}
+            />
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* 2. STORAGE QUOTA SECTION */}
-      <div className="bg-white dark:bg-[#19263a] rounded-[24px] border border-[#dbe6f2] dark:border-[#34465e] qs-panel-shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#f1f7ff] via-[#fbfdff] to-white dark:from-[#1a304b] dark:via-[#19263a] dark:to-[#19263a] border-b border-[#e3ecf7] dark:border-[#34465e] px-5 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#ecfdf5] dark:bg-[#193b2d] border border-[#cce9dc] dark:border-[#2e634c] text-[#059669] dark:text-[#34d399] flex items-center justify-center shrink-0">
-              <HardDrive className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[#15263e] dark:text-white">
-                Temporary Vault Storage Quota
-              </h3>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Items automatically free up quota when they expire
-              </p>
-            </div>
-          </div>
-
-          <Button
+      {/* 2. iOS-STYLE VAULT STORAGE SECTION */}
+      <section className="space-y-1.5">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[12px] font-medium uppercase tracking-wide text-[#8e8e93]">
+            Vault Storage
+          </span>
+          <button
             type="button"
-            variant="outline"
-            size="sm"
             onClick={fetchStorageUsage}
-            isLoading={isLoadingStorage}
-            className="text-xs h-8"
+            className="text-[12px] text-[#007aff] dark:text-[#0a84ff] inline-flex items-center gap-1 cursor-pointer"
           >
-            Refresh
-          </Button>
+            <RefreshCw className={`w-3 h-3 ${isLoadingStorage ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
         </div>
 
-        <div className="p-5 sm:p-6 space-y-5">
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#65758b] dark:text-[#a4b5ce]">
-                Active Vault Usage
-              </span>
-              <span className="bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                AUTO-EXPIRING
+        <div className="ios-card rounded-[16px] p-4 sm:p-5 space-y-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <span className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                Temporary Cloud Vault
               </span>
             </div>
+            <span className="text-[13px] text-[#8e8e93] tabular-nums">
+              {formatBytes(usedBytes)} of {formatBytes(limitBytes)} used
+            </span>
+          </div>
 
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-2xl font-bold tracking-tight text-[#244363] dark:text-[#abc9e7] tabular-nums">
-                {formatBytes(usedBytes)}
-              </span>
-              <span className="text-xs font-medium text-[#65758b] dark:text-[#a4b5ce] tabular-nums">
-                of {formatBytes(limitBytes)} quota ({usagePercentage}%)
-              </span>
-            </div>
-
-            <div className="w-full h-2.5 bg-[#e6eff9] dark:bg-[#2a405d] rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  usagePercentage > 90
-                    ? 'bg-gradient-to-r from-rose-500 to-red-600'
-                    : usagePercentage > 75
-                    ? 'bg-gradient-to-r from-amber-400 to-orange-500'
-                    : 'bg-gradient-to-r from-[#38bdf8] to-[#1677df]'
-                }`}
-                style={{ width: `${Math.max(2, usagePercentage)}%` }}
-              />
-            </div>
+          {/* iPhone Storage-style Bar */}
+          <div className="w-full h-2.5 bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                usagePercentage > 90
+                  ? 'bg-[#ff3b30]'
+                  : usagePercentage > 75
+                  ? 'bg-[#ff9500]'
+                  : 'bg-[#007aff] dark:bg-[#0a84ff]'
+              }`}
+              style={{ width: `${Math.max(2, usagePercentage)}%` }}
+            />
           </div>
 
           {storageUsage && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              <div className="p-3.5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dfeaf7] dark:border-[#344b65] text-center">
-                <FileText className="w-4 h-4 text-[#1677df] dark:text-[#60a5fa] mx-auto mb-1" />
-                <p className="text-base font-bold text-[#0f172b] dark:text-white tabular-nums">
-                  {storageUsage.breakdown.texts}
-                </p>
-                <p className="text-[11px] font-medium text-[#65758b] dark:text-[#a4b5ce]">Texts &amp; Notes</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+              <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff9500] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums leading-tight">
+                    {storageUsage.breakdown.texts}
+                  </p>
+                  <p className="text-[11px] text-[#8e8e93] truncate">Notes</p>
+                </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dfeaf7] dark:border-[#344b65] text-center">
-                <ImageIcon className="w-4 h-4 text-[#059669] dark:text-[#34d399] mx-auto mb-1" />
-                <p className="text-base font-bold text-[#0f172b] dark:text-white tabular-nums">
-                  {storageUsage.breakdown.photos}
-                </p>
-                <p className="text-[11px] font-medium text-[#65758b] dark:text-[#a4b5ce]">Photos</p>
+              <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#34c759] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums leading-tight">
+                    {storageUsage.breakdown.photos}
+                  </p>
+                  <p className="text-[11px] text-[#8e8e93] truncate">Photos</p>
+                </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dfeaf7] dark:border-[#344b65] text-center">
-                <Film className="w-4 h-4 text-[#ea580c] dark:text-[#fb923c] mx-auto mb-1" />
-                <p className="text-base font-bold text-[#0f172b] dark:text-white tabular-nums">
-                  {storageUsage.breakdown.videos}
-                </p>
-                <p className="text-[11px] font-medium text-[#65758b] dark:text-[#a4b5ce]">Videos</p>
+              <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#af52de] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums leading-tight">
+                    {storageUsage.breakdown.videos}
+                  </p>
+                  <p className="text-[11px] text-[#8e8e93] truncate">Videos</p>
+                </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#f8fbff] dark:bg-[#17263b] border border-[#dfeaf7] dark:border-[#344b65] text-center">
-                <FileCode className="w-4 h-4 text-[#7c3aed] dark:text-[#c4b5fd] mx-auto mb-1" />
-                <p className="text-base font-bold text-[#0f172b] dark:text-white tabular-nums">
-                  {storageUsage.breakdown.files}
-                </p>
-                <p className="text-[11px] font-medium text-[#65758b] dark:text-[#a4b5ce]">Files &amp; Docs</p>
+              <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#007aff] shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums leading-tight">
+                    {storageUsage.breakdown.files}
+                  </p>
+                  <p className="text-[11px] text-[#8e8e93] truncate">Documents</p>
+                </div>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* 2B. OWNER-ONLY GOOGLE DRIVE STORAGE ADMINISTRATION */}
+      {/* 3. OWNER-ONLY GOOGLE DRIVE STORAGE POOL */}
       {user.isAdmin && (
-        <div className="bg-white dark:bg-[#19263a] rounded-[24px] border border-[#dbe6f2] dark:border-[#34465e] qs-panel-shadow overflow-hidden">
-          <div className="bg-gradient-to-r from-[#f1f7ff] via-[#fbfdff] to-white dark:from-[#1a304b] dark:via-[#19263a] dark:to-[#19263a] border-b border-[#e3ecf7] dark:border-[#34465e] px-5 sm:px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-[#eaf4ff] dark:bg-[#223b54] border border-[#dbe9fa] dark:border-[#3b5675] text-[#1677df] dark:text-[#78bbff] flex items-center justify-center shrink-0">
-                <Cloud className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-[#15263e] dark:text-white">
-                  Storage Administrator — Google Drive Pool
-                </h3>
-                <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                  Owner-only central 15 GB storage backend configuration
-                </p>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={fetchGdriveStatus}
-              isLoading={isLoadingGdrive}
-              className="text-xs h-8"
-            >
-              Check Status
-            </Button>
+        <section className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[12px] font-medium uppercase tracking-wide text-[#8e8e93]">
+              Administrator Storage Backend
+            </span>
           </div>
 
-          <div className="p-5 sm:p-6">
+          <div className="ios-card rounded-[16px] p-4 sm:p-5 space-y-3.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-[8px] bg-[#007aff]/12 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center shrink-0">
+                  <Cloud className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                    Google Drive Storage Pool
+                  </h3>
+                  <p className="text-[12px] text-[#8e8e93]">
+                    Central 15 GB storage backend
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={fetchGdriveStatus}
+                isLoading={isLoadingGdrive}
+              >
+                Check Status
+              </Button>
+            </div>
+
             {gdriveStatus?.connected ? (
-              <div className="space-y-3.5">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#059669] dark:text-[#34d399] bg-[#ecfdf5] dark:bg-[#193b2d] px-3.5 py-2.5 rounded-2xl border border-[#cce9dc] dark:border-[#2e634c]">
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center gap-2 text-[13px] font-medium text-[#34c759] dark:text-[#30d158] bg-[#34c759]/10 px-3.5 py-2.5 rounded-[12px]">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>Connected to Owner Google Drive</span>
+                  <span>Connected to Google Drive</span>
                   {gdriveStatus.quota?.accountEmail && (
-                    <span className="font-normal text-[#53667a] dark:text-[#a4b5ce] ml-auto">
+                    <span className="text-[12px] text-[#8e8e93] ml-auto">
                       {gdriveStatus.quota.accountEmail}
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-[#53667a] dark:text-[#a4b5ce] leading-relaxed">
-                  Uploaded photos, videos, and documents are stored in the dedicated <span className="font-semibold text-[#0f172b] dark:text-white">Global Send</span> Google Drive folder and permanently purged when items expire.
-                </p>
-
-                <div className="flex justify-end pt-1">
+                <div className="flex justify-end">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={handleDisconnectGdrive}
                     isLoading={isDisconnectingGdrive}
-                    className="text-xs text-[#e11d48] dark:text-[#fb7185] hover:bg-[#fff1f2] dark:hover:bg-[#3e2124] border-[#fecdd3] dark:border-[#7f2d36]"
+                    className="text-[#ff3b30]"
                   >
                     Disconnect Google Drive
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-3.5">
-                <div className="flex items-start gap-2.5 text-xs text-[#805719] dark:text-[#e7c68d] bg-[#fff8e9] dark:bg-[#342c1d] p-3.5 rounded-2xl border border-[#efcc8a] dark:border-[#6d5630]">
+              <div className="space-y-3 pt-1">
+                <div className="flex items-start gap-2.5 text-[12px] text-[#ff9500] bg-[#ff9500]/10 p-3 rounded-[12px]">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold">Owner Google Drive Not Connected</p>
-                    <p className="text-[11px] mt-0.5 leading-relaxed">
-                      {gdriveStatus?.error ||
-                        'Connect the administrator Google account once to provide the 15 GB storage pool for Global Send.'}
-                    </p>
-                  </div>
+                  <span>
+                    {gdriveStatus?.error ||
+                      'Connect the administrator Google account to enable the central storage pool.'}
+                  </span>
                 </div>
 
                 <Button
@@ -815,85 +773,32 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
                   size="sm"
                   onClick={handleConnectGdrive}
                   disabled={!gdriveStatus?.isConfigured}
-                  className="text-xs gap-1.5"
                 >
                   <Cloud className="w-4 h-4" />
-                  <span>Connect Owner Google Drive</span>
+                  <span>Connect Google Drive</span>
                 </Button>
               </div>
             )}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* 3. APPEARANCE SECTION */}
-      <div className="bg-white dark:bg-[#19263a] rounded-[24px] border border-[#dbe6f2] dark:border-[#34465e] p-5 sm:p-6 qs-panel-shadow">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#fff7ed] dark:bg-[#3d291a] border border-[#fed7aa] dark:border-[#694425] text-[#ea580c] dark:text-[#fb923c] flex items-center justify-center shrink-0">
-              <Sun className="w-5 h-5" />
-            </div>
+      {/* 4. DATA & PRIVACY GROUPED LIST */}
+      <section className="space-y-1.5">
+        <div className="px-1">
+          <span className="text-[12px] font-medium uppercase tracking-wide text-[#8e8e93]">
+            Data &amp; Privacy
+          </span>
+        </div>
+
+        <div className="ios-card rounded-[16px] divide-y divide-black/[0.06] dark:divide-white/[0.08] overflow-hidden">
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-base font-bold text-[#15263e] dark:text-white">
-                Appearance
-              </h3>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Choose interface color theme
+              <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                Export Metadata
               </p>
-            </div>
-          </div>
-
-          <div className="inline-flex p-1 bg-[#edf4fb] dark:bg-[#142237] border border-[#dce7f4] dark:border-[#34465e] rounded-2xl">
-            <button
-              type="button"
-              onClick={() => handleThemeChange('light')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                theme === 'light'
-                  ? 'bg-white text-[#1677df] shadow-xs border border-[#dce8f5]'
-                  : 'text-[#53667a] hover:text-[#1677df]'
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5" />
-              <span>Light</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleThemeChange('dark')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                theme === 'dark'
-                  ? 'bg-[#1d304a] text-[#78bbff] shadow-xs border border-[#3b5675]'
-                  : 'text-[#65758b] dark:text-[#a4b5ce] hover:text-white'
-              }`}
-            >
-              <Moon className="w-3.5 h-3.5" />
-              <span>Dark</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. PRIVACY, EXPORT & DANGER ZONE */}
-      <div className="bg-white dark:bg-[#19263a] rounded-[24px] border border-[#dbe6f2] dark:border-[#34465e] qs-panel-shadow overflow-hidden">
-        <div className="bg-gradient-to-r from-[#fff1f2] via-[#fff8f8] to-white dark:from-[#3e2124] dark:via-[#19263a] dark:to-[#19263a] border-b border-[#fecdd3]/60 dark:border-[#34465e] px-5 sm:px-6 py-4 flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-2xl bg-[#fff1f2] dark:bg-[#3e2124] border border-[#fecdd3] dark:border-[#7f2d36] text-[#e11d48] dark:text-[#fb7185] flex items-center justify-center shrink-0">
-            <ShieldAlert className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-[#15263e] dark:text-white">
-              Data &amp; Privacy
-            </h3>
-            <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-              Export metadata, empty trash, or permanently erase your account
-            </p>
-          </div>
-        </div>
-
-        <div className="p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
-            <div>
-              <p className="font-semibold text-[#0f172b] dark:text-white">Export Vault Metadata</p>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Download a JSON summary of your active saved notes, links, and file metadata
+              <p className="text-[12px] text-[#8e8e93]">
+                Download a JSON archive of your active notes, links, and file metadata
               </p>
             </div>
             <Button
@@ -901,18 +806,20 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               variant="secondary"
               size="sm"
               onClick={handleExportData}
-              className="self-start sm:self-auto text-xs gap-1.5 shrink-0"
+              className="shrink-0"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export JSON</span>
+              <span>Export</span>
             </Button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm pt-4 border-t border-[#e5edf6] dark:border-[#34465e]">
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
             <div>
-              <p className="font-semibold text-[#0f172b] dark:text-white">Empty Trash</p>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Permanently delete all items currently in Trash and remove them from storage
+              <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                Empty Recently Deleted
+              </p>
+              <p className="text-[12px] text-[#8e8e93]">
+                Permanently remove all items in Recently Deleted and reclaim quota
               </p>
             </div>
             <Button
@@ -920,17 +827,40 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               variant="outline"
               size="sm"
               onClick={handleEmptyTrash}
-              className="self-start sm:self-auto text-xs text-[#e11d48] hover:text-[#be123c] shrink-0"
+              className="text-[#ff3b30] shrink-0"
             >
-              Empty Trash
+              Empty
             </Button>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm pt-4 border-t border-[#e5edf6] dark:border-[#34465e]">
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
             <div>
-              <p className="font-semibold text-[#e11d48] dark:text-[#fb7185]">Delete Account</p>
-              <p className="text-xs text-[#65758b] dark:text-[#a4b5ce]">
-                Permanently erase your account, all saved items, chats, and uploaded files
+              <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                Sign Out
+              </p>
+              <p className="text-[12px] text-[#8e8e93]">
+                End your session on this browser
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onLogout}
+              className="shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
+
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[14px] font-medium text-[#ff3b30] dark:text-[#ff453a]">
+                Delete Vault &amp; Account
+              </p>
+              <p className="text-[12px] text-[#8e8e93]">
+                Permanently erase your account, files, notes, and messages
               </p>
             </div>
             <Button
@@ -938,42 +868,30 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               variant="destructive"
               size="sm"
               onClick={() => setShowDeleteModal(true)}
-              className="self-start sm:self-auto text-xs shrink-0"
+              className="shrink-0"
             >
-              Delete Account
+              Delete
             </Button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* 5. ABOUT GLOBAL SEND */}
-      <div className="bg-gradient-to-br from-[#f1f7ff] via-white to-[#f8fbff] dark:from-[#192e49] dark:via-[#19263a] dark:to-[#142033] rounded-[24px] border border-[#dce7f4] dark:border-[#34465e] p-5 qs-card-shadow flex flex-col sm:flex-row items-center sm:items-start gap-4">
-        <Logo size={48} className="rounded-xl shadow-xs" withGlow />
-        <div className="flex-1 text-center sm:text-left">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 justify-center sm:justify-start">
-            <h4 className="font-bold text-sm text-[#0f172b] dark:text-white">
-              {SITE_CONFIG.name}
-            </h4>
-            <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#eaf4ff] dark:bg-[#203954] text-[#1677df] dark:text-[#78bbff] border border-[#d8e9fb] dark:border-[#344b65] font-semibold self-center">
-              v2.0.0
-            </span>
-          </div>
-          <p className="text-xs text-[#65758b] dark:text-[#a4b5ce] mt-1">
-            {SITE_CONFIG.tagline}
-          </p>
-        </div>
+      {/* Footer Version */}
+      <div className="pt-2 flex items-center justify-center gap-2 text-[12px] text-[#8e8e93]">
+        <Logo size={18} />
+        <span>{SITE_CONFIG.name} · v2.0</span>
       </div>
 
       {/* CHANGE LOGIN KEY MODAL */}
       <Modal
         isOpen={showKeyModal}
         onClose={() => setShowKeyModal(false)}
-        title="Change Private Login Key"
-        subtitle="Enter your current login key and choose a new unique login key (8–128 characters)."
+        title="Change Login Key"
+        subtitle="Enter your current key and choose a new private login key (8–128 characters)."
       >
         <form onSubmit={handleChangeKey} className="space-y-4">
           {keyError && (
-            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 text-xs text-red-600">
+            <div className="p-3 rounded-[12px] bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-[13px] text-[#ff3b30]">
               {keyError}
             </div>
           )}
@@ -995,7 +913,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
             required
           />
 
-          <div className="flex items-center justify-end gap-2 pt-3">
+          <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="ghost"
@@ -1005,7 +923,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               Cancel
             </Button>
             <Button type="submit" size="sm" isLoading={isChangingKey}>
-              Update Login Key
+              Save Key
             </Button>
           </div>
         </form>
@@ -1015,29 +933,29 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title="Delete Account Permanently"
-        subtitle="This action is irreversible. All your files, chats, and saved items will be deleted."
+        title="Delete Account"
+        subtitle="This action cannot be undone. All files, notes, and messages will be permanently deleted."
       >
         <form onSubmit={handleDeleteAccount} className="space-y-4">
           {deleteError && (
-            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 text-xs text-red-600">
+            <div className="p-3 rounded-[12px] bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-[13px] text-[#ff3b30]">
               {deleteError}
             </div>
           )}
 
-          <p className="text-xs text-[#86868b] dark:text-[#98989d]">
-            Please enter your private login key to confirm permanent account deletion:
+          <p className="text-[13px] text-[#6c6c70] dark:text-[#98989d]">
+            Enter your private login key to confirm permanent deletion:
           </p>
 
           <Input
-            label="Confirm Private Login Key"
+            label="Private Login Key"
             type="password"
             value={deleteConfirmKey}
             onChange={(e) => setDeleteConfirmKey(e.target.value)}
             required
           />
 
-          <div className="flex items-center justify-end gap-2 pt-3">
+          <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="ghost"
@@ -1052,7 +970,7 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               size="sm"
               isLoading={isDeletingAccount}
             >
-              Confirm Permanent Deletion
+              Delete Permanently
             </Button>
           </div>
         </form>
