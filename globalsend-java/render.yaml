@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: globalsend-java
+    env: docker
+    dockerfilePath: globalsend-java/Dockerfile
+    dockerContext: globalsend-java
+    plan: free
+    region: oregon
+    envVars:
+      - key: DB_TYPE
+        value: sqlite
+      - key: PORT
+        value: 8080

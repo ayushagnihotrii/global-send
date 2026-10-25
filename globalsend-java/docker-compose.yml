@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  globalsend-java:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: globalsend-java
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DB_TYPE=sqlite
+    volumes:
+      - globalsend-data:/usr/local/tomcat/.data
+
+volumes:
+  globalsend-data:

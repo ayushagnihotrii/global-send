@@ -53,6 +53,12 @@ public final class AppConfig {
     }
 
     public static int getServerPort() {
+        String portEnv = System.getenv("PORT");
+        if (portEnv != null && !portEnv.isBlank()) {
+            try {
+                return Integer.parseInt(portEnv.trim());
+            } catch (NumberFormatException ignored) {}
+        }
         return getInt("server.port", 8080);
     }
 
