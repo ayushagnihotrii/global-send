@@ -1,0 +1,7 @@
+.git
+.github
+globalsend-java
+node_modules
+.next
+.agents
+target
