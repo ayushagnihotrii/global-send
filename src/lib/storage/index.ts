@@ -38,7 +38,7 @@ export function getStorageProvider(): StorageProvider {
  * - Keys matching S3/local -> active provider
  */
 export async function deleteStorageFile(storageKey: string): Promise<boolean> {
-  if (storageKey.startsWith('gdrive://')) {
+  if (storageKey.startsWith('gdrive://') || storageKey.startsWith('pgblob://')) {
     const driveProvider = new GoogleDriveStorageProvider();
     return driveProvider.deleteFile(storageKey);
   }

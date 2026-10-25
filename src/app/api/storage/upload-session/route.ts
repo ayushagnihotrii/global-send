@@ -94,14 +94,12 @@ export async function POST(req: NextRequest) {
           status: 'uploading',
           providerUploadUrl: initRes.uploadSessionUrl,
         });
-      } catch (initErr: any) {
+      } catch {
+        // Fall back to server-side chunk assembly + provider.uploadFile (database blob fallback)
+        localChunkBuffers.set(reservation.sessionId, []);
         await updateUploadSession(reservation.sessionId, session.userId, {
-          status: 'failed',
+          status: 'uploading',
         });
-        return NextResponse.json(
-          { error: initErr?.message || 'Failed to initiate cloud upload session' },
-          { status: 500 }
-        );
       }
     } else {
       localChunkBuffers.set(reservation.sessionId, []);

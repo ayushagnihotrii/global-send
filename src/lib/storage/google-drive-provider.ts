@@ -2,9 +2,11 @@
  * Global Send: Google Drive Storage Provider
  * Implements cloud file persistence directly into the owner's dedicated Google Drive folder.
  * Supports multipart uploads, resumable chunked uploads for large files, range-streamed downloads,
- * permanent deletion (bypassing trash), and real-time storage quota inspection.
+ * permanent deletion (bypassing trash), real-time storage quota inspection, and database-backed
+ * blob fallback if the owner's Google Drive OAuth token has not been connected yet.
  */
 
+import { Readable } from 'stream';
 import {
   StorageProvider,
   StorageUploadParams,
@@ -15,6 +17,7 @@ import {
   ResumableUploadInitResult,
 } from './types';
 import { getValidAccessToken, getOrCreateGlobalSendFolder } from './google-drive-auth';
+import { putDatabaseBlob, getDatabaseBlob, deleteDatabaseBlob } from '@/lib/db';
 
 const GOOGLE_DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const GOOGLE_DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
@@ -34,7 +37,30 @@ export class GoogleDriveStorageProvider implements StorageProvider {
   }
 
   async uploadFile(params: StorageUploadParams): Promise<StorageUploadResult> {
-    const accessToken = await getValidAccessToken();
+    let accessToken: string | null = null;
+    try {
+      accessToken = await getValidAccessToken();
+    } catch {
+      accessToken = null;
+    }
+
+    // If owner Google Drive OAuth is not connected yet, store in persistent database blob table
+    if (!accessToken) {
+      const blobKey = `pgblob://${params.itemId}/${crypto.randomUUID()}`;
+      await putDatabaseBlob({
+        storageKey: blobKey,
+        filename: params.filename,
+        mimeType: params.mimeType,
+        buffer: params.buffer,
+      });
+      return {
+        storageKey: blobKey,
+        fileId: blobKey,
+        provider: 'google_drive',
+        size: params.buffer.length,
+      };
+    }
+
     const folderId = await getOrCreateGlobalSendFolder(accessToken);
 
     const metadata = {
@@ -217,6 +243,34 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     storageKey: string,
     range?: { start: number; end?: number }
   ): Promise<StorageDownloadResult> {
+    if (storageKey.startsWith('pgblob://')) {
+      const blob = await getDatabaseBlob(storageKey);
+      if (!blob) {
+        throw new Error(`File not found in storage: ${storageKey}`);
+      }
+      const totalSize = blob.sizeBytes;
+      if (range && range.start !== undefined) {
+        const start = range.start;
+        const end = range.end !== undefined ? Math.min(range.end, totalSize - 1) : totalSize - 1;
+        const sliced = blob.buffer.subarray(start, end + 1);
+        return {
+          stream: Readable.from(sliced),
+          mimeType: blob.mimeType,
+          size: sliced.length,
+          filename: blob.filename,
+          statusCode: 206,
+          contentRange: `bytes ${start}-${end}/${totalSize}`,
+        };
+      }
+      return {
+        stream: Readable.from(blob.buffer),
+        mimeType: blob.mimeType,
+        size: totalSize,
+        filename: blob.filename,
+        statusCode: 200,
+      };
+    }
+
     const fileId = this.extractFileId(storageKey);
     const accessToken = await getValidAccessToken();
 
@@ -283,6 +337,10 @@ export class GoogleDriveStorageProvider implements StorageProvider {
    */
   async deleteFile(storageKey: string): Promise<boolean> {
     try {
+      if (storageKey.startsWith('pgblob://')) {
+        return await deleteDatabaseBlob(storageKey);
+      }
+
       const fileId = this.extractFileId(storageKey);
       if (!fileId) return true;
       const accessToken = await getValidAccessToken();
@@ -302,6 +360,12 @@ export class GoogleDriveStorageProvider implements StorageProvider {
 
   async verifyFile(storageKey: string): Promise<{ exists: boolean; size: number }> {
     try {
+      if (storageKey.startsWith('pgblob://')) {
+        const blob = await getDatabaseBlob(storageKey);
+        if (!blob) return { exists: false, size: 0 };
+        return { exists: true, size: blob.sizeBytes };
+      }
+
       const fileId = this.extractFileId(storageKey);
       const accessToken = await getValidAccessToken();
 

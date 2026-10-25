@@ -194,6 +194,15 @@ export async function initDb(): Promise<void> {
         updated_at TEXT DEFAULT (datetime('now'))
       );
 
+      CREATE TABLE IF NOT EXISTS storage_blobs (
+        storage_key TEXT PRIMARY KEY,
+        mime_type TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        data_base64 TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+
       CREATE TABLE IF NOT EXISTS upload_sessions (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -415,6 +424,15 @@ export async function initDb(): Promise<void> {
           blocked_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (blocker_id, blocked_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS storage_blobs (
+          storage_key TEXT PRIMARY KEY,
+          mime_type TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          size_bytes BIGINT NOT NULL,
+          data_base64 TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
       `);
     } catch (e: any) {
@@ -2344,4 +2362,57 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 export async function deleteSetting(key: string): Promise<void> {
   await execute(`DELETE FROM app_settings WHERE key = $1`, [key]);
+}
+
+// ============================================================================
+// DATABASE BLOB FALLBACK STORAGE (FOR SERVERLESS WHEN DRIVE OAUTH UNCONNECTED)
+// ============================================================================
+
+export async function putDatabaseBlob(params: {
+  storageKey: string;
+  filename: string;
+  mimeType: string;
+  buffer: Buffer;
+}): Promise<void> {
+  const nowIso = new Date().toISOString();
+  const b64 = params.buffer.toString('base64');
+  await execute(`DELETE FROM storage_blobs WHERE storage_key = $1`, [params.storageKey]);
+  await execute(
+    `INSERT INTO storage_blobs (storage_key, mime_type, filename, size_bytes, data_base64, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [
+      params.storageKey,
+      params.mimeType,
+      params.filename,
+      params.buffer.length,
+      b64,
+      nowIso,
+    ]
+  );
+}
+
+export async function getDatabaseBlob(storageKey: string): Promise<{
+  buffer: Buffer;
+  mimeType: string;
+  filename: string;
+  sizeBytes: number;
+} | null> {
+  const rows = await query<any>(
+    `SELECT mime_type, filename, size_bytes, data_base64 FROM storage_blobs WHERE storage_key = $1 LIMIT 1`,
+    [storageKey]
+  );
+  if (!rows[0]) return null;
+  const r = rows[0];
+  const buffer = Buffer.from(r.data_base64, 'base64');
+  return {
+    buffer,
+    mimeType: r.mime_type,
+    filename: r.filename,
+    sizeBytes: Number(r.size_bytes || buffer.length),
+  };
+}
+
+export async function deleteDatabaseBlob(storageKey: string): Promise<boolean> {
+  await execute(`DELETE FROM storage_blobs WHERE storage_key = $1`, [storageKey]);
+  return true;
 }

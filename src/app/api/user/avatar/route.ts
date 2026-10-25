@@ -106,10 +106,8 @@ export async function POST(req: NextRequest) {
       });
       storedKey = uploadRes.storageKey;
     } catch {
-      // If Google Drive is not yet connected in dev, still keep sanitized base64 in DB
-      if (process.env.NODE_ENV === 'production' && provider.name === 'google_drive') {
-        throw new Error('Failed to store profile picture in Google Drive storage');
-      }
+      // Sanitized base64 (<100 KiB) is persisted in users.avatar_data and served by /api/user/avatar/[username]
+      storedKey = null;
     }
 
     const base64Data = validated.sanitizedBuffer.toString('base64');
@@ -135,6 +133,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       user: updatedUser,
+      avatarUrl: updatedUser?.avatarUrl || null,
+      sizeBytes: validated.sanitizedBuffer.length,
       avatarSizeBytes: validated.sanitizedBuffer.length,
       mimeType: validated.mimeType,
     });
