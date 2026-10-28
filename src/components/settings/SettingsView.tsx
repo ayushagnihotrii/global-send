@@ -14,6 +14,9 @@ import {
   Sparkles,
   KeyRound,
   RefreshCw,
+  ShieldCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -22,7 +25,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { User as UserType, StorageUsage } from '@/lib/types';
 import { formatBytes } from '@/lib/utils';
-import { SITE_CONFIG } from '@/config/site';
+import { SITE_CONFIG, PRESET_SECURITY_QUESTIONS } from '@/config/site';
 import { Logo } from '@/components/ui/Logo';
 
 interface SettingsViewProps {
@@ -54,6 +57,16 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
   const [newKey, setNewKey] = useState('');
   const [isChangingKey, setIsChangingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
+
+  // Security question modal
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [questionCurrentKey, setQuestionCurrentKey] = useState('');
+  const [selectedQuestionPreset, setSelectedQuestionPreset] = useState<string>(PRESET_SECURITY_QUESTIONS[0]);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [newAnswer, setNewAnswer] = useState('');
+  const [showNewAnswer, setShowNewAnswer] = useState(false);
+  const [isSavingQuestion, setIsSavingQuestion] = useState(false);
+  const [questionError, setQuestionError] = useState<string | null>(null);
 
   // Owner-only Google Drive Integration state
   const [gdriveStatus, setGdriveStatus] = useState<{
@@ -353,6 +366,67 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
     }
   };
 
+  const handleSaveSecurityQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setQuestionError(null);
+
+    const activeQuestion =
+      selectedQuestionPreset === 'custom' ? customQuestion.trim() : selectedQuestionPreset;
+
+    if (!activeQuestion || activeQuestion.length < 10) {
+      setQuestionError('Security question must be at least 10 characters long.');
+      return;
+    }
+
+    if (!newAnswer.trim() || newAnswer.trim().length < 4) {
+      setQuestionError('Security answer must be at least 4 characters long.');
+      return;
+    }
+
+    if (user.hasSecurityQuestion && !questionCurrentKey) {
+      setQuestionError('Current login key is required to update your security question.');
+      return;
+    }
+
+    setIsSavingQuestion(true);
+
+    try {
+      const res = await fetch('/api/user/security-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentKey: questionCurrentKey,
+          question: activeQuestion,
+          answer: newAnswer.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setQuestionError(data.error || 'Failed to update security question');
+        return;
+      }
+
+      toast.success('Security question updated');
+      const nowIso = new Date().toISOString();
+      if (onUserUpdated) {
+        onUserUpdated({
+          ...user,
+          hasSecurityQuestion: true,
+          securityQuestionUpdatedAt: nowIso,
+        });
+      }
+      setShowQuestionModal(false);
+      setQuestionCurrentKey('');
+      setNewAnswer('');
+      setCustomQuestion('');
+    } catch {
+      setQuestionError('A network error occurred');
+    } finally {
+      setIsSavingQuestion(false);
+    }
+  };
+
   const handleDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setDeleteError(null);
@@ -576,6 +650,38 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
               onClick={() => setShowKeyModal(true)}
             >
               Change Key
+            </Button>
+          </div>
+
+          {/* Security Question Row */}
+          <div className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4 border-t border-black/[0.05] dark:border-white/[0.05]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-7 h-7 rounded-[7px] bg-[#34c759] text-white flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+                  Security Question &amp; Recovery
+                </p>
+                <p className="text-[12px] text-[#8e8e93] truncate">
+                  {user.securityQuestionUpdatedAt
+                    ? `Last updated: ${new Date(user.securityQuestionUpdatedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}`
+                    : user.hasSecurityQuestion
+                    ? 'Security question configured'
+                    : 'Not configured — set recovery question'}
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setQuestionError(null);
+                setShowQuestionModal(true);
+              }}
+            >
+              {user.hasSecurityQuestion ? 'Change Question' : 'Set Question'}
             </Button>
           </div>
 
@@ -924,6 +1030,103 @@ export function SettingsView({ user, onLogout, onUserUpdated }: SettingsViewProp
             </Button>
             <Button type="submit" size="sm" isLoading={isChangingKey}>
               Save Key
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* CHANGE SECURITY QUESTION MODAL */}
+      <Modal
+        isOpen={showQuestionModal}
+        onClose={() => setShowQuestionModal(false)}
+        title="Security Question & Recovery"
+        subtitle="Your security answer allows you to reset your private login key if lost."
+      >
+        <form onSubmit={handleSaveSecurityQuestion} className="space-y-4">
+          {questionError && (
+            <div className="p-3 rounded-[12px] bg-[#ff3b30]/10 border border-[#ff3b30]/20 text-[13px] text-[#ff3b30]">
+              {questionError}
+            </div>
+          )}
+
+          {user.hasSecurityQuestion && (
+            <Input
+              label="Current Login Key"
+              type="password"
+              placeholder="Enter current key to verify ownership"
+              value={questionCurrentKey}
+              onChange={(e) => setQuestionCurrentKey(e.target.value)}
+              required
+            />
+          )}
+
+          <div>
+            <label className="block text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1.5">
+              Select Question
+            </label>
+            <select
+              value={selectedQuestionPreset}
+              onChange={(e) => setSelectedQuestionPreset(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-[12px] text-[13px] bg-black/[0.03] dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[#1d1d1f] dark:text-[#f5f5f7] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
+            >
+              {PRESET_SECURITY_QUESTIONS.map((q) => (
+                <option key={q} value={q} className="dark:bg-[#1c1c1e]">
+                  {q}
+                </option>
+              ))}
+              <option value="custom" className="dark:bg-[#1c1c1e]">
+                -- Write a custom question... --
+              </option>
+            </select>
+          </div>
+
+          {selectedQuestionPreset === 'custom' && (
+            <div>
+              <Input
+                label="Custom Question (10-150 characters)"
+                placeholder="e.g. What was the name of your first musical instrument?"
+                value={customQuestion}
+                onChange={(e) => setCustomQuestion(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <div>
+            <div className="relative">
+              <Input
+                label="Security Answer"
+                type={showNewAnswer ? 'text' : 'password'}
+                placeholder="Enter memorable answer"
+                value={newAnswer}
+                onChange={(e) => setNewAnswer(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewAnswer(!showNewAnswer)}
+                className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                aria-label={showNewAnswer ? 'Hide answer' : 'Show answer'}
+              >
+                {showNewAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[11px] text-[#86868b] mt-1.5">
+              Answers are case-insensitive and tolerate whitespace. Never shared or visible.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowQuestionModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="sm" isLoading={isSavingQuestion}>
+              Save Question
             </Button>
           </div>
         </form>

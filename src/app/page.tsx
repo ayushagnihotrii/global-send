@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { SecurityQuestionSetupModal } from '@/components/auth/SecurityQuestionSetupModal';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { SplashScreen } from '@/components/ui/SplashScreen';
 import { Logo } from '@/components/ui/Logo';
@@ -62,6 +63,11 @@ export default function Home() {
         </div>
       ) : !user ? (
         <AuthModal onSuccess={(newUser) => setUser(newUser)} />
+      ) : !user.hasSecurityQuestion ? (
+        <SecurityQuestionSetupModal
+          user={user}
+          onComplete={(updatedUser) => setUser(updatedUser)}
+        />
       ) : (
         <Dashboard
           user={user}

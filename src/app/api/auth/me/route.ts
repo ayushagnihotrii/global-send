@@ -25,5 +25,6 @@ export async function GET() {
   return NextResponse.json({
     authenticated: true,
     user,
+    needsSecurityQuestion: !user?.hasSecurityQuestion,
   });
 }

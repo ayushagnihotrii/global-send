@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 
 /**
- * Account recovery and password reset are permanently disabled by design.
- * Global Send accounts are accessed strictly via the user's unrecoverable private login key.
+ * Legacy recovery route.
+ * Global Send key recovery is now handled via:
+ * - POST /api/auth/recovery/question (retrieves security question)
+ * - POST /api/auth/recovery/reset (verifies answer and updates key)
  */
 export async function POST() {
   return NextResponse.json(
     {
       error:
-        'Account recovery is not supported. Global Send login keys cannot be recovered or reset.',
+        'This legacy endpoint has been deprecated. Please use POST /api/auth/recovery/question and POST /api/auth/recovery/reset.',
     },
-    { status: 404 }
+    { status: 410 }
   );
 }
 
@@ -18,8 +20,8 @@ export async function GET() {
   return NextResponse.json(
     {
       error:
-        'Account recovery is not supported. Global Send login keys cannot be recovered or reset.',
+        'This legacy endpoint has been deprecated. Please use POST /api/auth/recovery/question and POST /api/auth/recovery/reset.',
     },
-    { status: 404 }
+    { status: 410 }
   );
 }

@@ -44,6 +44,17 @@ export const RESERVED_USERNAMES = new Set([
   'anonymous',
 ]);
 
+export const PRESET_SECURITY_QUESTIONS = [
+  'What was the name of your first childhood imaginary friend or first pet?',
+  'What was the street name of the first residence you remember living at?',
+  'What was the title of the first movie or play you saw in a theater?',
+  'In what city or town did your parents or guardians first meet?',
+  'What was the model of your very first computer, phone, or gaming console?',
+  'What was the first music concert or live show you attended?',
+  'What was the surname of your favorite teacher who inspired you most?',
+  'What was the nickname your childhood friends or family called you?',
+] as const;
+
 export const SITE_CONFIG = {
   name: process.env.NEXT_PUBLIC_APP_NAME || 'Global Send',
   customDomain: process.env.NEXT_PUBLIC_CUSTOM_DOMAIN || 'gsend.in',

@@ -16,6 +16,7 @@
  */
 
 import crypto from 'node:crypto';
+import { NextRequest } from 'next/server';
 import {
   validateUsername,
   validateLoginKey,
@@ -24,6 +25,13 @@ import {
   verifyLoginKey,
   createSessionToken,
   verifySessionToken,
+  validateSecurityQuestion,
+  normalizeSecurityAnswer,
+  validateSecurityAnswer,
+  hashSecurityAnswer,
+  verifySecurityAnswer,
+  getDeterministicFakeQuestion,
+  PRESET_SECURITY_QUESTIONS,
 } from './src/lib/auth';
 import {
   validateAndSanitizeAvatar,
@@ -54,6 +62,11 @@ import {
   blockUser,
   isEitherUserBlocked,
   enqueueStorageDeletion,
+  updateUserSecurityQuestion,
+  recordFailedRecoveryAttempt,
+  resetRecoveryAttempts,
+  resetUserKeyViaRecovery,
+  resetPersistentRateLimitsForTest,
 } from './src/lib/db';
 import { executeFullCleanup } from './src/lib/cleanup';
 import { getStorageProvider } from './src/lib/storage';
@@ -64,6 +77,11 @@ import {
 } from './src/lib/storage/google-drive-auth';
 import { isUserAdmin, getUserStorageUsage } from './src/lib/db';
 import { POST as recoverPost } from './src/app/api/auth/recover/route';
+import { POST as loginPost } from './src/app/api/auth/login/route';
+import { POST as registerPost } from './src/app/api/auth/register/route';
+import { POST as recoveryQuestionPost } from './src/app/api/auth/recovery/question/route';
+import { POST as recoveryResetPost } from './src/app/api/auth/recovery/reset/route';
+import { POST as securityQuestionPost, GET as securityQuestionGet } from './src/app/api/user/security-question/route';
 
 let passed = 0;
 let failed = 0;
@@ -82,21 +100,26 @@ async function runTests() {
   console.log('=== GLOBAL SEND COMPREHENSIVE VERIFICATION SUITE ===\n');
 
   await initDb();
+  await resetPersistentRateLimitsForTest();
   const suffix = Date.now().toString(36);
   const storage = getStorageProvider();
 
   // =========================================================================
   // 1. AUTHENTICATION & SECURITY TESTS
   // =========================================================================
-  console.log('Suite 1: Key-Only Authentication & Credential Security');
+  console.log('Suite 1: Username + Key Authentication & Security-Question Key Recovery');
 
   const unameA = `Alice_${suffix}`;
   const keyA = `alice-secret-key-${suffix}-998877`;
+  const questionA = 'What was the street name of the first residence you remember living at?';
+  const answerA = 'Baker Street 221B';
+
   const unameB = `Bob_${suffix}`;
   const keyB = `bob-secret-key-${suffix}-112233`;
   const unameC = `Charlie_${suffix}`;
   const keyC = `charlie-secret-key-${suffix}-445566`;
 
+  // 1. Username validation rules
   const vUname = validateUsername(unameA);
   assert(
     vUname.valid && vUname.normalized === unameA.toLowerCase(),
@@ -106,6 +129,10 @@ async function runTests() {
   const reservedCheck = validateUsername('admin');
   assert(!reservedCheck.valid, 'Rejects reserved username "admin"');
 
+  const dotStart = validateUsername('.alice');
+  assert(!dotStart.valid, 'Rejects username starting with period');
+
+  // 2. Login key validation rules
   const sameAsUserKey = validateLoginKey(unameA, unameA);
   assert(!sameAsUserKey.valid, 'Rejects login key identical to username');
 
@@ -118,59 +145,380 @@ async function runTests() {
   const unicodeKey = validateLoginKey('🔐🚀नमस्ते-विश्व-2026', unameA);
   assert(unicodeKey.valid, 'Allows Unicode login key');
 
-  // Hash & fingerprint
-  const fpA = computeKeyFingerprint(keyA);
+  // 3. Security question & answer validation rules
+  const shortQuestion = validateSecurityQuestion('Short?');
+  assert(!shortQuestion.valid, 'Rejects security question shorter than 10 chars');
+
+  const validQuestion = validateSecurityQuestion(questionA);
+  assert(validQuestion.valid, 'Validates security question (10-150 chars)');
+
+  const normAnswer = normalizeSecurityAnswer('   Baker   Street   221B   ');
+  assert(normAnswer === 'baker street 221b', 'Normalizes answer: trims, lowercases, and collapses internal whitespace');
+
+  const shortAnswer = validateSecurityAnswer('abc');
+  assert(!shortAnswer.valid, 'Rejects security answer shorter than 4 chars');
+
+  const answerSameAsUser = validateSecurityAnswer(unameA, unameA, keyA);
+  assert(!answerSameAsUser.valid, 'Rejects security answer identical to username');
+
+  const answerSameAsKey = validateSecurityAnswer(keyA, unameA, keyA);
+  assert(!answerSameAsKey.valid, 'Rejects security answer identical to login key');
+
+  // 4. Argon2id hashing for key and answer
   const hashA = await hashLoginKey(keyA);
   assert(hashA.startsWith('$argon2id$'), 'Hashes login key with Argon2id PHC format');
-  assert(!hashA.includes(keyA), 'Argon2id hash never contains plaintext key');
+  assert(!hashA.includes(keyA), 'Argon2id key hash never contains plaintext key');
 
-  const userA = await createUser(crypto.randomUUID(), unameA, hashA, null, {
-    displayUsername: unameA,
-    keyFingerprint: fpA,
+  const ansHashA = await hashSecurityAnswer(normAnswer);
+  assert(ansHashA.startsWith('$argon2id$'), 'Hashes security answer with salted Argon2id PHC format');
+  assert(!ansHashA.includes('baker') && !ansHashA.includes(answerA), 'Argon2id answer hash never contains plaintext answer');
+
+  // 5. Register via POST /api/auth/register endpoint
+  const regWithoutAck = await registerPost(
+    new NextRequest('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: unameA,
+        key: keyA,
+        securityQuestion: questionA,
+        securityAnswer: answerA,
+        acknowledgedWarning: false,
+      }),
+    })
+  );
+  assert(regWithoutAck.status === 400, 'Rejects registration when acknowledgement checkbox is unchecked');
+
+  const regReqA = new NextRequest('http://localhost:3000/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: unameA,
+      key: keyA,
+      securityQuestion: questionA,
+      securityAnswer: answerA,
+      acknowledgedWarning: true,
+    }),
   });
+  const regResA = await registerPost(regReqA);
+  assert(regResA.status === 201, 'Registers User A with question, answer, and acknowledged policy');
+  const regDataA = await regResA.json();
+  const userA = regDataA.user;
+  assert(userA.hasSecurityQuestion === true, 'User A object reflects hasSecurityQuestion: true');
+
+  // Case-insensitive duplicate username registration rejected
+  const dupRegRes = await registerPost(
+    new NextRequest('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: unameA.toUpperCase(),
+        key: 'different-password-1234',
+        securityQuestion: questionA,
+        securityAnswer: 'some answer 123',
+        acknowledgedWarning: true,
+      }),
+    })
+  );
+  assert(dupRegRes.status === 409, 'Detects duplicate username case-insensitively (ALICE == alice) on registration');
+
+  // 6. Login via POST /api/auth/login endpoint
+  // Key alone MUST no longer work
+  const keyOnlyLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: keyA }),
+    })
+  );
+  assert(keyOnlyLogin.status === 400, 'Login with key alone strictly fails (username is required)');
+
+  // Wrong username fails with identical message
+  const wrongUserLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'nonexistent_user_99', key: keyA }),
+    })
+  );
+  const wrongUserJson = await wrongUserLogin.json();
+
+  // Wrong key fails with identical message
+  const wrongKeyLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: unameA, key: 'completely-wrong-key-999' }),
+    })
+  );
+  const wrongKeyJson = await wrongKeyLogin.json();
+
   assert(
-    userA.username === unameA.toLowerCase() && userA.displayUsername === unameA,
-    'Creates User A with normalized username and displayUsername'
+    wrongUserLogin.status === 401 &&
+      wrongKeyLogin.status === 401 &&
+      wrongUserJson.error === 'Invalid username or key.' &&
+      wrongKeyJson.error === 'Invalid username or key.',
+    'Login failure status (401) and error message ("Invalid username or key.") are identical for wrong username and wrong key'
   );
 
-  // Case-insensitive duplicate username check
-  const dupUserLookup = await getUserByUsername(unameA.toUpperCase());
+  // Correct username + key succeeds
+  const correctLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: unameA, key: keyA }),
+    })
+  );
+  assert(correctLogin.status === 200, 'Authenticates User A with Username + Key');
+
+  // 7. Two users with identical login keys
+  const sharedKey = `shared-secret-key-${suffix}-common`;
+  const unameUser1 = `SharedU1_${suffix}`;
+  const unameUser2 = `SharedU2_${suffix}`;
+
+  const regU1 = await registerPost(
+    new NextRequest('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.1.1.1' },
+      body: JSON.stringify({
+        username: unameUser1,
+        key: sharedKey,
+        securityQuestion: PRESET_SECURITY_QUESTIONS[0],
+        securityAnswer: 'Secret Answer One',
+        acknowledgedWarning: true,
+      }),
+    })
+  );
+  const regU2 = await registerPost(
+    new NextRequest('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.1.1.2' },
+      body: JSON.stringify({
+        username: unameUser2,
+        key: sharedKey,
+        securityQuestion: PRESET_SECURITY_QUESTIONS[1],
+        securityAnswer: 'Secret Answer Two',
+        acknowledgedWarning: true,
+      }),
+    })
+  );
   assert(
-    dupUserLookup !== null && dupUserLookup.id === userA.id,
-    'Detects duplicate username case-insensitively (ALICE == alice)'
+    regU1.status === 201 && regU2.status === 201,
+    'Allows two users with the exact same login key to register separately'
   );
 
-  // Duplicate login key check across accounts
-  const dupKeyHolder = await getUserByKeyFingerprint(computeKeyFingerprint(keyA));
+  const loginU1 = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.1.1.1' },
+      body: JSON.stringify({ username: unameUser1, key: sharedKey }),
+    })
+  );
+  const loginU2 = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '10.1.1.2' },
+      body: JSON.stringify({ username: unameUser2, key: sharedKey }),
+    })
+  );
+  const jsonU1 = await loginU1.json();
+  const jsonU2 = await loginU2.json();
   assert(
-    dupKeyHolder !== null && dupKeyHolder.id === userA.id,
-    'Detects duplicate login key via HMAC-SHA-256 fingerprint'
+    loginU1.status === 200 &&
+      loginU2.status === 200 &&
+      jsonU1.user?.id !== jsonU2.user?.id &&
+      jsonU1.user?.username === unameUser1.toLowerCase() &&
+      jsonU2.user?.username === unameUser2.toLowerCase(),
+    'Both users with identical keys log in separately to their own distinct accounts'
   );
 
-  // Key-only login verification (without username)
-  const candidate = await getUserByKeyFingerprint(computeKeyFingerprint(keyA));
-  const verifiedA = candidate ? await verifyLoginKey(keyA, candidate.password_hash) : false;
+  // 8. Forgot-Key Recovery Flow
+  // Question lookup for existing user
+  const qResA = await recoveryQuestionPost(
+    new NextRequest('http://localhost:3000/api/auth/recovery/question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: unameA }),
+    })
+  );
+  const qDataA = await qResA.json();
+  assert(qResA.status === 200 && qDataA.question === questionA, 'Returns configured security question for User A');
+
+  // Question lookup for unknown user returns deterministic question-shaped response
+  const qResUnknown = await recoveryQuestionPost(
+    new NextRequest('http://localhost:3000/api/auth/recovery/question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: `nonexistent_${suffix}` }),
+    })
+  );
+  const qDataUnknown = await qResUnknown.json();
   assert(
-    verifiedA === true && candidate?.id === userA.id,
-    'Authenticates User A using ONLY the login key (no username required)'
+    qResUnknown.status === 200 &&
+      typeof qDataUnknown.question === 'string' &&
+      qDataUnknown.question.length >= 10,
+    'Returns plausible question-shaped response for unknown username to prevent enumeration'
   );
 
-  const wrongKeyVerified = await verifyLoginKey('wrong-login-key-999999', candidate.password_hash);
-  assert(wrongKeyVerified === false, 'Rejects incorrect login key');
+  // Unknown username reset attempt returns generic failure
+  const resetUnknown = await recoveryResetPost(
+    new NextRequest('http://localhost:3000/api/auth/recovery/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: `nonexistent_${suffix}`,
+        answer: 'any answer here',
+        newKey: 'new-unrecoverable-key-1234',
+        confirmKey: 'new-unrecoverable-key-1234',
+      }),
+    })
+  );
+  assert(resetUnknown.status === 400, 'Unknown username reset attempt fails generically (status 400)');
 
-  // Unrecoverable key endpoint check
+  // Wrong answer lockout test on a dedicated test user
+  const lockUname = `LockTest_${suffix}`;
+  const lockKey = `lock-key-${suffix}-112233`;
+  await registerPost(
+    new NextRequest('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: lockUname,
+        key: lockKey,
+        securityQuestion: PRESET_SECURITY_QUESTIONS[2],
+        securityAnswer: 'CorrectLockAnswer',
+        acknowledgedWarning: true,
+      }),
+    })
+  );
+
+  let lockoutTriggered = false;
+  for (let i = 1; i <= 5; i++) {
+    const attemptRes = await recoveryResetPost(
+      new NextRequest('http://localhost:3000/api/auth/recovery/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-forwarded-for': `10.0.0.${i}` },
+        body: JSON.stringify({
+          username: lockUname,
+          answer: `wrong-answer-guess-${i}`,
+          newKey: 'new-key-12345678',
+          confirmKey: 'new-key-12345678',
+        }),
+      })
+    );
+    if (i === 5 && attemptRes.status === 429) {
+      lockoutTriggered = true;
+    }
+  }
+  assert(lockoutTriggered, 'Locks recovery after 5 wrong security answers (status 429)');
+
+  // Enforced across a different IP
+  const postLockoutAttempt = await recoveryResetPost(
+    new NextRequest('http://localhost:3000/api/auth/recovery/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-forwarded-for': '192.168.1.99' },
+      body: JSON.stringify({
+        username: lockUname,
+        answer: 'CorrectLockAnswer',
+        newKey: 'new-key-12345678',
+        confirmKey: 'new-key-12345678',
+      }),
+    })
+  );
+  assert(postLockoutAttempt.status === 429, 'Recovery lockout is enforced across distinct IP addresses');
+
+  // Successful key recovery for User A (case and whitespace tolerant)
+  const newKeyA = `alice-brand-new-key-${suffix}-recovered`;
+  const recoverySuccess = await recoveryResetPost(
+    new NextRequest('http://localhost:3000/api/auth/recovery/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: unameA,
+        answer: '   bAKeR   sTrEEt   221b   ', // Mixed case + multiple spaces
+        newKey: newKeyA,
+        confirmKey: newKeyA,
+      }),
+    })
+  );
+  const recoveryData = await recoverySuccess.json();
+  assert(
+    recoverySuccess.status === 200 && recoveryData.success === true,
+    'Recovery succeeds with case-insensitive, whitespace-tolerant security answer'
+  );
+  assert(
+    !JSON.stringify(recoveryData).includes(answerA) && !JSON.stringify(recoveryData).includes(newKeyA),
+    'Security answer and new key NEVER appear in recovery API response payload'
+  );
+
+  // Old key stops working
+  const oldKeyLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: unameA, key: keyA }),
+    })
+  );
+  assert(oldKeyLogin.status === 401, 'Old private login key stops working immediately after reset');
+
+  // Old JWT session invalidated
+  const rawAfterReset = await getRawUserById(userA.id);
+  assert(
+    Number(rawAfterReset?.session_version || 1) > 1,
+    'Increments session_version during key recovery to invalidate all prior active sessions'
+  );
+
+  // New key signs in successfully and shows key reset notice
+  const newKeyLogin = await loginPost(
+    new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: unameA, key: newKeyA }),
+    })
+  );
+  const newKeyJson = await newKeyLogin.json();
+  assert(
+    newKeyLogin.status === 200 && typeof newKeyJson.keyResetNotice === 'string',
+    'New login key succeeds and displays notice that key was reset'
+  );
+
+  // 9. Existing user migration path
+  // Simulate an older user registered prior to Migration 004 without a security question
+  const legacyUname = `Legacy_${suffix}`;
+  const legacyKey = `legacy-secret-key-${suffix}-00`;
+  const legacyUser = await createUser(
+    crypto.randomUUID(),
+    legacyUname,
+    await hashLoginKey(legacyKey),
+    null,
+    { displayUsername: legacyUname }
+  );
+  assert(legacyUser.hasSecurityQuestion === false, 'Existing legacy user reflects hasSecurityQuestion: false');
+
+  const legacyFetched = await getUserById(legacyUser.id);
+  assert(legacyFetched?.hasSecurityQuestion === false, 'getUserById() flags existing user without security question');
+
+  // Set security question for the legacy user
+  await updateUserSecurityQuestion(
+    legacyUser.id,
+    PRESET_SECURITY_QUESTIONS[3],
+    await hashSecurityAnswer('Met in Chicago')
+  );
+  const legacyUpdated = await getUserById(legacyUser.id);
+  assert(legacyUpdated?.hasSecurityQuestion === true, 'Existing user migration: setting question marks account protected');
+
+  // 10. Legacy /api/auth/recover endpoint check
   const recoverRes = await recoverPost();
   assert(
-    recoverRes.status === 404,
-    'Disables key recovery endpoint (POST /api/auth/recover returns 404)'
+    recoverRes.status === 410,
+    'Legacy recovery endpoint returns 410 Deprecated advising clients to use the new recovery endpoints'
   );
 
-  // Session token & invalidation on logout
-  const rawBeforeLogout = await getRawUserById(userA.id);
+  // 11. Session verification & logout invalidation
   const tokenV1 = await createSessionToken({
     userId: userA.id,
     username: userA.username,
-    sessionVersion: Number(rawBeforeLogout?.session_version || 1),
+    sessionVersion: Number(rawAfterReset?.session_version || 1),
   });
   const decodedV1 = await verifySessionToken(tokenV1);
   assert(decodedV1?.userId === userA.id, 'Verifies valid JWT session token');
@@ -182,14 +530,16 @@ async function runTests() {
     'Increments session_version on logout to invalidate prior session tokens'
   );
 
-  // Create User B and User C for isolation & chat tests
+  // Create User B and User C for isolation & chat tests in subsequent suites
   const userB = await createUser(crypto.randomUUID(), unameB, await hashLoginKey(keyB), null, {
     displayUsername: unameB,
-    keyFingerprint: computeKeyFingerprint(keyB),
+    securityQuestion: PRESET_SECURITY_QUESTIONS[0],
+    securityAnswerHash: await hashSecurityAnswer('answer bob 123'),
   });
   const userC = await createUser(crypto.randomUUID(), unameC, await hashLoginKey(keyC), null, {
     displayUsername: unameC,
-    keyFingerprint: computeKeyFingerprint(keyC),
+    securityQuestion: PRESET_SECURITY_QUESTIONS[1],
+    securityAnswerHash: await hashSecurityAnswer('answer charlie 123'),
   });
 
   // =========================================================================
@@ -476,7 +826,7 @@ async function runTests() {
   console.log('\nSuite 4: Private 1-to-1 Chat, Vault File Sharing & Expiration Enforcement');
 
   // Public user search
-  const searchResults = await searchPublicUsers(unameB.slice(0, 6), userA.id);
+  const searchResults = await searchPublicUsers(unameB, userA.id);
   const foundB = searchResults.find(
     (u) => u.username.toLowerCase() === unameB.toLowerCase()
   );

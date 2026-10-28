@@ -118,7 +118,7 @@ export async function initDb(): Promise<void> {
         username TEXT UNIQUE NOT NULL,
         display_username TEXT,
         password_hash TEXT NOT NULL,
-        key_fingerprint TEXT UNIQUE,
+        key_fingerprint TEXT,
         recovery_code_hash TEXT,
         storage_limit_bytes INTEGER DEFAULT 2147483648,
         avatar_storage_key TEXT DEFAULT NULL,
@@ -128,6 +128,12 @@ export async function initDb(): Promise<void> {
         is_admin INTEGER DEFAULT 0,
         last_login_at TEXT DEFAULT NULL,
         session_version INTEGER DEFAULT 1,
+        security_question TEXT DEFAULT NULL,
+        security_answer_hash TEXT DEFAULT NULL,
+        recovery_failed_attempts INTEGER DEFAULT 0,
+        recovery_locked_until TEXT DEFAULT NULL,
+        security_updated_at TEXT DEFAULT NULL,
+        key_reset_at TEXT DEFAULT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now'))
       );
@@ -316,13 +322,26 @@ export async function initDb(): Promise<void> {
       `ALTER TABLE files ADD COLUMN deletion_attempts INTEGER DEFAULT 0`,
       `ALTER TABLE files ADD COLUMN last_deletion_error TEXT DEFAULT NULL`,
       `ALTER TABLE files ADD COLUMN deleted_from_storage_at TEXT DEFAULT NULL`,
-      `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_key_fp_sqlite ON users(key_fingerprint) WHERE key_fingerprint IS NOT NULL`,
+      `DROP INDEX IF EXISTS idx_users_key_fp_sqlite`,
+      `ALTER TABLE users ADD COLUMN security_question TEXT DEFAULT NULL`,
+      `ALTER TABLE users ADD COLUMN security_answer_hash TEXT DEFAULT NULL`,
+      `ALTER TABLE users ADD COLUMN recovery_failed_attempts INTEGER DEFAULT 0`,
+      `ALTER TABLE users ADD COLUMN recovery_locked_until TEXT DEFAULT NULL`,
+      `ALTER TABLE users ADD COLUMN security_updated_at TEXT DEFAULT NULL`,
+      `ALTER TABLE users ADD COLUMN key_reset_at TEXT DEFAULT NULL`,
+      `CREATE TABLE IF NOT EXISTS rate_limits (
+        key TEXT PRIMARY KEY,
+        count INTEGER NOT NULL DEFAULT 1,
+        reset_at INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits(reset_at)`,
     ];
     for (const stmt of alterStatements) {
       await client.execute(stmt).catch(() => {});
     }
   } else {
-    // Ensure PostgreSQL schema has all migration 003 tables/columns idempotently
+    // Ensure PostgreSQL schema has all migration 003/004 tables/columns idempotently
     try {
       await db.client.query(`
         ALTER TABLE users ADD COLUMN IF NOT EXISTS display_username VARCHAR(50);
@@ -334,7 +353,22 @@ export async function initDb(): Promise<void> {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER DEFAULT 1;
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_key_fingerprint ON users(key_fingerprint) WHERE key_fingerprint IS NOT NULL;
+        DROP INDEX IF EXISTS idx_users_key_fingerprint;
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS users_key_fingerprint_key;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS security_question TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS security_answer_hash TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_failed_attempts INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_locked_until TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS security_updated_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS key_reset_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+
+        CREATE TABLE IF NOT EXISTS rate_limits (
+          key VARCHAR(255) PRIMARY KEY,
+          count INTEGER NOT NULL DEFAULT 1,
+          reset_at BIGINT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits(reset_at);
 
         ALTER TABLE items ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE items ADD COLUMN IF NOT EXISTS expiration_duration_sec INTEGER DEFAULT 86400;
@@ -586,6 +620,9 @@ export async function getUserById(id: string): Promise<User | null> {
     avatarUrl: formatAvatarUrl(r),
     avatarSizeBytes: Number(r.avatar_size_bytes || 0),
     isAdmin: adminStatus,
+    hasSecurityQuestion: Boolean(r.security_question && r.security_answer_hash),
+    securityQuestionUpdatedAt: r.security_updated_at || null,
+    keyResetAt: r.key_reset_at || null,
   };
 }
 
@@ -598,11 +635,15 @@ export async function createUser(
     displayUsername?: string;
     keyFingerprint?: string;
     isAdmin?: boolean;
+    securityQuestion?: string;
+    securityAnswerHash?: string;
   }
 ): Promise<User> {
   const normalized = username.trim().toLowerCase();
   const displayUsername = options?.displayUsername?.trim() || username.trim();
   const keyFingerprint = options?.keyFingerprint || null;
+  const securityQuestion = options?.securityQuestion || null;
+  const securityAnswerHash = options?.securityAnswerHash || null;
 
   const configuredAdminUsername = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const count = await getUserCount();
@@ -615,12 +656,15 @@ export async function createUser(
   const isAdminParam = isPostgres() ? isAdmin : isAdmin ? 1 : 0;
   const defaultLimit = SITE_CONFIG.defaultUserStorageLimitBytes;
   const nowIso = new Date().toISOString();
+  const securityUpdatedAt = securityQuestion && securityAnswerHash ? nowIso : null;
 
   await execute(
     `INSERT INTO users (
       id, username, display_username, password_hash, key_fingerprint,
-      recovery_code_hash, storage_limit_bytes, is_admin, last_login_at, created_at, updated_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
+      recovery_code_hash, storage_limit_bytes, is_admin, last_login_at,
+      security_question, security_answer_hash, security_updated_at,
+      created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13)`,
     [
       id,
       normalized,
@@ -631,6 +675,9 @@ export async function createUser(
       defaultLimit,
       isAdminParam,
       nowIso,
+      securityQuestion,
+      securityAnswerHash,
+      securityUpdatedAt,
       nowIso,
     ]
   );
@@ -645,6 +692,9 @@ export async function createUser(
     avatarUrl: null,
     avatarSizeBytes: 0,
     isAdmin,
+    hasSecurityQuestion: Boolean(securityQuestion && securityAnswerHash),
+    securityQuestionUpdatedAt: securityUpdatedAt,
+    keyResetAt: null,
   };
 }
 
@@ -673,6 +723,107 @@ export async function updateUserPassword(
       [newPasswordHash, nowIso, userId]
     );
   }
+}
+
+export async function updateUserSecurityQuestion(
+  userId: string,
+  question: string,
+  answerHash: string
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE users
+     SET security_question = $1, security_answer_hash = $2, security_updated_at = $3, updated_at = $3
+     WHERE id = $4`,
+    [question, answerHash, nowIso, userId]
+  );
+}
+
+export async function recordFailedRecoveryAttempt(
+  userId: string,
+  currentFailedAttempts: number
+): Promise<{ lockedUntil: string | null; failedAttempts: number }> {
+  const newAttempts = currentFailedAttempts + 1;
+  let lockedUntil: string | null = null;
+
+  if (newAttempts >= 5) {
+    // 5 attempts = 30m, 6 = 60m, 7 = 120m, 8 = 240m ... max 24 hours (1440m)
+    const multiplier = Math.pow(2, Math.max(0, newAttempts - 5));
+    const durationMinutes = Math.min(24 * 60, 30 * multiplier);
+    lockedUntil = new Date(Date.now() + durationMinutes * 60 * 1000).toISOString();
+  }
+
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE users
+     SET recovery_failed_attempts = $1, recovery_locked_until = $2, updated_at = $3
+     WHERE id = $4`,
+    [newAttempts, lockedUntil, nowIso, userId]
+  );
+
+  return { lockedUntil, failedAttempts: newAttempts };
+}
+
+export async function resetRecoveryAttempts(userId: string): Promise<void> {
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE users
+     SET recovery_failed_attempts = 0, recovery_locked_until = NULL, updated_at = $1
+     WHERE id = $2`,
+    [nowIso, userId]
+  );
+}
+
+export async function resetUserKeyViaRecovery(
+  userId: string,
+  newPasswordHash: string
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE users
+     SET password_hash = $1,
+         session_version = COALESCE(session_version, 1) + 1,
+         recovery_failed_attempts = 0,
+         recovery_locked_until = NULL,
+         key_reset_at = $2,
+         updated_at = $2
+     WHERE id = $3`,
+    [newPasswordHash, nowIso, userId]
+  );
+}
+
+export async function checkPersistentRateLimit(
+  key: string,
+  maxAttempts = 10,
+  windowMs = 60000
+): Promise<boolean> {
+  const now = Date.now();
+  const reset = now + windowMs;
+
+  try {
+    const rows = await query<{ count: number | string; reset_at: number | string }>(
+      `INSERT INTO rate_limits (key, count, reset_at)
+       VALUES ($1, 1, $2)
+       ON CONFLICT (key) DO UPDATE SET
+         count = CASE WHEN rate_limits.reset_at < $3 THEN 1 ELSE rate_limits.count + 1 END,
+         reset_at = CASE WHEN rate_limits.reset_at < $4 THEN $5 ELSE rate_limits.reset_at END
+       RETURNING count, reset_at`,
+      [key, reset, now, now, reset]
+    );
+
+    if (rows && rows.length > 0) {
+      const count = Number(rows[0].count);
+      return count <= maxAttempts;
+    }
+    return true;
+  } catch (err: any) {
+    console.warn('[PersistentRateLimit Warning]:', err?.message);
+    return true;
+  }
+}
+
+export async function resetPersistentRateLimitsForTest(): Promise<void> {
+  await execute(`DELETE FROM rate_limits`).catch(() => {});
 }
 
 export async function incrementUserSessionVersion(userId: string): Promise<void> {

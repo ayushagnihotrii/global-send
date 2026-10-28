@@ -10,6 +10,9 @@ export interface User {
   avatarUrl?: string | null;
   avatarSizeBytes?: number;
   isAdmin?: boolean;
+  hasSecurityQuestion?: boolean;
+  securityQuestionUpdatedAt?: string | null;
+  keyResetAt?: string | null;
 }
 
 export interface PublicUserProfile {

@@ -7,37 +7,33 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Lock,
   Clock,
-  MessageSquare,
   FileText,
   Check,
-  Download,
   Zap,
-  Plus,
-  UploadCloud,
   ShieldCheck,
   Copy,
   Sun,
   Moon,
   Sparkles,
   RefreshCw,
-  FileCode,
   HardDrive,
-  Share2,
+  HelpCircle,
+  Plus,
+  UploadCloud,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
-import { SITE_CONFIG } from '@/config/site';
+import { SITE_CONFIG, PRESET_SECURITY_QUESTIONS } from '@/config/site';
 import { Logo } from '@/components/ui/Logo';
 
 interface AuthModalProps {
   onSuccess: (user: any) => void;
 }
 
-type AuthView = 'quickshare' | 'login' | 'register';
+type AuthView = 'quickshare' | 'login' | 'register' | 'recovery';
 
 function computeClientKeyStrength(key: string): {
   score: 0 | 1 | 2 | 3 | 4;
@@ -100,6 +96,23 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Registration Security Question states
+  const [selectedQuestionPreset, setSelectedQuestionPreset] = useState<string>(PRESET_SECURITY_QUESTIONS[0]);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [showSecurityAnswer, setShowSecurityAnswer] = useState(false);
+
+  // Recovery Flow states
+  const [recoveryStep, setRecoveryStep] = useState<1 | 2>(1);
+  const [recoveryUsername, setRecoveryUsername] = useState('');
+  const [recoveryQuestion, setRecoveryQuestion] = useState('');
+  const [recoveryAnswer, setRecoveryAnswer] = useState('');
+  const [showRecoveryAnswer, setShowRecoveryAnswer] = useState(false);
+  const [newRecoveryKey, setNewRecoveryKey] = useState('');
+  const [confirmRecoveryKey, setConfirmRecoveryKey] = useState('');
+  const [showNewRecoveryKey, setShowNewRecoveryKey] = useState(false);
+  const [showConfirmRecoveryKey, setShowConfirmRecoveryKey] = useState(false);
+
   // Quick Share Dropzone States
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [quickNote, setQuickNote] = useState('');
@@ -157,6 +170,7 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
   };
 
   const keyStrength = useMemo(() => computeClientKeyStrength(loginKey), [loginKey]);
+  const recoveryKeyStrength = useMemo(() => computeClientKeyStrength(newRecoveryKey), [newRecoveryKey]);
 
   const switchView = (nextView: AuthView) => {
     setError(null);
@@ -176,6 +190,13 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
     toast.success('Private key copied to clipboard');
   };
 
+  const handleGenerateRecoveryKey = () => {
+    const gen = generateSecureRandomKey();
+    setNewRecoveryKey(gen);
+    setConfirmRecoveryKey(gen);
+    toast.success('Generated secure key');
+  };
+
   const handleCopyCode = async () => {
     const code = `curl -X POST https://gb-send.vercel.app/api/items \\\n  -H "Authorization: Bearer <key>" \\\n  -d '{"ttl": 86400}'`;
     try {
@@ -188,23 +209,36 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
     }
   };
 
-  // Standard Key Login
+  // Username + Key Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!username.trim() || !loginKey.trim()) {
+      setError('Please enter both your username and private login key.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: loginKey }),
+        body: JSON.stringify({
+          username: username.trim(),
+          key: loginKey,
+        }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Invalid key. Please check your key and try again.');
+        setError(data.error || 'Invalid username or key.');
         return;
+      }
+
+      if (data.keyResetNotice) {
+        toast.info(data.keyResetNotice);
       }
 
       toast.success(`Signed in as @${data.user.displayUsername || data.user.username}`);
@@ -216,13 +250,26 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
     }
   };
 
-  // Custom Account Registration
+  // Custom Account Registration with Security Question & Answer
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    const activeQuestion =
+      selectedQuestionPreset === 'custom' ? customQuestion.trim() : selectedQuestionPreset;
+
+    if (!activeQuestion || activeQuestion.length < 10) {
+      setError('Security question must be between 10 and 150 characters.');
+      return;
+    }
+
+    if (!securityAnswer.trim() || securityAnswer.trim().length < 4) {
+      setError('Security answer must be at least 4 characters long.');
+      return;
+    }
+
     if (!acknowledgedWarning) {
-      setError('Please acknowledge that your private login key cannot be recovered if lost.');
+      setError('Please acknowledge that your account cannot be recovered if you forget your key and security answer.');
       return;
     }
 
@@ -235,6 +282,8 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
         body: JSON.stringify({
           username: username.trim(),
           key: loginKey,
+          securityQuestion: activeQuestion,
+          securityAnswer: securityAnswer.trim(),
           acknowledgedWarning: true,
         }),
       });
@@ -249,6 +298,90 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
       onSuccess(data.user);
     } catch {
       setError('Network error. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Recovery Flow - Step 1: Look up Question
+  const handleFetchRecoveryQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!recoveryUsername.trim()) {
+      setError('Please enter your username');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/recovery/question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: recoveryUsername.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to retrieve recovery question');
+        return;
+      }
+
+      setRecoveryQuestion(data.question);
+      setRecoveryStep(2);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Recovery Flow - Step 2: Answer + Reset Key
+  const handleResetRecoveryKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!recoveryAnswer.trim() || recoveryAnswer.trim().length < 4) {
+      setError('Please enter your security answer (minimum 4 characters).');
+      return;
+    }
+
+    if (newRecoveryKey !== confirmRecoveryKey) {
+      setError('New login key and confirmation do not match.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/recovery/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: recoveryUsername.trim(),
+          answer: recoveryAnswer.trim(),
+          newKey: newRecoveryKey,
+          confirmKey: confirmRecoveryKey,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Recovery failed. Invalid recovery answer.');
+        return;
+      }
+
+      toast.success('Your login key has been reset! Please sign in with your new key.');
+      setUsername(recoveryUsername.trim());
+      setLoginKey('');
+      setRecoveryStep(1);
+      setRecoveryAnswer('');
+      setNewRecoveryKey('');
+      setConfirmRecoveryKey('');
+      switchView('login');
+    } catch {
+      setError('Network error. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -271,9 +404,10 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
     setIsLoading(true);
 
     try {
-      // 1. Generate an instant ephemeral user account if none exists
+      // 1. Generate an instant ephemeral user account with default security recovery pair
       const randomUsername = `quick_${Math.random().toString(36).substring(2, 7)}`;
       const autoKey = generateSecureRandomKey();
+      const autoAnswer = `backup-${Math.random().toString(36).substring(2, 8)}`;
 
       const regRes = await fetch('/api/auth/register', {
         method: 'POST',
@@ -281,6 +415,8 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
         body: JSON.stringify({
           username: randomUsername,
           key: autoKey,
+          securityQuestion: PRESET_SECURITY_QUESTIONS[0],
+          securityAnswer: autoAnswer,
           acknowledgedWarning: true,
         }),
       });
@@ -634,8 +770,21 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                     Unlock Your Vault
                   </h2>
                   <p className="text-[13px] text-[#86868b] mt-0.5">
-                    Enter your private key to decrypt and access your saved items.
+                    Enter your username and private key to access your encrypted vault.
                   </p>
+                </div>
+
+                <div>
+                  <Input
+                    label="Public Username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="Enter your username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    icon={<User className="w-4 h-4" />}
+                    required
+                  />
                 </div>
 
                 <div className="relative">
@@ -659,12 +808,26 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                   </button>
                 </div>
 
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRecoveryUsername(username);
+                      setRecoveryStep(1);
+                      switchView('recovery');
+                    }}
+                    className="text-[12px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
+                  >
+                    Forgot key?
+                  </button>
+                </div>
+
                 <Button
                   type="submit"
                   size="lg"
                   className="w-full"
                   isLoading={isLoading}
-                  disabled={!loginKey.trim()}
+                  disabled={!username.trim() || !loginKey.trim()}
                 >
                   <span>Continue to Vault</span>
                   <ArrowRight className="w-4 h-4" />
@@ -676,7 +839,7 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                     onClick={() => switchView('register')}
                     className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
                   >
-                    Don't have a private key? Create new vault
+                    Don&apos;t have an account? Create new vault
                   </button>
                 </div>
               </form>
@@ -690,7 +853,7 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                     Create Your Vault
                   </h2>
                   <p className="text-[13px] text-[#86868b] mt-0.5">
-                    Zero email or phone number. Your private key is your only password.
+                    Zero email or phone number. Your private key and security question protect your account.
                   </p>
                 </div>
 
@@ -767,6 +930,63 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                   )}
                 </div>
 
+                <div>
+                  <label className="block text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1.5">
+                    Security Question (for Key Recovery)
+                  </label>
+                  <select
+                    value={selectedQuestionPreset}
+                    onChange={(e) => setSelectedQuestionPreset(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-[12px] text-[13px] bg-black/[0.03] dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[#1d1d1f] dark:text-[#f5f5f7] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
+                  >
+                    {PRESET_SECURITY_QUESTIONS.map((q) => (
+                      <option key={q} value={q} className="dark:bg-[#1c1c1e]">
+                        {q}
+                      </option>
+                    ))}
+                    <option value="custom" className="dark:bg-[#1c1c1e]">
+                      -- Write a custom question... --
+                    </option>
+                  </select>
+                </div>
+
+                {selectedQuestionPreset === 'custom' && (
+                  <div>
+                    <Input
+                      label="Custom Security Question"
+                      placeholder="e.g. What was the name of your first musical instrument?"
+                      value={customQuestion}
+                      onChange={(e) => setCustomQuestion(e.target.value)}
+                      icon={<HelpCircle className="w-4 h-4" />}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <div className="relative">
+                    <Input
+                      label="Security Answer"
+                      type={showSecurityAnswer ? 'text' : 'password'}
+                      placeholder="Enter memorable answer"
+                      value={securityAnswer}
+                      onChange={(e) => setSecurityAnswer(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecurityAnswer(!showSecurityAnswer)}
+                      className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                      aria-label={showSecurityAnswer ? 'Hide answer' : 'Show answer'}
+                    >
+                      {showSecurityAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#86868b] mt-1.5">
+                    Answers are case-insensitive and tolerate whitespace. Minimum 4 characters.
+                  </p>
+                </div>
+
                 <div className="pt-2">
                   <label className="flex items-start gap-2.5 cursor-pointer select-none">
                     <input
@@ -776,7 +996,7 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                       className="mt-0.5 rounded-[4px] border-black/20 text-[#0071e3] focus:ring-[#0071e3]"
                     />
                     <span className="text-[12px] text-[#86868b] leading-snug">
-                      I understand this key cannot be recovered or reset by anyone if lost.
+                      If I forget my key AND my security answer, my account cannot be recovered.
                     </span>
                   </label>
                 </div>
@@ -786,12 +1006,204 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
                   size="lg"
                   className="w-full"
                   isLoading={isLoading}
-                  disabled={!username.trim() || !loginKey.trim() || !acknowledgedWarning}
+                  disabled={!username.trim() || !loginKey.trim() || !securityAnswer.trim() || !acknowledgedWarning}
                 >
                   <span>Create Vault &amp; Enter</span>
                   <ArrowRight className="w-4 h-4" />
                 </Button>
+
+                <div className="pt-3 text-center">
+                  <button
+                    type="button"
+                    onClick={() => switchView('login')}
+                    className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
+                  >
+                    Already have a vault? Sign in
+                  </button>
+                </div>
               </form>
+            )}
+
+            {/* TAB 4: RECOVER LOGIN KEY */}
+            {view === 'recovery' && (
+              <div className="space-y-4">
+                <div className="mb-2">
+                  <h2 className="text-[20px] font-bold tracking-[-0.02em] text-[#1d1d1f] dark:text-[#f5f5f7]">
+                    Recover Vault Key
+                  </h2>
+                  <p className="text-[13px] text-[#86868b] mt-0.5">
+                    {recoveryStep === 1
+                      ? 'Enter your username to retrieve your security question.'
+                      : 'Answer your security question to set a new private login key.'}
+                  </p>
+                </div>
+
+                {recoveryStep === 1 ? (
+                  <form onSubmit={handleFetchRecoveryQuestion} className="space-y-4">
+                    <div>
+                      <Input
+                        label="Account Username"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="Enter your username"
+                        value={recoveryUsername}
+                        onChange={(e) => setRecoveryUsername(e.target.value)}
+                        icon={<User className="w-4 h-4" />}
+                        required
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="w-full"
+                      isLoading={isLoading}
+                      disabled={!recoveryUsername.trim()}
+                    >
+                      <span>Continue</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => switchView('login')}
+                        className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
+                      >
+                        Remember your key? Back to sign in
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleResetRecoveryKey} className="space-y-4">
+                    <div className="p-3.5 rounded-[14px] bg-[#0071e3]/5 dark:bg-[#0a84ff]/10 border border-[#0071e3]/15 dark:border-[#0a84ff]/20">
+                      <div className="text-[11px] font-semibold text-[#0071e3] dark:text-[#0a84ff] uppercase tracking-wider mb-1">
+                        Security Question
+                      </div>
+                      <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
+                        {recoveryQuestion}
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="relative">
+                        <Input
+                          label="Your Security Answer"
+                          type={showRecoveryAnswer ? 'text' : 'password'}
+                          placeholder="Enter your answer"
+                          value={recoveryAnswer}
+                          onChange={(e) => setRecoveryAnswer(e.target.value)}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRecoveryAnswer(!showRecoveryAnswer)}
+                          className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                          aria-label={showRecoveryAnswer ? 'Hide answer' : 'Show answer'}
+                        >
+                          {showRecoveryAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-[#86868b] mt-1.5">
+                        Answers are case-insensitive and tolerate whitespace.
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
+                          New Private Login Key
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleGenerateRecoveryKey}
+                          className="text-[12px] font-semibold text-[#0071e3] dark:text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          Auto-generate
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <Input
+                          type={showNewRecoveryKey ? 'text' : 'password'}
+                          placeholder="Enter new 8-128 char key"
+                          value={newRecoveryKey}
+                          onChange={(e) => setNewRecoveryKey(e.target.value)}
+                          icon={<KeyRound className="w-4 h-4" />}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewRecoveryKey(!showNewRecoveryKey)}
+                          className="absolute right-3 top-[10px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                          aria-label={showNewRecoveryKey ? 'Hide key' : 'Show key'}
+                        >
+                          {showNewRecoveryKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {newRecoveryKey && (
+                        <div className="mt-2 flex items-center gap-2 text-[12px]">
+                          <div className="flex-1 h-1 rounded-full bg-black/[0.08] dark:bg-white/[0.1] overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${recoveryKeyStrength.colorClass}`}
+                              style={{ width: `${(recoveryKeyStrength.score + 1) * 20}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] text-[#86868b]">{recoveryKeyStrength.label}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="relative">
+                        <Input
+                          label="Confirm New Login Key"
+                          type={showConfirmRecoveryKey ? 'text' : 'password'}
+                          placeholder="Re-enter new key"
+                          value={confirmRecoveryKey}
+                          onChange={(e) => setConfirmRecoveryKey(e.target.value)}
+                          icon={<KeyRound className="w-4 h-4" />}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmRecoveryKey(!showConfirmRecoveryKey)}
+                          className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                          aria-label={showConfirmRecoveryKey ? 'Hide confirm key' : 'Show confirm key'}
+                        >
+                          {showConfirmRecoveryKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className="w-full"
+                      isLoading={isLoading}
+                      disabled={!recoveryAnswer.trim() || !newRecoveryKey.trim() || newRecoveryKey !== confirmRecoveryKey}
+                    >
+                      <span>Reset Key &amp; Return to Sign In</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRecoveryStep(1);
+                          switchView('login');
+                        }}
+                        className="text-[13px] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+                      >
+                        Cancel recovery
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             )}
           </div>
 

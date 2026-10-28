@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
   getSession,
   verifyLoginKey,
   hashLoginKey,
   validateLoginKey,
-  computeKeyFingerprint,
   setSessionCookie,
 } from '@/lib/auth';
 import {
   getRawUserById,
-  getUserByKeyFingerprint,
   updateUserPassword,
 } from '@/lib/db';
+
+const changeKeySchema = z.object({
+  currentKey: z.string().min(1, 'Current login key is required'),
+  newKey: z.string().min(1, 'New login key is required'),
+});
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -21,15 +25,22 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const currentKey = body.currentKey || body.currentPassword || '';
-    const newKey = body.newKey || body.newPassword || '';
+    const rawCurrentKey = body.currentKey || body.currentPassword || '';
+    const rawNewKey = body.newKey || body.newPassword || '';
 
-    if (!currentKey) {
+    const parseResult = changeKeySchema.safeParse({
+      currentKey: rawCurrentKey,
+      newKey: rawNewKey,
+    });
+
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Current login key is required' },
+        { error: parseResult.error.issues[0]?.message || 'Current and new login keys are required' },
         { status: 400 }
       );
     }
+
+    const { currentKey, newKey } = parseResult.data;
 
     const user = await getRawUserById(session.userId);
     if (!user) {
@@ -52,17 +63,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const newFingerprint = computeKeyFingerprint(newKey);
-    const existingOwner = await getUserByKeyFingerprint(newFingerprint);
-    if (existingOwner && existingOwner.id !== session.userId) {
-      return NextResponse.json(
-        { error: 'This login key is already in use. Please choose a different key.' },
-        { status: 409 }
-      );
-    }
-
+    // Hash new key with Argon2id (two users may have the exact same key now)
     const newHash = await hashLoginKey(newKey);
-    await updateUserPassword(session.userId, newHash, newFingerprint);
+    await updateUserPassword(session.userId, newHash);
 
     const updatedUser = await getRawUserById(session.userId);
     await setSessionCookie({

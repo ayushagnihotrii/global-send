@@ -306,6 +306,186 @@ export async function performDummyKeyVerification(loginKey: string): Promise<voi
 export const hashPassword = hashLoginKey;
 export const verifyPassword = verifyLoginKey;
 
+export const PRESET_SECURITY_QUESTIONS: readonly string[] = [
+  'What was the name of your first childhood imaginary friend or first pet?',
+  'What was the street name of the first residence you remember living at?',
+  'What was the title of the first movie or play you saw in a theater?',
+  'In what city or town did your parents or guardians first meet?',
+  'What was the model of your very first computer, phone, or gaming console?',
+  'What was the first music concert or live show you attended?',
+  'What was the surname of your favorite teacher who inspired you most?',
+  'What was the nickname your childhood friends or family called you?',
+] as const;
+
+/**
+ * Normalizes a security answer according to Global Send recovery rules:
+ * Unicode NFKC, lowercase, trimmed, with internal whitespace collapsed to single spaces.
+ * Ensures answers are case-insensitive and tolerant of accidental whitespace.
+ */
+export function normalizeSecurityAnswer(rawAnswer: string): string {
+  if (typeof rawAnswer !== 'string') return '';
+  return rawAnswer
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Validates a security question string (10 to 150 characters).
+ */
+export function validateSecurityQuestion(rawQuestion: string): {
+  valid: boolean;
+  question: string;
+  error?: string;
+} {
+  if (typeof rawQuestion !== 'string' || rawQuestion.trim().length === 0) {
+    return { valid: false, question: '', error: 'Security question is required' };
+  }
+
+  const question = rawQuestion.trim().replace(/\s+/g, ' ');
+  const charCount = Array.from(question).length;
+
+  if (charCount < 10) {
+    return {
+      valid: false,
+      question,
+      error: 'Security question must be at least 10 characters long',
+    };
+  }
+
+  if (charCount > 150) {
+    return {
+      valid: false,
+      question,
+      error: 'Security question cannot exceed 150 characters',
+    };
+  }
+
+  return { valid: true, question };
+}
+
+/**
+ * Validates a user-provided security answer.
+ * Rules:
+ * - Minimum 4 characters after normalization
+ * - Maximum 150 characters
+ * - Must not equal the normalized username
+ * - Must not equal the login key
+ */
+export function validateSecurityAnswer(
+  rawAnswer: string,
+  usernameForComparison?: string,
+  keyForComparison?: string
+): { valid: boolean; normalized: string; error?: string } {
+  if (typeof rawAnswer !== 'string' || rawAnswer.trim().length === 0) {
+    return { valid: false, normalized: '', error: 'Security answer is required' };
+  }
+
+  const normalized = normalizeSecurityAnswer(rawAnswer);
+  const charCount = Array.from(normalized).length;
+
+  if (charCount < 4) {
+    return {
+      valid: false,
+      normalized,
+      error: 'Security answer must be at least 4 characters long',
+    };
+  }
+
+  if (charCount > 150) {
+    return {
+      valid: false,
+      normalized,
+      error: 'Security answer cannot exceed 150 characters',
+    };
+  }
+
+  if (usernameForComparison) {
+    const normUsername = normalizeSecurityAnswer(usernameForComparison);
+    if (normalized === normUsername) {
+      return {
+        valid: false,
+        normalized,
+        error: 'Security answer cannot be your username',
+      };
+    }
+  }
+
+  if (keyForComparison) {
+    const normKey = normalizeSecurityAnswer(keyForComparison);
+    if (rawAnswer === keyForComparison || normalized === normKey) {
+      return {
+        valid: false,
+        normalized,
+        error: 'Security answer cannot be your login key',
+      };
+    }
+  }
+
+  return { valid: true, normalized };
+}
+
+/**
+ * Hashes a normalized security answer with salted Argon2id.
+ */
+export async function hashSecurityAnswer(normalizedAnswer: string): Promise<string> {
+  const salt = crypto.randomBytes(16);
+  const derived = argon2id(new TextEncoder().encode(normalizedAnswer), salt, {
+    t: ARGON2_TIME,
+    m: ARGON2_MEMORY,
+    p: ARGON2_PARALLELISM,
+    dkLen: ARGON2_DKLEN,
+  });
+
+  const saltB64 = Buffer.from(salt).toString('base64url');
+  const hashB64 = Buffer.from(derived).toString('base64url');
+  return `$argon2id$v=19$m=${ARGON2_MEMORY},t=${ARGON2_TIME},p=${ARGON2_PARALLELISM}$${saltB64}$${hashB64}`;
+}
+
+/**
+ * Verifies a normalized security answer against a stored Argon2id PHC hash.
+ */
+export async function verifySecurityAnswer(
+  normalizedAnswer: string,
+  storedHash: string
+): Promise<boolean> {
+  return verifyLoginKey(normalizedAnswer, storedHash);
+}
+
+/**
+ * Runs a dummy Argon2id computation for security answers to equalize response latency
+ * when unknown usernames or unconfigured accounts request recovery.
+ */
+export async function performDummyAnswerVerification(normalizedAnswer: string): Promise<void> {
+  const dummySalt = crypto
+    .createHash('sha256')
+    .update(`dummy-answer-salt:${getFingerprintSecret()}`)
+    .digest()
+    .subarray(0, 16);
+
+  argon2id(new TextEncoder().encode(normalizedAnswer || 'invalid-answer'), dummySalt, {
+    t: ARGON2_TIME,
+    m: ARGON2_MEMORY,
+    p: ARGON2_PARALLELISM,
+    dkLen: ARGON2_DKLEN,
+  });
+}
+
+/**
+ * Returns a deterministic, consistent preset question for unknown usernames
+ * derived from an HMAC of the username, preventing account enumeration.
+ */
+export function getDeterministicFakeQuestion(normalizedUsername: string): string {
+  const secret = getFingerprintSecret();
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(`fake-recovery-question:${(normalizedUsername || 'unknown').toLowerCase()}`)
+    .digest();
+  const index = hash.readUInt16BE(0) % PRESET_SECURITY_QUESTIONS.length;
+  return PRESET_SECURITY_QUESTIONS[index];
+}
+
 export async function createSessionToken(
   session: AuthSession,
   rememberMe: boolean = false
@@ -344,29 +524,37 @@ export async function setSessionCookie(
   rememberMe: boolean = false
 ): Promise<void> {
   const token = await createSessionToken(session, rememberMe);
-  const cookieStore = await cookies();
-  const maxAge = rememberMe
-    ? SITE_CONFIG.sessionDurationDays * 24 * 60 * 60
-    : SITE_CONFIG.shortSessionDurationHours * 60 * 60;
+  try {
+    const cookieStore = await cookies();
+    const maxAge = rememberMe
+      ? SITE_CONFIG.sessionDurationDays * 24 * 60 * 60
+      : SITE_CONFIG.shortSessionDurationHours * 60 * 60;
 
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge,
-  });
+    cookieStore.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge,
+    });
+  } catch {
+    // cookies() is not available outside a dynamic Next.js server request context (e.g. in standalone tests)
+  }
 }
 
 export async function clearSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 0,
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+    });
+  } catch {
+    // cookies() is not available outside a dynamic Next.js server request context (e.g. in standalone tests)
+  }
 }
 
 export async function getSession(): Promise<AuthSession | null> {

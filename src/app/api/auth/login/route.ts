@@ -1,28 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import {
-  getUserByKeyFingerprint,
-  getUsersWithoutKeyFingerprint,
-  setUserKeyFingerprint,
+  getUserByUsername,
   updateUserLastLogin,
   getUserById,
+  checkPersistentRateLimit,
 } from '@/lib/db';
 import {
-  computeKeyFingerprint,
+  validateUsername,
   verifyLoginKey,
   performDummyKeyVerification,
   setSessionCookie,
-  checkRateLimit,
   createSessionToken,
 } from '@/lib/auth';
 
-const GENERIC_LOGIN_ERROR = 'Invalid key. Please check your key and try again.';
+const GENERIC_LOGIN_ERROR = 'Invalid username or key.';
+
+const loginInputSchema = z.object({
+  username: z.string().trim().min(1, 'Username is required'),
+  key: z.string().min(1, 'Login key is required'),
+  rememberMe: z.boolean().optional().default(false),
+});
 
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
 
-    // Rate limit per IP
-    if (!checkRateLimit(`login_ip_${ip}`, 12, 60000)) {
+    // 1. Persistent IP-based rate limiting
+    const ipAllowed = await checkPersistentRateLimit(`login_ip_${ip}`, 20, 60000);
+    if (!ipAllowed) {
       return NextResponse.json(
         { error: 'Too many login attempts. Please wait a minute and try again.' },
         { status: 429 }
@@ -30,6 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}));
+    const rawUsername = typeof body.username === 'string' ? body.username.trim() : '';
     const rawKey =
       typeof body.key === 'string'
         ? body.key
@@ -39,51 +46,55 @@ export async function POST(req: NextRequest) {
         ? body.password
         : '';
 
-    if (!rawKey || rawKey.trim().length === 0) {
+    // Login with key alone must no longer work: both username and key are strictly required
+    const parseResult = loginInputSchema.safeParse({
+      username: rawUsername,
+      key: rawKey,
+      rememberMe: Boolean(body.rememberMe),
+    });
+
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Please enter your login key.' },
+        { error: 'Username and login key are both required to sign in.' },
         { status: 400 }
       );
     }
 
-    const keyFingerprint = computeKeyFingerprint(rawKey);
+    const { username, key, rememberMe } = parseResult.data;
+    const usernameValidation = validateUsername(username);
+    const normalizedUsername = usernameValidation.normalized;
 
-    // Rate limit per fingerprint prefix to throttle targeted guesses
-    if (!checkRateLimit(`login_fp_${ip}_${keyFingerprint.slice(0, 12)}`, 8, 60000)) {
+    // 2. Persistent Username-based rate limiting
+    const userAllowed = await checkPersistentRateLimit(`login_user_${normalizedUsername}`, 10, 60000);
+    if (!userAllowed) {
       return NextResponse.json(
-        { error: 'Too many login attempts. Please wait a minute and try again.' },
+        { error: 'Too many login attempts for this account. Please wait a minute and try again.' },
         { status: 429 }
       );
     }
 
-    // 1. Primary lookup by deterministic HMAC-SHA-256 key fingerprint (no username required!)
-    let userRow = await getUserByKeyFingerprint(keyFingerprint);
+    // 3. Look up user by normalized username (case-insensitive)
+    const userRow = await getUserByUsername(normalizedUsername);
 
-    if (userRow) {
-      const isValid = await verifyLoginKey(rawKey, userRow.password_hash);
-      if (!isValid) {
-        return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
-      }
-    } else {
-      // 2. Fallback migration check for any pre-existing legacy user without a fingerprint
-      const legacyUsers = await getUsersWithoutKeyFingerprint();
-      let matchedLegacy: any = null;
+    if (!userRow) {
+      // Dummy Argon2id verification to equalize timing side-channels
+      await performDummyKeyVerification(key);
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
+    }
 
-      for (const candidate of legacyUsers) {
-        const ok = await verifyLoginKey(rawKey, candidate.password_hash);
-        if (ok) {
-          matchedLegacy = candidate;
-          break;
-        }
-      }
+    // 4. Constant-time Argon2id key verification
+    const isValid = await verifyLoginKey(key, userRow.password_hash);
+    if (!isValid) {
+      return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
+    }
 
-      if (matchedLegacy) {
-        await setUserKeyFingerprint(matchedLegacy.id, keyFingerprint).catch(() => {});
-        userRow = matchedLegacy;
-      } else {
-        // Equalize timing with a full Argon2id computation so attackers cannot probe key existence
-        await performDummyKeyVerification(rawKey);
-        return NextResponse.json({ error: GENERIC_LOGIN_ERROR }, { status: 401 });
+    // Check if a key reset occurred since the user's prior login to notify owner
+    let keyResetNotice: string | null = null;
+    if (userRow.key_reset_at) {
+      const resetTime = new Date(userRow.key_reset_at).getTime();
+      const lastLoginTime = userRow.last_login_at ? new Date(userRow.last_login_at).getTime() : 0;
+      if (resetTime >= lastLoginTime) {
+        keyResetNotice = `Your login key was reset on ${new Date(userRow.key_reset_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}.`;
       }
     }
 
@@ -96,7 +107,6 @@ export async function POST(req: NextRequest) {
       sessionVersion: Number(userRow.session_version || 1),
     };
 
-    const rememberMe = Boolean(body.rememberMe);
     const token = await createSessionToken(sessionPayload, rememberMe);
     await setSessionCookie(sessionPayload, rememberMe);
 
@@ -104,6 +114,8 @@ export async function POST(req: NextRequest) {
       success: true,
       token,
       user: fullUser,
+      keyResetNotice,
+      needsSecurityQuestion: !fullUser?.hasSecurityQuestion,
     });
   } catch (err: any) {
     console.error('[Global Send Login Error]:', err?.message || 'Unknown error');

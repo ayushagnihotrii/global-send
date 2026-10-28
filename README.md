@@ -16,11 +16,19 @@ Inspired by **Apple Notes**, **Apple Settings**, and modern iOS design principle
   - Distraction-free typography, restrained 8pt spacing grid, smooth rounded cards, and subtle borders.
   - Dedicated comfortable reading view with a **Monospace toggle** for code snippets and programming problems.
   - Floating iOS pill toasts for real-time feedback (*"Copied to clipboard"*, *"Saved to QuickVault"*).
-- **Zero-Dependency Username & Password Auth**:
-  - No Google OAuth or third-party tracking required.
-  - Passwords hashed using salted `bcryptjs` (12 rounds) with timing-safe validation.
-  - One-time human-friendly account **Recovery Code** generated at registration for secure password resets.
-  - Secure HTTP-only, SameSite=Lax session cookies with signed JWT tokens (`jose`).
+- **Zero-Dependency Username + Key Auth**:
+  - Requires both **Username** and **Key** to log in (key-alone login disabled).
+  - Multiple users can register with the exact same key without conflicts (global key uniqueness constraint removed).
+  - Keys hashed using salted **Argon2id** with timing-safe dummy verification for unknown users to eliminate timing-based user enumeration.
+  - Generic error message (`Invalid username or key.`) for both nonexistent usernames and wrong keys.
+  - Secure HTTP-only, SameSite=Lax session cookies with signed JWT tokens (`jose`) and Bearer token support.
+- **Security-Question Key Recovery**:
+  - Set a security question (curated presets or custom question) and answer during registration or in Settings.
+  - Answers are normalized (Unicode NFKC, lowercased, trimmed, whitespace collapsed) and stored strictly as salted **Argon2id** hashes (never plaintext).
+  - Anti-enumeration protection: querying unknown usernames returns deterministic fake questions derived via HMAC-SHA-256 with constant-time dummy verification on reset.
+  - Persistent abuse protection: 5 wrong recovery attempts trigger a 30-minute lockout (exponentially doubling up to 24 hours), tracked persistently across serverless lambdas.
+  - Safe key reset: revokes all active sessions by incrementing `session_version`, resets lockout counters, and displays a security notice on next login.
+  - Existing user migration: mandatory, blocking setup prompt upon login for accounts lacking a security question.
 - **Date-Wise Organization & Timeline**:
   - Content automatically categorized into clear chronological groups:
     - *Today · [Date]*
@@ -54,7 +62,7 @@ Inspired by **Apple Notes**, **Apple Settings**, and modern iOS design principle
 | **Styling** | Tailwind CSS v4 + Vanilla CSS Design Tokens |
 | **Icons** | Lucide React |
 | **Validation** | Zod v3 |
-| **Authentication** | Username/Password + Bcrypt + JOSE (JWT) + Secure Cookies |
+| **Authentication** | Username + Key + Argon2id + JOSE (JWT) + Secure Cookies |
 | **Database** | Supabase PostgreSQL (`pg`) with automatic embedded SQLite (`@libsql/client`) fallback |
 | **Object Storage** | Cloudflare R2 (`@aws-sdk/client-s3`) with local storage fallback |
 
@@ -135,22 +143,21 @@ To configure Cloudflare R2 for file, photo, and video uploads:
 
 ## 🧪 Testing
 
-Run the automated end-to-end acceptance test suite:
+Run the automated test suite across configuration and system tests:
 ```bash
-node test_api.mjs
+npm test
 ```
-The acceptance test verifies:
-- Username registration and one-time recovery code generation.
-- Session authorization and cookie persistence.
-- Phone-to-computer text saving with multiline indentation preservation.
-- Link saving with domain extraction.
-- Date-grouped item retrieval.
-- Substring body search and tag filtering.
-- Toggle favourite.
-- Cross-user data isolation (rejects unauthorized access with 404).
-- Presigned upload and file confirmation.
-- Storage quota calculation.
-- Trash soft-delete and item restoration.
+The test suite (`test_config.mjs` and `test_globalsend.mjs`) verifies:
+- Username + Key authentication (key-only rejected, identical 401 error message for wrong username and wrong key).
+- Two distinct users registering and authenticating with the exact same key without conflict.
+- Security question validation (curated presets and custom questions) and normalized answer hashing (Unicode NFKC, lowercase, trimmed, whitespace collapsed).
+- Constant-time dummy verification on nonexistent usernames.
+- Anti-enumeration defense via HMAC-SHA-256 fake questions for unknown accounts.
+- Two-step recovery flow (`/api/auth/recovery/question` and `/api/auth/recovery/reset`), updating the key and invalidating previous sessions.
+- Persistent abuse protection: lockout after 5 failed recovery attempts, enforced across multiple sessions and IPs.
+- Deprecated `/api/auth/recover` endpoint returning HTTP 410 Gone.
+- Existing user migration path with mandatory security question setup before vault access.
+- Cross-user data isolation, file upload / expiry mechanics, item clipboard preservation, and chat persistence.
 
 ---
 
@@ -160,14 +167,15 @@ The acceptance test verifies:
 2. Import the project into [Vercel](https://vercel.com).
 3. In **Environment Variables**, configure:
    - `DATABASE_URL`: Your Supabase PostgreSQL connection string.
-   - `AUTH_SECRET`: A secure 32+ character random secret (`openssl rand -base64 32`).
-   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`.
-   - `NEXT_PUBLIC_APP_URL`: Your production domain (e.g. `https://vault.yourdomain.com`).
-4. Click **Deploy**.
+   - `JWT_SECRET`: A secure 32+ character random secret (`openssl rand -base64 32`).
+   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` (or Google Drive credentials).
+   - `NEXT_PUBLIC_APP_URL`: Your production domain (e.g. `https://gsend.in`).
+4. Apply database migration `supabase/migrations/004_security_questions_and_username_auth.sql` to your Supabase PostgreSQL instance.
+5. Click **Deploy**.
 
 ### Custom Domain Configuration
 - In Vercel, go to **Settings → Domains**.
-- Add your short domain (e.g., `qv.sh` or `vault.mydomain.com`).
+- Add your domain (e.g., `gsend.in` or `vault.mydomain.com`).
 - Add the CNAME or A record pointed to `cname.vercel-dns.com` in your DNS provider (e.g., Cloudflare DNS).
 - Ensure SSL is set to **Full** in Cloudflare.
 
@@ -175,11 +183,13 @@ The acceptance test verifies:
 
 ## 🔒 Security Summary
 
-- **Server-Side Authorization**: Every database query and file access enforces `WHERE user_id = $userId`.
-- **Enumeration Defenses**: Generic authentication error messages and fake password hashing on nonexistent accounts prevent timing-based user enumeration.
-- **Private Object Storage**: Files are never stored in public buckets; authenticated short-lived presigned URLs are generated on demand.
+- **Server-Side Authorization**: Every database query and file access enforces user ownership checks.
+- **Timing-Safe Enumeration Defenses**: Generic authentication error messages (`Invalid username or key.`) and constant-time dummy Argon2id verifications on nonexistent accounts eliminate timing-based username enumeration.
+- **HMAC Fake Questions**: Recovery question requests for unknown accounts return deterministic fake questions derived from HMAC-SHA-256 of the username and server secret, maintaining identical response shapes and HTTP 200 status.
+- **Persistent Rate Limiting & Account Lockout**: Recovery endpoints are protected by persistent database rate limiting (`rate_limits` table), locking out accounts after 5 consecutive failed attempts for 30 minutes (doubling up to 24 hours), surviving serverless container restarts.
+- **Session Revocation**: Key resets immediately increment `session_version`, invalidating all existing JWT sessions, tokens, and active cookies.
+- **Zero Plaintext Credentials**: Keys and security answers are strictly stored as salted Argon2id hashes and never exposed in logs, API responses, or error traces.
 - **CSRF & Cookie Hardening**: HTTP-only, SameSite=Lax, Secure session cookies prevent script injection and unauthorized cross-site requests.
-- **No Plaintext Passwords**: Password hashing handled with salted Bcrypt (12 rounds).
 
 ---
 
@@ -187,15 +197,16 @@ The acceptance test verifies:
 
 | Feature | Implementation Status | Test & Verification Method | External Credential Requirement |
 |---|---|---|---|
-| **Username & Password Auth** | ✅ Fully Implemented | Verified via `test_api.mjs` & browser auth forms (Registration, Login, Logout, Session check) | None (Local bcrypt & JWT) |
-| **Recovery Code Generation** | ✅ Fully Implemented | Verified with custom `QV-XXXX-XXXX-XXXX` format and database hash matching | None |
+| **Username + Key Auth** | ✅ Fully Implemented | Verified via `test_globalsend.mjs` (Suite 1: registration, login, identical 401s, duplicate keys) | None (Local Argon2id & JWT) |
+| **Security Question Recovery** | ✅ Fully Implemented | Verified via `test_globalsend.mjs` (2-step recovery, 5-strike persistent lockout, fake HMAC questions) | None |
+| **Existing User Migration** | ✅ Fully Implemented | Verified via `test_globalsend.mjs` & `SecurityQuestionSetupModal` blocking vault access | None |
 | **Phone-to-Computer Text Sharing** | ✅ Fully Implemented | Verified with complex multiline programming questions & code snippets | None |
 | **Clipboard Copy & Linebreak Preservation** | ✅ Fully Implemented | Verified via `navigator.clipboard.writeText` and floating iOS toasts | None |
 | **Date-Wise Organization** | ✅ Fully Implemented | Verified grouping (*Today*, *Yesterday*, *Earlier This Week*, *Older*) and custom sorting | None |
 | **Full Search & Tag Filtering** | ✅ Fully Implemented | Verified across item titles, question bodies, URLs, and tags with debounced input | None |
 | **Trash, Restore & Empty Trash** | ✅ Fully Implemented | Verified soft-deletion, restore, and permanent deletion with storage cleanup | None |
-| **Settings & Storage Meter** | ✅ Fully Implemented | Verified storage calculation, breakdown counts, appearance toggle, and JSON data export | None |
-| **PostgreSQL Database** | ✅ Production Code Ready | Verified schema in `supabase/schema.sql` with dual adapter; tests run on embedded engine | `DATABASE_URL` (Supabase connection string) for cloud deployment |
-| **Cloudflare R2 File Storage** | ✅ Production Code Ready | S3-compatible client with presigned PUT/GET URLs; verified end-to-end via local storage adapter | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` for live Cloudflare bucket |
+| **Settings & Storage Meter** | ✅ Fully Implemented | Verified storage calculation, breakdown counts, appearance toggle, and key / recovery question updates | None |
+| **PostgreSQL Database** | ✅ Production Code Ready | Verified schema in `supabase/schema.sql` & migrations 001-004; tests run on embedded engine | `DATABASE_URL` (Supabase connection string) for cloud deployment |
+| **Cloud Storage (R2 / Google Drive)** | ✅ Production Code Ready | S3-compatible client / Google Drive OAuth adapter; verified end-to-end via local storage adapter | Cloud credentials for live buckets/drive |
 | **Dark / Light Mode** | ✅ Fully Implemented | Verified with CSS custom properties and instant toggle | None |
 
