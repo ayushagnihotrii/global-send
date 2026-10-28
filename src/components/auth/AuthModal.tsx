@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import {
   KeyRound,
   User,
@@ -18,11 +19,12 @@ import {
   X,
   Lock,
   Clock,
-  Sparkles,
+  ShieldCheck,
+  Smartphone,
+  Zap,
+  CheckCircle2,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { useToast } from '@/components/ui/Toast';
 import { SITE_CONFIG, PRESET_SECURITY_QUESTIONS } from '@/config/site';
 import { Logo } from '@/components/ui/Logo';
@@ -65,10 +67,10 @@ function computeClientKeyStrength(key: string): {
   const uniqueChars = new Set(Array.from(key)).size;
 
   if (len >= 20 && uniqueChars >= 10) {
-    return { score: 4, label: 'Very strong key', colorClass: 'bg-[#34c759]' };
+    return { score: 4, label: 'Very strong key', colorClass: 'bg-[#006a60] dark:bg-[#82d5c8]' };
   }
   if (len >= 14 && (variety >= 2 || uniqueChars >= 8)) {
-    return { score: 3, label: 'Strong key', colorClass: 'bg-[#34c759]' };
+    return { score: 3, label: 'Strong key', colorClass: 'bg-[#006a60] dark:bg-[#82d5c8]' };
   }
   if (len >= 10 && uniqueChars >= 5) {
     return { score: 2, label: 'Moderate key', colorClass: 'bg-[#ff9500]' };
@@ -443,655 +445,1066 @@ export function AuthModal({ onSuccess }: AuthModalProps) {
     return 'Unlock Vault';
   }, [isLoading, authMode, composerTab, stagedFile, stagedNote]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7] relative overflow-hidden transition-colors duration-200">
-      {/* Subtle Ambient Background Gradient */}
-      <div
-        className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[480px] rounded-full blur-[140px] opacity-25 dark:opacity-20"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(0, 113, 227, 0.45), rgba(88, 86, 214, 0.25), transparent 70%)',
-        }}
-      />
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 h-14 ios-material border-b border-black/[0.06] dark:border-white/[0.08]">
-        <div className="max-w-5xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo size={30} />
-            <span className="text-[16px] font-semibold tracking-[-0.02em] text-[#1c1c1e] dark:text-[#f5f5f7]">
+  return (
+    <div className="min-h-screen flex flex-col bg-[#f4fbf8] dark:bg-[#0e1513] text-[#05201c] dark:text-[#ffffff] transition-colors duration-200 selection:bg-[#006a60] selection:text-white dark:selection:bg-[#82d5c8] dark:selection:text-[#0e1513]">
+      
+      {/* LOCALSEND FIXED NAVBAR */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-20 bg-[#f4fbf8]/80 dark:bg-[#0e1513]/80 backdrop-blur-md border-b border-[#3f49471f] dark:border-[#82d5c81a] transition-colors">
+        <nav className="max-w-[1100px] mx-auto h-full px-5 flex items-center justify-between">
+          
+          {/* Logo with LocalSend style slow-rotating icon */}
+          <Link
+            href="/"
+            className="flex items-center gap-3 select-none group cursor-pointer"
+          >
+            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center ls-rotating-logo">
+              <Logo size={36} className="shadow-none border-none" />
+            </div>
+            <span className="text-[1.35rem] font-extrabold tracking-tight text-[#05201c] dark:text-white">
               {SITE_CONFIG.name}
             </span>
-          </div>
+          </Link>
 
-          <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-[12px] text-[#6c6c70] dark:text-[#98989d]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#34c759]" />
-              Private Cloud Locker
-            </span>
+          {/* Desktop Nav Links */}
+          <ul className="hidden md:flex items-center gap-8 text-[0.95rem] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">
+            <li>
+              <button
+                type="button"
+                onClick={() => scrollToSection('transfer')}
+                className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+              >
+                Transfer
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => scrollToSection('features')}
+                className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+              >
+                Features
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => scrollToSection('how-it-works')}
+                className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+              >
+                How It Works
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() => scrollToSection('security')}
+                className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+              >
+                Security
+              </button>
+            </li>
+            <li>
+              <a
+                href="https://github.com/ayushagnihotrii/global-send"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span>GitHub</span>
+              </a>
+            </li>
+          </ul>
 
-            {/* Dark / Light Mode Switcher */}
+          {/* Nav Actions (Theme Switcher & Primary Action Pill) */}
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={toggleTheme}
-              aria-label="Toggle theme appearance"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-[#6c6c70] dark:text-[#98989d] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+              aria-label="Toggle dark/light theme"
+              className="w-10 h-10 rounded-full border border-[#3f494729] dark:border-[#82d5c81a] bg-[#cce8e2]/25 dark:bg-[#131e1c] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#006a60] dark:hover:text-[#82d5c8] flex items-center justify-center transition-all cursor-pointer"
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-[#ff9f0a]" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-[#82d5c8]" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signin');
+                scrollToSection('transfer');
+              }}
+              className="px-5 py-2 rounded-full font-semibold text-[0.9rem] bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] hover:opacity-95 shadow-sm hover:shadow transition-all cursor-pointer hidden sm:inline-flex items-center gap-1.5"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Open Vault</span>
             </button>
           </div>
-        </div>
+
+        </nav>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 z-10">
-        <div className="w-full max-w-[540px] mx-auto space-y-6">
+      {/* HERO SECTION */}
+      <section className="pt-36 sm:pt-44 pb-12 sm:pb-16 px-5 text-center">
+        <div className="max-w-[900px] mx-auto space-y-5">
+          
+          <h1 className="text-[2.5rem] sm:text-[3.75rem] font-black tracking-tight leading-[1.08] text-[#05201c] dark:text-white">
+            Share files across any device. <br />
+            <span className="text-[#006a60] dark:text-[#82d5c8]">Fast, private, encrypted.</span>
+          </h1>
 
-          {/* Clean Focused Header */}
-          <div className="text-center space-y-2">
-            <h1 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.03em] text-[#1d1d1f] dark:text-[#f5f5f7] leading-tight">
-              Save files &amp; notes. <br />
-              <span className="bg-gradient-to-r from-[#0071e3] to-[#5856d6] dark:from-[#2997ff] dark:to-[#bf5af2] bg-clip-text text-transparent">
-                Instantly in your vault.
-              </span>
-            </h1>
-            <p className="text-[14px] sm:text-[15px] text-[#6c6c70] dark:text-[#98989d] max-w-md mx-auto leading-relaxed">
-              Drop a file or paste text below, then enter your username and key to save it straight to your encrypted vault.
-            </p>
+          <p className="text-[1.15rem] sm:text-[1.3rem] text-[#3f4947] dark:text-[#a0b0ad] max-w-[620px] mx-auto leading-relaxed">
+            Open-source, ephemeral cloud vault and clipboard locker for all your devices. Zero third-party cloud accounts required.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <button
+              type="button"
+              onClick={() => scrollToSection('transfer')}
+              className="px-7 py-3.5 rounded-full font-bold text-[1rem] bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] hover:opacity-90 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            >
+              <Zap className="w-4 h-4 fill-current" />
+              <span>Save &amp; Transfer to Vault</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection('how-it-works')}
+              className="px-7 py-3.5 rounded-full font-semibold text-[1rem] bg-[#eff5f2] dark:bg-[#131e1c] text-[#006a60] dark:text-[#82d5c8] border border-[#3f494729] dark:border-[#82d5c81a] hover:bg-[#cce8e2] dark:hover:bg-[#1a2624] transition-all cursor-pointer"
+            >
+              How It Works
+            </button>
           </div>
 
-          {/* Unified Card */}
-          <div className="bg-white/85 dark:bg-[#1c1c1e]/90 backdrop-blur-2xl rounded-[24px] border border-black/[0.08] dark:border-white/[0.1] p-6 sm:p-7 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] dark:shadow-[0_24px_60px_-12px_rgba(0,0,0,0.7)] space-y-6">
+        </div>
+      </section>
 
-            {/* View Switcher: Sign In vs Create Vault vs Recovery */}
-            {authMode !== 'recovery' && (
-              <div className="flex items-center justify-center">
-                <SegmentedControl
-                  className="w-full"
-                  value={authMode}
-                  onChange={(v) => {
-                    setError(null);
-                    setAuthMode(v as AuthMode);
-                  }}
-                  options={[
-                    { value: 'signin', label: 'Sign In to Vault', icon: <Lock className="w-3.5 h-3.5" /> },
-                    { value: 'register', label: 'Create Vault', icon: <Sparkles className="w-3.5 h-3.5" /> },
-                  ]}
-                />
+      {/* CORE INTERACTIVE CONSOLE (LOCALSEND DESKTOP MOCKUP WINDOW) */}
+      <section id="transfer" className="px-4 sm:px-6 pb-20">
+        <div className="max-w-[620px] mx-auto">
+          
+          {/* Mockup Window Container */}
+          <div className="rounded-[24px] sm:rounded-[28px] border-[2px] sm:border-[3px] border-[#006a60]/20 dark:border-[#384a47] bg-[#eff5f2] dark:bg-[#131e1c] shadow-[0_24px_60px_-15px_rgba(0,106,96,0.15)] dark:shadow-[0_28px_70px_-15px_rgba(0,0,0,0.8)] overflow-hidden">
+            
+            {/* Window Top Titlebar */}
+            <div className="px-5 py-3.5 border-b border-[#3f49471f] dark:border-[#82d5c81a] bg-[#e7f3f0] dark:bg-[#0e1513] flex items-center justify-between">
+              
+              {/* Traffic light dots */}
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-[#ff5f56] inline-block" />
+                <span className="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block" />
+                <span className="w-3 h-3 rounded-full bg-[#27c93f] inline-block" />
               </div>
-            )}
 
-            {/* Error Message Banner */}
-            {error && (
-              <div
-                role="alert"
-                className="p-3 rounded-[12px] bg-[#ff3b30]/10 dark:bg-[#ff453a]/15 border border-[#ff3b30]/20 text-[13px] font-medium text-[#ff3b30] dark:text-[#ff453a] flex items-center gap-2"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ff3b30] shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* SECTION 1: FRONT-PAGE COMPOSER (DROP FILE OR ADD TEXT) */}
-            {authMode !== 'recovery' && (
-              <div className="space-y-3 pb-2 border-b border-black/[0.06] dark:border-white/[0.08]">
-                
-                {/* Composer Tab Bar & Expiration Selector */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 bg-black/[0.04] dark:bg-white/[0.06] p-0.5 rounded-[9px]">
-                    <button
-                      type="button"
-                      onClick={() => setComposerTab('file')}
-                      className={`px-3 py-1 rounded-[7px] text-[12px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        composerTab === 'file'
-                          ? 'bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-2xs'
-                          : 'text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
-                      }`}
-                    >
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>Attach File</span>
-                      {stagedFile && <span className="w-1.5 h-1.5 rounded-full bg-[#0071e3]" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setComposerTab('note')}
-                      className={`px-3 py-1 rounded-[7px] text-[12px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        composerTab === 'note'
-                          ? 'bg-white dark:bg-[#3a3a3c] text-[#1c1c1e] dark:text-white shadow-2xs'
-                          : 'text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
-                      }`}
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Note &amp; Code</span>
-                      {stagedNote.trim() && <span className="w-1.5 h-1.5 rounded-full bg-[#0071e3]" />}
-                    </button>
-                  </div>
-
-                  {/* Expiration Pills */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] text-[#86868b] mr-1 hidden sm:inline flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Expires:
-                    </span>
-                    {[
-                      { label: '1h', sec: 3600 },
-                      { label: '24h', sec: 86400 },
-                      { label: '7d', sec: 604800 },
-                    ].map((exp) => (
-                      <button
-                        key={exp.sec}
-                        type="button"
-                        onClick={() => setExpirationSec(exp.sec)}
-                        className={`text-[11px] font-medium px-2 py-0.5 rounded-[5px] transition-colors cursor-pointer ${
-                          expirationSec === exp.sec
-                            ? 'bg-[#0071e3] text-white font-semibold'
-                            : 'text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white'
-                        }`}
-                      >
-                        {exp.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* File Dropzone or Preview */}
-                {composerTab === 'file' ? (
-                  <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      className="hidden"
-                      onChange={handleFileInputChange}
-                    />
-
-                    {stagedFile ? (
-                      <div className="p-3.5 rounded-[14px] bg-[#f2f2f7] dark:bg-[#2c2c2e] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-between gap-3 animate-in fade-in duration-150">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-[10px] bg-[#0071e3]/10 dark:bg-[#0a84ff]/20 text-[#0071e3] dark:text-[#0a84ff] flex items-center justify-center shrink-0">
-                            <FileIcon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-semibold text-[#1d1d1f] dark:text-white truncate">
-                              {stagedFile.name}
-                            </p>
-                            <p className="text-[11px] text-[#86868b]">
-                              {formatBytes(stagedFile.size)} · Will save to vault upon login
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setStagedFile(null);
-                            if (fileInputRef.current) fileInputRef.current.value = '';
-                          }}
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-[#8e8e93] hover:text-[#ff3b30] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] cursor-pointer shrink-0 transition-colors"
-                          title="Remove attached file"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`border-2 border-dashed rounded-[16px] p-6 text-center cursor-pointer transition-all duration-150 ${
-                          isDragOver
-                            ? 'border-[#0071e3] bg-[#0071e3]/[0.06] dark:bg-[#0a84ff]/[0.08] scale-[1.01]'
-                            : 'border-black/[0.12] dark:border-white/[0.14] hover:border-[#0071e3]/60 hover:bg-black/[0.01] dark:hover:bg-white/[0.02]'
-                        }`}
-                      >
-                        <div className="w-10 h-10 mx-auto rounded-[12px] bg-[#0071e3]/10 dark:bg-[#0a84ff]/15 text-[#0071e3] dark:text-[#0a84ff] flex items-center justify-center mb-2">
-                          <UploadCloud className="w-5 h-5" />
-                        </div>
-                        <p className="text-[14px] font-semibold text-[#1d1d1f] dark:text-white">
-                          Drag and drop file to save
-                        </p>
-                        <p className="text-[12px] text-[#86868b] mt-0.5">
-                          or <span className="text-[#0071e3] dark:text-[#0a84ff] font-medium underline">browse files</span> (up to 250 MB · optional)
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <div className="relative">
-                      <textarea
-                        rows={3}
-                        placeholder="Paste text, code snippet, notes, or links to save into your vault..."
-                        value={stagedNote}
-                        onChange={(e) => setStagedNote(e.target.value)}
-                        className={`w-full rounded-[14px] bg-[#f2f2f7] dark:bg-[#2c2c2e] border border-black/[0.08] dark:border-white/[0.1] p-3 text-[13px] leading-relaxed text-[#1d1d1f] dark:text-white placeholder-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#0071e3] resize-none transition-all ${
-                          isCodeFont ? 'font-mono' : 'font-sans'
-                        }`}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-[#86868b] px-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsCodeFont(!isCodeFont)}
-                        className={`inline-flex items-center gap-1 font-medium hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer ${
-                          isCodeFont ? 'text-[#0071e3] dark:text-[#0a84ff] font-semibold' : ''
-                        }`}
-                      >
-                        <Code className="w-3.5 h-3.5" />
-                        <span>{isCodeFont ? 'Monospace active' : 'Toggle Monospace'}</span>
-                      </button>
-
-                      {stagedNote.trim() && (
-                        <span>{stagedNote.length} characters</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* SECTION 2: AUTHENTICATION FORM */}
-            {authMode !== 'recovery' ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                
-                {/* Section Sub-header */}
-                <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-semibold uppercase tracking-wider text-[#86868b]">
-                    {hasStagedItem
-                      ? 'Enter credentials to save to vault'
-                      : authMode === 'signin'
-                      ? 'Vault Credentials'
-                      : 'Create Your Vault Credentials'}
-                  </span>
-                </div>
-
-                {/* Username Input */}
-                <div>
-                  <Input
-                    label="Username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    icon={<User className="w-4 h-4" />}
-                    required
-                  />
-                </div>
-
-                {/* Login Key Input */}
-                <div>
-                  {authMode === 'register' && (
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
-                        Private Login Key
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleGenerateKey}
-                        className="text-[12px] font-semibold text-[#0071e3] dark:text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        Auto-generate
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="relative">
-                    <Input
-                      label={authMode === 'signin' ? 'Private Login Key' : undefined}
-                      type={showKey ? 'text' : 'password'}
-                      autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
-                      placeholder={authMode === 'signin' ? 'Enter private key' : 'Choose 8+ character key'}
-                      value={loginKey}
-                      onChange={(e) => setLoginKey(e.target.value)}
-                      icon={<KeyRound className="w-4 h-4" />}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowKey(!showKey)}
-                      className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
-                      aria-label={showKey ? 'Hide key' : 'Show key'}
-                    >
-                      {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {authMode === 'register' && loginKey && (
-                    <div className="mt-2 flex items-center gap-2 text-[12px]">
-                      <div className="flex-1 h-1 rounded-full bg-black/[0.08] dark:bg-white/[0.1] overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ${keyStrength.colorClass}`}
-                          style={{ width: `${(keyStrength.score + 1) * 20}%` }}
-                        />
-                      </div>
-                      <span className="text-[11px] text-[#86868b]">{keyStrength.label}</span>
-                    </div>
-                  )}
-
-                  {authMode === 'signin' && (
-                    <div className="flex justify-end mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setError(null);
-                          setRecoveryUsername(username);
-                          setRecoveryStep(1);
-                          setAuthMode('recovery');
-                        }}
-                        className="text-[12px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
-                      >
-                        Forgot key?
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Registration Extra Fields: Security Question & Answer */}
-                {authMode === 'register' && (
-                  <div className="space-y-3.5 pt-1">
-                    <div>
-                      <label className="block text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7] mb-1.5">
-                        Security Question (for Key Recovery)
-                      </label>
-                      <select
-                        value={selectedQuestionPreset}
-                        onChange={(e) => setSelectedQuestionPreset(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-[12px] text-[13px] bg-black/[0.03] dark:bg-white/[0.06] border border-black/10 dark:border-white/10 text-[#1d1d1f] dark:text-[#f5f5f7] focus:outline-none focus:ring-2 focus:ring-[#0071e3]"
-                      >
-                        {PRESET_SECURITY_QUESTIONS.map((q) => (
-                          <option key={q} value={q} className="dark:bg-[#1c1c1e]">
-                            {q}
-                          </option>
-                        ))}
-                        <option value="custom" className="dark:bg-[#1c1c1e]">
-                          -- Write a custom question... --
-                        </option>
-                      </select>
-                    </div>
-
-                    {selectedQuestionPreset === 'custom' && (
-                      <div>
-                        <Input
-                          label="Custom Security Question"
-                          placeholder="e.g. What was the name of your first musical instrument?"
-                          value={customQuestion}
-                          onChange={(e) => setCustomQuestion(e.target.value)}
-                          icon={<HelpCircle className="w-4 h-4" />}
-                          required
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="relative">
-                        <Input
-                          label="Security Answer"
-                          type={showSecurityAnswer ? 'text' : 'password'}
-                          placeholder="Enter memorable answer"
-                          value={securityAnswer}
-                          onChange={(e) => setSecurityAnswer(e.target.value)}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowSecurityAnswer(!showSecurityAnswer)}
-                          className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
-                          aria-label={showSecurityAnswer ? 'Hide answer' : 'Show answer'}
-                        >
-                          {showSecurityAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-[#86868b] mt-1.5">
-                        Answers are case-insensitive. Minimum 4 characters.
-                      </p>
-                    </div>
-
-                    <div className="pt-1">
-                      <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={acknowledgedWarning}
-                          onChange={(e) => setAcknowledgedWarning(e.target.checked)}
-                          className="mt-0.5 rounded-[4px] border-black/20 text-[#0071e3] focus:ring-[#0071e3]"
-                        />
-                        <span className="text-[12px] text-[#86868b] leading-snug">
-                          If I forget my key AND my security answer, my account cannot be recovered.
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Primary Action Button */}
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full mt-2"
-                  isLoading={isLoading}
-                  disabled={!username.trim() || !loginKey.trim()}
-                >
-                  <span>{submitButtonLabel}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-
-                {/* Footer Switch Link */}
-                <div className="pt-2 text-center">
+              {/* Mode Switcher Pill */}
+              {authMode !== 'recovery' && (
+                <div className="flex items-center gap-1 bg-[#cce8e2]/40 dark:bg-white/[0.05] p-1 rounded-full border border-[#3f494714] dark:border-[#82d5c814]">
                   <button
                     type="button"
                     onClick={() => {
                       setError(null);
-                      setAuthMode(authMode === 'signin' ? 'register' : 'signin');
+                      setAuthMode('signin');
                     }}
-                    className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
+                    className={`px-4 py-1 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${
+                      authMode === 'signin'
+                        ? 'bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] shadow-xs'
+                        : 'text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white'
+                    }`}
                   >
-                    {authMode === 'signin'
-                      ? "Don't have an account? Create new vault"
-                      : 'Already have a vault? Sign in'}
+                    Sign In
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setAuthMode('register');
+                    }}
+                    className={`px-4 py-1 rounded-full text-[12px] font-semibold transition-all cursor-pointer ${
+                      authMode === 'register'
+                        ? 'bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] shadow-xs'
+                        : 'text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white'
+                    }`}
+                  >
+                    Create Vault
                   </button>
                 </div>
-              </form>
-            ) : (
-              /* SECTION 3: KEY RECOVERY FLOW */
-              <div className="space-y-4">
-                <div className="mb-2">
-                  <h2 className="text-[18px] font-bold tracking-tight text-[#1d1d1f] dark:text-[#f5f5f7]">
-                    Recover Vault Key
-                  </h2>
-                  <p className="text-[13px] text-[#86868b] mt-0.5">
-                    {recoveryStep === 1
-                      ? 'Enter your username to retrieve your security question.'
-                      : 'Answer your security question to set a new private key.'}
-                  </p>
+              )}
+
+              {/* Status indicator */}
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#006a60] dark:text-[#82d5c8]">
+                <span className="w-2 h-2 rounded-full bg-[#006a60] dark:bg-[#82d5c8] animate-pulse" />
+                <span className="hidden sm:inline">Encrypted</span>
+              </div>
+
+            </div>
+
+            {/* Window Interior Content */}
+            <div className="p-6 sm:p-8 space-y-6">
+
+              {error && (
+                <div
+                  role="alert"
+                  className="p-3.5 rounded-[16px] bg-[#ff3b30]/10 dark:bg-[#ff453a]/15 border border-[#ff3b30]/20 text-[13px] font-semibold text-[#ff3b30] dark:text-[#ff453a] flex items-center gap-2.5"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#ff3b30] shrink-0" />
+                  <span>{error}</span>
                 </div>
+              )}
 
-                {recoveryStep === 1 ? (
-                  <form onSubmit={handleFetchRecoveryQuestion} className="space-y-4">
-                    <div>
-                      <Input
-                        label="Account Username"
-                        type="text"
-                        autoComplete="username"
-                        placeholder="Enter your username"
-                        value={recoveryUsername}
-                        onChange={(e) => setRecoveryUsername(e.target.value)}
-                        icon={<User className="w-4 h-4" />}
-                        required
-                      />
-                    </div>
-
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="w-full"
-                      isLoading={isLoading}
-                      disabled={!recoveryUsername.trim()}
-                    >
-                      <span>Continue</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-
-                    <div className="pt-2 text-center">
+              {/* SECTION 1: FRONT-PAGE COMPOSER (DROP FILE OR PASTE TEXT) */}
+              {authMode !== 'recovery' && (
+                <div className="space-y-3.5 pb-2 border-b border-[#3f49471f] dark:border-[#82d5c814]">
+                  
+                  {/* Composer Sub-tabs & Expiration Duration */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 bg-[#cce8e2]/30 dark:bg-white/[0.04] p-1 rounded-full border border-[#3f494714] dark:border-[#82d5c814]">
                       <button
                         type="button"
-                        onClick={() => {
-                          setError(null);
-                          setAuthMode('signin');
-                        }}
-                        className="text-[13px] text-[#0071e3] dark:text-[#0a84ff] font-medium hover:underline cursor-pointer"
+                        onClick={() => setComposerTab('file')}
+                        className={`px-3.5 py-1 rounded-full text-[12px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          composerTab === 'file'
+                            ? 'bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] shadow-xs'
+                            : 'text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white'
+                        }`}
                       >
-                        Remember your key? Back to sign in
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        <span>File</span>
+                        {stagedFile && <span className="w-1.5 h-1.5 rounded-full bg-white dark:bg-[#0e1513]" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setComposerTab('note')}
+                        className={`px-3.5 py-1 rounded-full text-[12px] font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          composerTab === 'note'
+                            ? 'bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] shadow-xs'
+                            : 'text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white'
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Note &amp; Code</span>
+                        {stagedNote.trim() && <span className="w-1.5 h-1.5 rounded-full bg-white dark:bg-[#0e1513]" />}
                       </button>
                     </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleResetRecoveryKey} className="space-y-4">
-                    <div className="p-3.5 rounded-[14px] bg-[#0071e3]/5 dark:bg-[#0a84ff]/10 border border-[#0071e3]/15 dark:border-[#0a84ff]/20">
-                      <div className="text-[11px] font-semibold text-[#0071e3] dark:text-[#0a84ff] uppercase tracking-wider mb-1">
-                        Security Question
-                      </div>
-                      <p className="text-[14px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
-                        {recoveryQuestion}
-                      </p>
-                    </div>
 
+                    {/* Expiration Pills */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-[#3f4947] dark:text-[#a0b0ad] mr-1 hidden sm:inline flex items-center gap-1 font-medium">
+                        <Clock className="w-3 h-3 text-[#006a60] dark:text-[#82d5c8]" />
+                        TTL:
+                      </span>
+                      {[
+                        { label: '1h', sec: 3600 },
+                        { label: '24h', sec: 86400 },
+                        { label: '7d', sec: 604800 },
+                      ].map((exp) => (
+                        <button
+                          key={exp.sec}
+                          type="button"
+                          onClick={() => setExpirationSec(exp.sec)}
+                          className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full transition-colors cursor-pointer ${
+                            expirationSec === exp.sec
+                              ? 'bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513]'
+                              : 'text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white'
+                          }`}
+                        >
+                          {exp.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* File Dropzone or Preview */}
+                  {composerTab === 'file' ? (
                     <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileInputChange}
+                      />
+
+                      {stagedFile ? (
+                        <div className="p-4 rounded-[18px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f494729] dark:border-[#82d5c81a] flex items-center justify-between gap-3 animate-in fade-in duration-150">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-[12px] bg-[#006a60]/10 dark:bg-[#82d5c8]/20 text-[#006a60] dark:text-[#82d5c8] flex items-center justify-center shrink-0">
+                              <FileIcon className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-bold text-[#05201c] dark:text-white truncate">
+                                {stagedFile.name}
+                              </p>
+                              <p className="text-[12px] text-[#3f4947] dark:text-[#a0b0ad]">
+                                {formatBytes(stagedFile.size)} · Ready to save to your vault
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStagedFile(null);
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#ff3b30] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] cursor-pointer shrink-0 transition-colors"
+                            title="Remove file"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`border-2 border-dashed rounded-[20px] p-7 text-center cursor-pointer transition-all duration-150 ${
+                            isDragOver
+                              ? 'border-[#006a60] dark:border-[#82d5c8] bg-[#cce8e2]/30 dark:bg-[#82d5c8]/10 scale-[1.01]'
+                              : 'border-[#3f49473d] dark:border-[#82d5c829] hover:border-[#006a60] dark:hover:border-[#82d5c8] hover:bg-[#cce8e2]/15 dark:hover:bg-white/[0.02]'
+                          }`}
+                        >
+                          <div className="w-11 h-11 mx-auto rounded-[14px] bg-[#cce8e2] dark:bg-[#82d5c8]/15 text-[#006a60] dark:text-[#82d5c8] flex items-center justify-center mb-2.5">
+                            <UploadCloud className="w-5 h-5" />
+                          </div>
+                          <p className="text-[15px] font-bold text-[#05201c] dark:text-white">
+                            Drag &amp; drop file to save
+                          </p>
+                          <p className="text-[13px] text-[#3f4947] dark:text-[#a0b0ad] mt-0.5">
+                            or <span className="text-[#006a60] dark:text-[#82d5c8] font-semibold underline">browse files</span> (up to 250 MB · optional)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
                       <div className="relative">
-                        <Input
-                          label="Your Security Answer"
-                          type={showRecoveryAnswer ? 'text' : 'password'}
-                          placeholder="Enter your answer"
-                          value={recoveryAnswer}
-                          onChange={(e) => setRecoveryAnswer(e.target.value)}
-                          required
+                        <textarea
+                          rows={3}
+                          placeholder="Paste a code snippet, link, exam question, or private note..."
+                          value={stagedNote}
+                          onChange={(e) => setStagedNote(e.target.value)}
+                          className={`w-full rounded-[18px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f494729] dark:border-[#82d5c81a] p-3.5 text-[14px] leading-relaxed text-[#05201c] dark:text-white placeholder-[#3f4947]/70 dark:placeholder-[#a0b0ad]/60 focus:outline-none focus:ring-2 focus:ring-[#006a60] dark:focus:ring-[#82d5c8] resize-none transition-all ${
+                            isCodeFont ? 'font-mono' : 'font-sans'
+                          }`}
                         />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-[#3f4947] dark:text-[#a0b0ad] px-1">
                         <button
                           type="button"
-                          onClick={() => setShowRecoveryAnswer(!showRecoveryAnswer)}
-                          className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
-                          aria-label={showRecoveryAnswer ? 'Hide answer' : 'Show answer'}
+                          onClick={() => setIsCodeFont(!isCodeFont)}
+                          className={`inline-flex items-center gap-1 font-semibold hover:text-[#006a60] dark:hover:text-[#82d5c8] cursor-pointer ${
+                            isCodeFont ? 'text-[#006a60] dark:text-[#82d5c8]' : ''
+                          }`}
                         >
-                          {showRecoveryAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <Code className="w-3.5 h-3.5" />
+                          <span>{isCodeFont ? 'Monospace active' : 'Toggle Monospace'}</span>
                         </button>
-                      </div>
-                      <p className="text-[11px] text-[#86868b] mt-1.5">
-                        Answers are case-insensitive and tolerate whitespace.
-                      </p>
-                    </div>
 
-                    <div>
+                        {stagedNote.trim() && (
+                          <span className="font-mono">{stagedNote.length} characters</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION 2: AUTHENTICATION FORM */}
+              {authMode !== 'recovery' ? (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-bold uppercase tracking-wider text-[#3f4947] dark:text-[#a0b0ad]">
+                      {hasStagedItem
+                        ? 'Enter credentials to save to vault'
+                        : authMode === 'signin'
+                        ? 'Vault Credentials'
+                        : 'Create Your Vault Credentials'}
+                    </span>
+                  </div>
+
+                  {/* Username Input */}
+                  <div>
+                    <Input
+                      label="Username"
+                      type="text"
+                      autoComplete="username"
+                      placeholder="Enter username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      icon={<User className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                      required
+                    />
+                  </div>
+
+                  {/* Key Input */}
+                  <div>
+                    {authMode === 'register' && (
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-[13px] font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
-                          New Private Login Key
+                        <label className="text-[13px] font-semibold text-[#05201c] dark:text-white">
+                          Private Login Key
                         </label>
                         <button
                           type="button"
-                          onClick={handleGenerateRecoveryKey}
-                          className="text-[12px] font-semibold text-[#0071e3] dark:text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                          onClick={handleGenerateKey}
+                          className="text-[12px] font-semibold text-[#006a60] dark:text-[#82d5c8] hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <RefreshCw className="w-3 h-3" />
                           Auto-generate
                         </button>
                       </div>
+                    )}
 
-                      <div className="relative">
-                        <Input
-                          type={showNewRecoveryKey ? 'text' : 'password'}
-                          placeholder="Enter new 8-128 char key"
-                          value={newRecoveryKey}
-                          onChange={(e) => setNewRecoveryKey(e.target.value)}
-                          icon={<KeyRound className="w-4 h-4" />}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowNewRecoveryKey(!showNewRecoveryKey)}
-                          className="absolute right-3 top-[10px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
-                          aria-label={showNewRecoveryKey ? 'Hide key' : 'Show key'}
-                        >
-                          {showNewRecoveryKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-
-                      {newRecoveryKey && (
-                        <div className="mt-2 flex items-center gap-2 text-[12px]">
-                          <div className="flex-1 h-1 rounded-full bg-black/[0.08] dark:bg-white/[0.1] overflow-hidden">
-                            <div
-                              className={`h-full transition-all duration-300 ${recoveryKeyStrength.colorClass}`}
-                              style={{ width: `${(recoveryKeyStrength.score + 1) * 20}%` }}
-                            />
-                          </div>
-                          <span className="text-[11px] text-[#86868b]">{recoveryKeyStrength.label}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="relative">
-                        <Input
-                          label="Confirm New Login Key"
-                          type={showConfirmRecoveryKey ? 'text' : 'password'}
-                          placeholder="Re-enter new key"
-                          value={confirmRecoveryKey}
-                          onChange={(e) => setConfirmRecoveryKey(e.target.value)}
-                          icon={<KeyRound className="w-4 h-4" />}
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmRecoveryKey(!showConfirmRecoveryKey)}
-                          className="absolute right-3 top-[33px] text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
-                          aria-label={showConfirmRecoveryKey ? 'Hide confirm key' : 'Show confirm key'}
-                        >
-                          {showConfirmRecoveryKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="w-full"
-                      isLoading={isLoading}
-                      disabled={!recoveryAnswer.trim() || !newRecoveryKey.trim() || newRecoveryKey !== confirmRecoveryKey}
-                    >
-                      <span>Reset Key &amp; Return to Sign In</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-
-                    <div className="pt-2 text-center">
+                    <div className="relative">
+                      <Input
+                        label={authMode === 'signin' ? 'Private Login Key' : undefined}
+                        type={showKey ? 'text' : 'password'}
+                        autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                        placeholder={authMode === 'signin' ? 'Enter private key' : 'Choose 8+ character key'}
+                        value={loginKey}
+                        onChange={(e) => setLoginKey(e.target.value)}
+                        icon={<KeyRound className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                        required
+                      />
                       <button
                         type="button"
-                        onClick={() => {
-                          setRecoveryStep(1);
-                          setAuthMode('signin');
-                        }}
-                        className="text-[13px] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-white cursor-pointer"
+                        onClick={() => setShowKey(!showKey)}
+                        className="absolute right-3 top-[33px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                        aria-label={showKey ? 'Hide key' : 'Show key'}
                       >
-                        Cancel recovery
+                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
-                  </form>
-                )}
-              </div>
-            )}
+
+                    {authMode === 'register' && loginKey && (
+                      <div className="mt-2 flex items-center gap-2 text-[12px]">
+                        <div className="flex-1 h-1 rounded-full bg-black/[0.08] dark:bg-white/[0.1] overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${keyStrength.colorClass}`}
+                            style={{ width: `${(keyStrength.score + 1) * 20}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">{keyStrength.label}</span>
+                      </div>
+                    )}
+
+                    {authMode === 'signin' && (
+                      <div className="flex justify-end mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError(null);
+                            setRecoveryUsername(username);
+                            setRecoveryStep(1);
+                            setAuthMode('recovery');
+                          }}
+                          className="text-[12px] text-[#006a60] dark:text-[#82d5c8] font-semibold hover:underline cursor-pointer"
+                        >
+                          Forgot key?
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Registration Security Question & Answer */}
+                  {authMode === 'register' && (
+                    <div className="space-y-3.5 pt-1">
+                      <div>
+                        <label className="block text-[13px] font-semibold text-[#05201c] dark:text-white mb-1.5">
+                          Security Question (for Key Recovery)
+                        </label>
+                        <select
+                          value={selectedQuestionPreset}
+                          onChange={(e) => setSelectedQuestionPreset(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-[12px] text-[13px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f494729] dark:border-[#82d5c81a] text-[#05201c] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#006a60] dark:focus:ring-[#82d5c8]"
+                        >
+                          {PRESET_SECURITY_QUESTIONS.map((q) => (
+                            <option key={q} value={q} className="dark:bg-[#131e1c]">
+                              {q}
+                            </option>
+                          ))}
+                          <option value="custom" className="dark:bg-[#131e1c]">
+                            -- Write a custom question... --
+                          </option>
+                        </select>
+                      </div>
+
+                      {selectedQuestionPreset === 'custom' && (
+                        <div>
+                          <Input
+                            label="Custom Security Question"
+                            placeholder="e.g. What was the name of your first musical instrument?"
+                            value={customQuestion}
+                            onChange={(e) => setCustomQuestion(e.target.value)}
+                            icon={<HelpCircle className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="relative">
+                          <Input
+                            label="Security Answer"
+                            type={showSecurityAnswer ? 'text' : 'password'}
+                            placeholder="Enter memorable answer"
+                            value={securityAnswer}
+                            onChange={(e) => setSecurityAnswer(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSecurityAnswer(!showSecurityAnswer)}
+                            className="absolute right-3 top-[33px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                            aria-label={showSecurityAnswer ? 'Hide answer' : 'Show answer'}
+                          >
+                            {showSecurityAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-[#3f4947] dark:text-[#a0b0ad] mt-1.5">
+                          Answers are case-insensitive. Minimum 4 characters.
+                        </p>
+                      </div>
+
+                      <div className="pt-1">
+                        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={acknowledgedWarning}
+                            onChange={(e) => setAcknowledgedWarning(e.target.checked)}
+                            className="mt-0.5 rounded-[4px] border-black/20 text-[#006a60] dark:text-[#82d5c8] focus:ring-[#006a60]"
+                          />
+                          <span className="text-[12px] text-[#3f4947] dark:text-[#a0b0ad] leading-snug">
+                            If I forget my key AND my security answer, my account cannot be recovered.
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primary Submit Pill Button */}
+                  <button
+                    type="submit"
+                    disabled={!username.trim() || !loginKey.trim() || isLoading}
+                    className="w-full mt-2 py-3.5 px-6 rounded-full font-bold text-[15px] bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>{submitButtonLabel}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Switch Mode Footer */}
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError(null);
+                        setAuthMode(authMode === 'signin' ? 'register' : 'signin');
+                      }}
+                      className="text-[13px] text-[#006a60] dark:text-[#82d5c8] font-semibold hover:underline cursor-pointer"
+                    >
+                      {authMode === 'signin'
+                        ? "Don't have a vault yet? Create new vault"
+                        : 'Already have a vault? Sign in'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* RECOVERY FLOW */
+                <div className="space-y-4">
+                  <div className="mb-2">
+                    <h2 className="text-[18px] font-bold text-[#05201c] dark:text-white">
+                      Recover Vault Key
+                    </h2>
+                    <p className="text-[13px] text-[#3f4947] dark:text-[#a0b0ad] mt-0.5">
+                      {recoveryStep === 1
+                        ? 'Enter your username to retrieve your security question.'
+                        : 'Answer your security question to set a new private key.'}
+                    </p>
+                  </div>
+
+                  {recoveryStep === 1 ? (
+                    <form onSubmit={handleFetchRecoveryQuestion} className="space-y-4">
+                      <div>
+                        <Input
+                          label="Account Username"
+                          type="text"
+                          autoComplete="username"
+                          placeholder="Enter your username"
+                          value={recoveryUsername}
+                          onChange={(e) => setRecoveryUsername(e.target.value)}
+                          icon={<User className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                          required
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={!recoveryUsername.trim() || isLoading}
+                        className="w-full py-3.5 px-6 rounded-full font-bold text-[15px] bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>Continue</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+
+                      <div className="pt-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError(null);
+                            setAuthMode('signin');
+                          }}
+                          className="text-[13px] text-[#006a60] dark:text-[#82d5c8] font-semibold hover:underline cursor-pointer"
+                        >
+                          Remember your key? Back to sign in
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleResetRecoveryKey} className="space-y-4">
+                      <div className="p-4 rounded-[16px] bg-[#cce8e2]/40 dark:bg-[#82d5c8]/10 border border-[#006a60]/20 dark:border-[#82d5c8]/20">
+                        <div className="text-[11px] font-bold text-[#006a60] dark:text-[#82d5c8] uppercase tracking-wider mb-1">
+                          Security Question
+                        </div>
+                        <p className="text-[14px] font-medium text-[#05201c] dark:text-white">
+                          {recoveryQuestion}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="relative">
+                          <Input
+                            label="Your Security Answer"
+                            type={showRecoveryAnswer ? 'text' : 'password'}
+                            placeholder="Enter your answer"
+                            value={recoveryAnswer}
+                            onChange={(e) => setRecoveryAnswer(e.target.value)}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowRecoveryAnswer(!showRecoveryAnswer)}
+                            className="absolute right-3 top-[33px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                            aria-label={showRecoveryAnswer ? 'Hide answer' : 'Show answer'}
+                          >
+                            {showRecoveryAnswer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-[#3f4947] dark:text-[#a0b0ad] mt-1.5">
+                          Answers are case-insensitive and tolerate whitespace.
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[13px] font-semibold text-[#05201c] dark:text-white">
+                            New Private Login Key
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleGenerateRecoveryKey}
+                            className="text-[12px] font-semibold text-[#006a60] dark:text-[#82d5c8] hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            Auto-generate
+                          </button>
+                        </div>
+
+                        <div className="relative">
+                          <Input
+                            type={showNewRecoveryKey ? 'text' : 'password'}
+                            placeholder="Enter new 8-128 char key"
+                            value={newRecoveryKey}
+                            onChange={(e) => setNewRecoveryKey(e.target.value)}
+                            icon={<KeyRound className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewRecoveryKey(!showNewRecoveryKey)}
+                            className="absolute right-3 top-[10px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                            aria-label={showNewRecoveryKey ? 'Hide key' : 'Show key'}
+                          >
+                            {showNewRecoveryKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+
+                        {newRecoveryKey && (
+                          <div className="mt-2 flex items-center gap-2 text-[12px]">
+                            <div className="flex-1 h-1 rounded-full bg-black/[0.08] dark:bg-white/[0.1] overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-300 ${recoveryKeyStrength.colorClass}`}
+                                style={{ width: `${(recoveryKeyStrength.score + 1) * 20}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">{recoveryKeyStrength.label}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="relative">
+                          <Input
+                            label="Confirm New Login Key"
+                            type={showConfirmRecoveryKey ? 'text' : 'password'}
+                            placeholder="Re-enter new key"
+                            value={confirmRecoveryKey}
+                            onChange={(e) => setConfirmRecoveryKey(e.target.value)}
+                            icon={<KeyRound className="w-4 h-4 text-[#006a60] dark:text-[#82d5c8]" />}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmRecoveryKey(!showConfirmRecoveryKey)}
+                            className="absolute right-3 top-[33px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                            aria-label={showConfirmRecoveryKey ? 'Hide confirm key' : 'Show confirm key'}
+                          >
+                            {showConfirmRecoveryKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={!recoveryAnswer.trim() || !newRecoveryKey.trim() || newRecoveryKey !== confirmRecoveryKey || isLoading}
+                        className="w-full py-3.5 px-6 rounded-full font-bold text-[15px] bg-[#006a60] dark:bg-[#82d5c8] text-white dark:text-[#0e1513] hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <span>Reset Key &amp; Return to Sign In</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+
+                      <div className="pt-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRecoveryStep(1);
+                            setAuthMode('signin');
+                          }}
+                          className="text-[13px] text-[#3f4947] dark:text-[#a0b0ad] hover:text-[#05201c] dark:hover:text-white cursor-pointer"
+                        >
+                          Cancel recovery
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+
+            </div>
 
           </div>
 
-          {/* Minimalist Trust Footer */}
-          <div className="text-center text-[12px] text-[#86868b] space-y-1">
-            <p>
-              {SITE_CONFIG.name} — Private temporary locker &amp; clipboard.
+        </div>
+      </section>
+
+      {/* LOCALSEND STATS SECTION */}
+      <section className="px-5 pb-20">
+        <div className="max-w-[1000px] mx-auto rounded-[24px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] p-8 sm:p-10">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-[#3f49471f] dark:divide-[#82d5c81a]">
+            
+            <div className="space-y-1">
+              <span className="block text-[2rem] sm:text-[2.5rem] font-black tracking-tight text-[#006a60] dark:text-[#82d5c8]">
+                100%
+              </span>
+              <span className="text-[0.95rem] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">
+                Private &amp; Decentralized
+              </span>
+            </div>
+
+            <div className="space-y-1 pt-6 md:pt-0">
+              <span className="block text-[2rem] sm:text-[2.5rem] font-black tracking-tight text-[#006a60] dark:text-[#82d5c8]">
+                256-bit
+              </span>
+              <span className="text-[0.95rem] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">
+                Argon2id Key Derivation
+              </span>
+            </div>
+
+            <div className="space-y-1 pt-6 md:pt-0">
+              <span className="block text-[2rem] sm:text-[2.5rem] font-black tracking-tight text-[#006a60] dark:text-[#82d5c8]">
+                24 Hours
+              </span>
+              <span className="text-[0.95rem] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">
+                Default Self-Destruct
+              </span>
+            </div>
+
+            <div className="space-y-1 pt-6 md:pt-0">
+              <span className="block text-[2rem] sm:text-[2.5rem] font-black tracking-tight text-[#006a60] dark:text-[#82d5c8]">
+                Zero
+              </span>
+              <span className="text-[0.95rem] font-semibold text-[#3f4947] dark:text-[#a0b0ad]">
+                Third-Party Tracking
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* LOCALSEND FEATURES SECTION */}
+      <section id="features" className="px-5 py-16 max-w-[1100px] mx-auto w-full">
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+          <h2 className="text-[2.2rem] sm:text-[2.6rem] font-black tracking-tight text-[#05201c] dark:text-white">
+            Features
+          </h2>
+          <p className="text-[1.05rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+            Everything you need for secure, fast, and temporary file sharing across devices.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Feature 1 */}
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] space-y-4 hover:-translate-y-1 transition-all duration-200">
+            <div className="w-12 h-12 rounded-full bg-[#cce8e2] dark:bg-[#82d5c8]/15 text-[#006a60] dark:text-[#82d5c8] flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h3 className="text-[1.25rem] font-extrabold text-[#05201c] dark:text-white">
+              No Cloud Accounts
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              No Google OAuth, Apple ID, or phone numbers. Sign in with only your unique username and private encryption key.
             </p>
-            <p className="text-[11px] text-[#86868b]/80">
-              No third-party tracking · Files &amp; notes auto-expire on your schedule
+          </div>
+
+          {/* Feature 2 */}
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] space-y-4 hover:-translate-y-1 transition-all duration-200">
+            <div className="w-12 h-12 rounded-full bg-[#cce8e2] dark:bg-[#82d5c8]/15 text-[#006a60] dark:text-[#82d5c8] flex items-center justify-center">
+              <Clock className="w-6 h-6" />
+            </div>
+            <h3 className="text-[1.25rem] font-extrabold text-[#05201c] dark:text-white">
+              Automatic Purge
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Files and notes automatically vanish after your chosen expiration (1h, 24h, 7d). Zero permanent digital residue.
+            </p>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] space-y-4 hover:-translate-y-1 transition-all duration-200">
+            <div className="w-12 h-12 rounded-full bg-[#cce8e2] dark:bg-[#82d5c8]/15 text-[#006a60] dark:text-[#82d5c8] flex items-center justify-center">
+              <Smartphone className="w-6 h-6" />
+            </div>
+            <h3 className="text-[1.25rem] font-extrabold text-[#05201c] dark:text-white">
+              Universal Sync
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Save code snippets on your mobile phone, open your desktop browser, and click Copy to place it directly on your clipboard.
             </p>
           </div>
 
         </div>
-      </main>
+      </section>
+
+      {/* LOCALSEND HOW IT WORKS SECTION */}
+      <section id="how-it-works" className="px-5 py-16 max-w-[1100px] mx-auto w-full">
+        <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
+          <h2 className="text-[2.2rem] sm:text-[2.6rem] font-black tracking-tight text-[#05201c] dark:text-white">
+            How It Works
+          </h2>
+          <p className="text-[1.05rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+            Zero configuration. Just drop, authenticate, and sync seamlessly.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] text-center space-y-3">
+            <span className="inline-block text-[1.8rem] font-black text-[#006a60] dark:text-[#82d5c8]">
+              01
+            </span>
+            <h3 className="text-[1.2rem] font-extrabold text-[#05201c] dark:text-white">
+              Drop &amp; Compose
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Drop any photo, document, video, or paste code snippets directly onto the front-page transfer console.
+            </p>
+          </div>
+
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] text-center space-y-3">
+            <span className="inline-block text-[1.8rem] font-black text-[#006a60] dark:text-[#82d5c8]">
+              02
+            </span>
+            <h3 className="text-[1.2rem] font-extrabold text-[#05201c] dark:text-white">
+              Authorize with Key
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Enter your username and private key. Argon2id derives your session with constant-time verification.
+            </p>
+          </div>
+
+          <div className="p-7 rounded-[22px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] text-center space-y-3">
+            <span className="inline-block text-[1.8rem] font-black text-[#006a60] dark:text-[#82d5c8]">
+              03
+            </span>
+            <h3 className="text-[1.2rem] font-extrabold text-[#05201c] dark:text-white">
+              Instant Vault Sync
+            </h3>
+            <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Your item is saved directly into your vault timeline and available immediately on all your active devices.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* LOCALSEND SECURITY SECTION */}
+      <section id="security" className="px-5 py-16 max-w-[1100px] mx-auto w-full">
+        <div className="p-8 sm:p-12 rounded-[28px] bg-[#eff5f2] dark:bg-[#131e1c] border border-[#3f494729] dark:border-[#82d5c81a] space-y-8">
+          
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <h2 className="text-[2rem] sm:text-[2.4rem] font-black tracking-tight text-[#05201c] dark:text-white">
+              Security by Design
+            </h2>
+            <p className="text-[1rem] text-[#3f4947] dark:text-[#a0b0ad] leading-relaxed">
+              Every cryptographic and access-control guarantee is verified server-side.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div className="p-5 rounded-[18px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f49471f] dark:border-[#82d5c814] space-y-2">
+              <div className="flex items-center gap-2 text-[#006a60] dark:text-[#82d5c8] font-bold text-[1rem]">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Argon2id Salted Hashes</span>
+              </div>
+              <p className="text-[0.9rem] text-[#3f4947] dark:text-[#a0b0ad]">
+                Keys and recovery answers are never stored in plaintext and never leaked in API payloads.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-[18px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f49471f] dark:border-[#82d5c814] space-y-2">
+              <div className="flex items-center gap-2 text-[#006a60] dark:text-[#82d5c8] font-bold text-[1rem]">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Anti-Enumeration HMAC</span>
+              </div>
+              <p className="text-[0.9rem] text-[#3f4947] dark:text-[#a0b0ad]">
+                Querying unknown accounts produces deterministic HMAC fake questions so attackers cannot probe usernames.
+              </p>
+            </div>
+
+            <div className="p-5 rounded-[18px] bg-[#e7f3f0] dark:bg-[#0e1513] border border-[#3f49471f] dark:border-[#82d5c814] space-y-2">
+              <div className="flex items-center gap-2 text-[#006a60] dark:text-[#82d5c8] font-bold text-[1rem]">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Persistent Lockout</span>
+              </div>
+              <p className="text-[0.9rem] text-[#3f4947] dark:text-[#a0b0ad]">
+                5 wrong attempts lock recovery for 30 minutes, doubling up to 24 hours across all sessions and IPs.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* LOCALSEND FOOTER */}
+      <footer className="pt-16 pb-12 px-5 border-t border-[#3f49471f] dark:border-[#82d5c81a] mt-auto">
+        <div className="max-w-[1100px] mx-auto space-y-12">
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+            
+            {/* Brand Column */}
+            <div className="md:col-span-2 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <Logo size={28} className="shadow-none border-none" />
+                <span className="text-[1.2rem] font-black tracking-tight text-[#05201c] dark:text-white">
+                  {SITE_CONFIG.name}
+                </span>
+              </div>
+              <p className="text-[0.95rem] text-[#3f4947] dark:text-[#a0b0ad] max-w-sm leading-relaxed">
+                Open source, end-to-end encrypted file sharing and private vault across nearby devices and browsers.
+              </p>
+            </div>
+
+            {/* Links Column 1 */}
+            <div className="space-y-3">
+              <h4 className="text-[0.95rem] font-bold text-[#05201c] dark:text-white uppercase tracking-wider">
+                App
+              </h4>
+              <ul className="space-y-2 text-[0.9rem] text-[#3f4947] dark:text-[#a0b0ad]">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection('transfer')}
+                    className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+                  >
+                    Transfer Console
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection('features')}
+                    className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+                  >
+                    Features
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection('how-it-works')}
+                    className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+                  >
+                    How It Works
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Links Column 2 */}
+            <div className="space-y-3">
+              <h4 className="text-[0.95rem] font-bold text-[#05201c] dark:text-white uppercase tracking-wider">
+                Open Source
+              </h4>
+              <ul className="space-y-2 text-[0.9rem] text-[#3f4947] dark:text-[#a0b0ad]">
+                <li>
+                  <a
+                    href="https://github.com/ayushagnihotrii/global-send"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+                  >
+                    GitHub Repository
+                  </a>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection('security')}
+                    className="hover:text-[#006a60] dark:hover:text-[#82d5c8] transition-colors cursor-pointer"
+                  >
+                    Security Model
+                  </button>
+                </li>
+                <li>
+                  <span className="text-[0.85rem] text-[#3f4947]/70 dark:text-[#a0b0ad]/70">
+                    MIT License
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-[#3f49471f] dark:border-[#82d5c81a] flex flex-col sm:flex-row items-center justify-between gap-4 text-[0.85rem] text-[#3f4947] dark:text-[#a0b0ad]">
+            <p>© {new Date().getFullYear()} Global Send. Inspired by LocalSend design template.</p>
+            <p>No telemetry · No third-party cookies · Open source</p>
+          </div>
+
+        </div>
+      </footer>
+
     </div>
   );
 }

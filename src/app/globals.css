@@ -139,3 +139,25 @@
 pre, code {
   font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
+
+/* LocalSend Design System Utilities */
+@keyframes ls-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ls-rotating-logo {
+  animation: ls-spin 35s linear infinite;
+}
+
+.ls-gradient-accent {
+  background: linear-gradient(135deg, #006a60 0%, #00a99a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .ls-gradient-accent {
+  background: linear-gradient(135deg, #82d5c8 0%, #b3fff2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
