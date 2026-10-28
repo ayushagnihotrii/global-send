@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @layer base {
   :root {
     --bg-main: #f2f2f7;
@@ -160,4 +162,15 @@ pre, code {
   background: linear-gradient(135deg, #82d5c8 0%, #b3fff2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Global Send — single, restrained entrance. */
+@keyframes gs-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.gs-fade-up { animation: gs-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.gs-fade-up-delay { animation: gs-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both; }
+@media (prefers-reduced-motion: reduce) {
+  .gs-fade-up, .gs-fade-up-delay { animation: none; }
 }
