@@ -8,6 +8,7 @@ import {
   FolderOpen,
   ArrowUpDown,
   Tag,
+  Upload,
 } from 'lucide-react';
 import { User, Item, DateGroupedItems } from '@/lib/types';
 import { DesktopSidebar, NavSection } from '@/components/layout/DesktopSidebar';
@@ -47,6 +48,11 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
   // Item queued to be shared in chat
   const [pendingShareItem, setPendingShareItem] = useState<Item | null>(null);
+
+  // Full-dashboard drag and drop state for multi-file upload
+  const [externalDroppedFiles, setExternalDroppedFiles] = useState<File[] | null>(null);
+  const [isWorkspaceDragging, setIsWorkspaceDragging] = useState(false);
+  const dragDepthRef = React.useRef(0);
 
   // Debounce search input
   useEffect(() => {
@@ -277,7 +283,59 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   const displayUsername = user.displayUsername || user.username;
 
   return (
-    <div className="min-h-screen flex bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7]">
+    <div
+      onDragEnter={(e) => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+          e.preventDefault();
+          dragDepthRef.current += 1;
+          setIsWorkspaceDragging(true);
+        }
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+          e.preventDefault();
+        }
+      }}
+      onDragLeave={(e) => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+          e.preventDefault();
+          dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+          if (dragDepthRef.current === 0) {
+            setIsWorkspaceDragging(false);
+          }
+        }
+      }}
+      onDrop={(e) => {
+        dragDepthRef.current = 0;
+        setIsWorkspaceDragging(false);
+        if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+          e.preventDefault();
+          if (currentSection === 'trash' || currentSection === 'settings' || currentSection === 'chats') {
+            setCurrentSection('all');
+          }
+          setExternalDroppedFiles(Array.from(e.dataTransfer.files));
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }}
+      className="relative min-h-screen flex bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7]"
+    >
+      {/* Full-Screen Drag & Drop Overlay */}
+      {isWorkspaceDragging && (
+        <div className="fixed inset-0 z-50 pointer-events-none bg-[#007aff]/10 dark:bg-[#0a84ff]/15 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-150">
+          <div className="rounded-[24px] border-2 border-dashed border-[#007aff] dark:border-[#0a84ff] bg-white/95 dark:bg-[#1c1c1e]/95 px-8 py-7 shadow-2xl text-center max-w-sm">
+            <div className="w-12 h-12 rounded-[14px] bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto mb-3">
+              <Upload className="w-6 h-6" />
+            </div>
+            <p className="text-[16px] font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
+              Drop files anywhere to queue
+            </p>
+            <p className="text-[13px] text-[#8e8e93] mt-1">
+              Drop one or multiple files to add them to your vault
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 1. DESKTOP SIDEBAR */}
       <DesktopSidebar
         currentSection={currentSection}
@@ -454,7 +512,11 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
             {/* QUICK COMPOSER */}
             {currentSection !== 'trash' && (
-              <QuickComposer onItemCreated={handleItemCreated} />
+              <QuickComposer
+                onItemCreated={handleItemCreated}
+                externalFiles={externalDroppedFiles}
+                onExternalFilesConsumed={() => setExternalDroppedFiles(null)}
+              />
             )}
 
             {/* ITEMS LIST */}

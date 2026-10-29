@@ -4,6 +4,9 @@ import * as React from 'react'
 import {
   CloudUpload,
   File as FileIcon,
+  FileText,
+  Image as ImageIcon,
+  Film,
   Lock,
   NotebookPen,
   Eye,
@@ -11,8 +14,12 @@ import {
   ArrowRight,
   ShieldCheck,
   X,
+  Plus,
+  CheckCircle2,
+  Loader2,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
+import { SITE_CONFIG } from '@/config/site'
 
 type TabKey = 'file' | 'note'
 type Ttl = '1h' | '24h' | '7d'
@@ -22,6 +29,15 @@ interface VaultPreviewProps {
   onLoginSuccess?: (user: any) => void
 }
 
+function getFileTypeIcon(mimeType: string) {
+  if (mimeType.startsWith('image/')) return ImageIcon
+  if (mimeType.startsWith('video/')) return Film
+  if (mimeType.startsWith('text/') || mimeType.includes('pdf') || mimeType.includes('document')) {
+    return FileText
+  }
+  return FileIcon
+}
+
 export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
   const [tab, setTab] = React.useState<TabKey>('file')
   const [ttl, setTtl] = React.useState<Ttl>('24h')
@@ -29,10 +45,12 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
   const [authMode, setAuthMode] = React.useState<'signin' | 'register'>('signin')
   const [username, setUsername] = React.useState('')
   const [loginKey, setLoginKey] = React.useState('')
-  const [stagedFile, setStagedFile] = React.useState<File | null>(null)
+  const [stagedFiles, setStagedFiles] = React.useState<File[]>([])
   const [stagedNote, setStagedNote] = React.useState('')
   const [isDragOver, setIsDragOver] = React.useState(false)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [uploadStatusText, setUploadStatusText] = React.useState<string | null>(null)
+  const [uploadedCount, setUploadedCount] = React.useState<number>(0)
   const [error, setError] = React.useState<string | null>(null)
 
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -49,6 +67,44 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
     }
   }, [ttl])
 
+  const totalStagedBytes = React.useMemo(
+    () => stagedFiles.reduce((acc, f) => acc + f.size, 0),
+    [stagedFiles]
+  )
+
+  const addFilesToStage = React.useCallback((incoming: FileList | File[]) => {
+    const fileArray = Array.from(incoming)
+    if (fileArray.length === 0) return
+
+    const maxBytes = SITE_CONFIG.maxUploadSizeBytes
+    const oversized = fileArray.filter((f) => f.size > maxBytes)
+    const valid = fileArray.filter((f) => f.size <= maxBytes)
+
+    if (oversized.length > 0) {
+      const maxMb = Math.round(maxBytes / (1024 * 1024))
+      setError(
+        `${oversized.length === 1 ? `"${oversized[0].name}" exceeds` : `${oversized.length} files exceed`} the ${maxMb} MB per-file limit.`
+      )
+    } else {
+      setError(null)
+    }
+
+    if (valid.length > 0) {
+      setStagedFiles((prev) => {
+        const existingKeys = new Set(prev.map((f) => `${f.name}-${f.size}-${f.lastModified}`))
+        const deduped = valid.filter(
+          (f) => !existingKeys.has(`${f.name}-${f.size}-${f.lastModified}`)
+        )
+        return [...prev, ...deduped]
+      })
+      setTab('file')
+    }
+  }, [])
+
+  const removeStagedFile = (indexToRemove: number) => {
+    setStagedFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+  }
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(true)
@@ -62,16 +118,64 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
     e.preventDefault()
     setIsDragOver(false)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setStagedFile(e.dataTransfer.files[0])
-      setTab('file')
-      setError(null)
+      addFilesToStage(e.dataTransfer.files)
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setStagedFile(e.target.files[0])
-      setError(null)
+      addFilesToStage(e.target.files)
+      e.target.value = ''
+    }
+  }
+
+  const uploadSingleFile = async (file: File, expirationSec: number) => {
+    const CHUNK_THRESHOLD = 3.5 * 1024 * 1024
+    if (file.size > CHUNK_THRESHOLD) {
+      const initRes = await fetch('/api/storage/upload-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          title: file.name,
+          expirationSeconds: expirationSec,
+        }),
+      })
+      const initData = await initRes.json()
+      if (!initRes.ok) {
+        throw new Error(initData.error || 'Failed to initiate upload')
+      }
+      const sessionId = initData.sessionId
+      const chunkSize = initData.chunkSize || 2 * 1024 * 1024
+      let offset = 0
+      while (offset < file.size) {
+        const slice = file.slice(offset, Math.min(offset + chunkSize, file.size))
+        const buf = await slice.arrayBuffer()
+        const putRes = await fetch(
+          `/api/storage/upload-session?sessionId=${encodeURIComponent(sessionId)}&offset=${offset}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: buf,
+          }
+        )
+        const putData = await putRes.json()
+        if (!putRes.ok) {
+          throw new Error(putData.error || 'Chunk upload failed')
+        }
+        offset += slice.size
+        if (putData.completed) break
+      }
+    } else {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('expirationSeconds', String(expirationSec))
+      await fetch('/api/storage/upload', {
+        method: 'POST',
+        body: formData,
+      })
     }
   }
 
@@ -83,6 +187,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
     const effectiveKey = loginKey.trim() || 'delta-falcon-44'
 
     setIsLoading(true)
+    setUploadedCount(0)
 
     try {
       const endpoint = authMode === 'register' ? '/api/auth/register' : '/api/auth/login'
@@ -92,7 +197,8 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
       }
 
       if (authMode === 'register') {
-        payload.securityQuestion = 'What was the model of your very first computer, phone, or gaming console?'
+        payload.securityQuestion =
+          'What was the model of your very first computer, phone, or gaming console?'
         payload.securityAnswer = 'default-backup-answer'
         payload.acknowledgedWarning = true
       }
@@ -113,20 +219,24 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
 
       const authenticatedUser = data.user
 
-      // Upload staged file if present
-      if (tab === 'file' && stagedFile) {
-        try {
-          const formData = new FormData()
-          formData.append('file', stagedFile)
-          formData.append('expirationSeconds', String(ttlSeconds))
-          await fetch('/api/storage/upload', {
-            method: 'POST',
-            body: formData,
-          })
-        } catch {
-          // Ignore secondary upload error
+      // Upload all staged files if present
+      if (tab === 'file' && stagedFiles.length > 0) {
+        for (let i = 0; i < stagedFiles.length; i++) {
+          const file = stagedFiles[i]
+          setUploadStatusText(
+            stagedFiles.length === 1
+              ? `Uploading ${file.name}…`
+              : `Uploading file ${i + 1} of ${stagedFiles.length}…`
+          )
+          try {
+            await uploadSingleFile(file, ttlSeconds)
+            setUploadedCount(i + 1)
+          } catch {
+            // Continue remaining files even if one fails
+          }
         }
       } else if (tab === 'note' && stagedNote.trim()) {
+        setUploadStatusText('Saving note to vault…')
         try {
           await fetch('/api/items', {
             method: 'POST',
@@ -142,6 +252,8 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         }
       }
 
+      setUploadStatusText(null)
+
       if (onLoginSuccess) {
         onLoginSuccess(authenticatedUser)
       } else {
@@ -151,6 +263,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
       setError('Connection error. Please try again.')
     } finally {
       setIsLoading(false)
+      setUploadStatusText(null)
     }
   }
 
@@ -161,10 +274,11 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         className
       )}
     >
-      {/* Hidden file input */}
+      {/* Hidden multi-file input */}
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         className="hidden"
         onChange={handleFileSelect}
       />
@@ -177,7 +291,9 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         </div>
         <div className="mx-auto flex h-7 w-full max-w-[260px] items-center justify-center gap-1.5 rounded-md border border-stone-200 bg-white px-2 text-[11px] font-medium text-stone-500 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-400">
           <Lock className="size-3 text-emerald-600 dark:text-emerald-500" strokeWidth={2} />
-          <span className="font-mono tracking-tight">globalsend.app/v/{username.trim() || 'rmin'}</span>
+          <span className="font-mono tracking-tight">
+            globalsend.app/v/{username.trim() || 'rmin'}
+          </span>
         </div>
         <div className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400 sm:flex">
           <ShieldCheck className="size-3.5" strokeWidth={2} />
@@ -252,7 +368,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         <div className="mb-5 flex items-center gap-1 border-b border-stone-200 dark:border-stone-800">
           {(
             [
-              { key: 'file', label: 'File', icon: FileIcon },
+              { key: 'file', label: 'Files', icon: FileIcon },
               { key: 'note', label: 'Note & Code', icon: NotebookPen },
             ] as const
           ).map(({ key, label, icon: Icon }) => (
@@ -269,8 +385,10 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
             >
               <Icon className="size-4" strokeWidth={1.75} />
               {label}
-              {key === 'file' && stagedFile && (
-                <span className="size-1.5 rounded-full bg-emerald-500" />
+              {key === 'file' && stagedFiles.length > 0 && (
+                <span className="inline-flex items-center justify-center rounded-full bg-emerald-500/15 px-1.5 py-0.2 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                  {stagedFiles.length}
+                </span>
               )}
               {key === 'note' && stagedNote.trim() && (
                 <span className="size-1.5 rounded-full bg-emerald-500" />
@@ -280,28 +398,95 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         </div>
 
         {tab === 'file' ? (
-          stagedFile ? (
-            <div className="mb-5 flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 p-3.5 dark:border-stone-800 dark:bg-stone-950">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 shrink-0">
-                  <FileIcon className="size-4" />
+          stagedFiles.length > 0 ? (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                'mb-5 overflow-hidden rounded-xl border transition-colors',
+                isDragOver
+                  ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                  : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-950/70'
+              )}
+            >
+              {/* Queue Header Bar */}
+              <div className="flex items-center justify-between border-b border-stone-200/80 bg-stone-100/70 px-3.5 py-2 dark:border-stone-800 dark:bg-stone-900/80">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex size-2 rounded-full bg-emerald-500" />
+                  <span className="font-mono text-xs font-medium text-stone-700 dark:text-stone-200">
+                    {stagedFiles.length} {stagedFiles.length === 1 ? 'file' : 'files'} ·{' '}
+                    {formatBytes(totalStagedBytes)}
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
-                    {stagedFile.name}
-                  </p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                    {formatBytes(stagedFile.size)} · will save to vault
-                  </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-stone-700 shadow-2xs ring-1 ring-stone-200/80 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:opacity-50 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700 dark:hover:bg-stone-700 cursor-pointer"
+                  >
+                    <Plus className="size-3" />
+                    Add more
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => setStagedFiles([])}
+                    className="rounded-md px-1.5 py-1 text-xs text-stone-400 transition-colors hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400 cursor-pointer"
+                  >
+                    Clear
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setStagedFile(null)}
-                className="rounded-full p-1 text-stone-400 hover:bg-stone-200/60 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-              >
-                <X className="size-4" />
-              </button>
+
+              {/* Scrollable Multi-File List */}
+              <div className="max-h-44 divide-y divide-stone-200/60 overflow-y-auto dark:divide-stone-800/60">
+                {stagedFiles.map((file, idx) => {
+                  const ItemIcon = getFileTypeIcon(file.type || '')
+                  const isDone = isLoading && idx < uploadedCount
+                  const isCurrent = isLoading && idx === uploadedCount
+
+                  return (
+                    <div
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-stone-100/50 dark:hover:bg-stone-900/40"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400">
+                          <ItemIcon className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-medium text-stone-900 dark:text-stone-100">
+                            {file.name}
+                          </p>
+                          <p className="font-mono text-[11px] text-stone-500 dark:text-stone-400">
+                            {formatBytes(file.size)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isDone ? (
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3.5" />
+                        </span>
+                      ) : isCurrent ? (
+                        <Loader2 className="size-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isLoading}
+                          onClick={() => removeStagedFile(idx)}
+                          aria-label={`Remove ${file.name}`}
+                          className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-stone-700 disabled:opacity-40 dark:hover:bg-stone-800 dark:hover:text-stone-200 cursor-pointer"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : (
             <div
@@ -310,9 +495,9 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'mb-5 rounded-xl border border-dashed px-4 py-7 text-center cursor-pointer transition-colors',
+                'mb-5 rounded-xl border border-dashed px-4 py-7 text-center cursor-pointer transition-all',
                 isDragOver
-                  ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20'
+                  ? 'border-emerald-500 bg-emerald-50/40 scale-[1.01] dark:bg-emerald-950/20'
                   : 'border-stone-300 bg-stone-50/60 hover:border-stone-400 hover:bg-stone-100/50 dark:border-stone-700 dark:bg-stone-900/40 dark:hover:border-stone-600'
               )}
             >
@@ -320,10 +505,10 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
                 <CloudUpload className="size-5" strokeWidth={1.75} />
               </div>
               <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
-                Drag a file to save
+                Drag files here or tap to select multiple
               </p>
               <p className="mt-0.5 font-mono text-[11px] text-stone-400 dark:text-stone-500">
-                or browse — up to 250&nbsp;MB
+                select as many files as you want — up to 250&nbsp;MB each
               </p>
             </div>
           )
@@ -399,16 +584,23 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
           disabled={isLoading}
           className="group mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
         >
-          {isLoading
+          {uploadStatusText
+            ? uploadStatusText
+            : isLoading
             ? 'Opening vault…'
-            : stagedFile
-            ? 'Save file & unlock'
-            : stagedNote.trim()
+            : tab === 'file' && stagedFiles.length > 0
+            ? stagedFiles.length === 1
+              ? 'Save file & unlock'
+              : `Save ${stagedFiles.length} files & unlock`
+            : tab === 'note' && stagedNote.trim()
             ? 'Save note & unlock'
             : authMode === 'register'
             ? 'Create & open vault'
             : 'Unlock vault'}
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+          <ArrowRight
+            className="size-4 transition-transform group-hover:translate-x-0.5"
+            strokeWidth={2}
+          />
         </button>
 
         <p className="mt-3 text-center text-xs text-stone-500 dark:text-stone-400">

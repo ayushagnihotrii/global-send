@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   FileText,
   Upload,
@@ -12,6 +12,12 @@ import {
   Code,
   Clock,
   Plus,
+  Image as ImageIcon,
+  Film,
+  File as FileIcon,
+  CheckCircle2,
+  Loader2,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -24,13 +30,46 @@ import { SITE_CONFIG, EXPIRATION_PRESETS } from '@/config/site';
 interface QuickComposerProps {
   onItemCreated: (item: Item) => void;
   isOpenDefault?: boolean;
+  externalFiles?: File[] | null;
+  onExternalFilesConsumed?: () => void;
 }
 
 type ComposerMode = 'text' | 'upload' | 'link';
 
-export function QuickComposer({ onItemCreated }: QuickComposerProps) {
+interface QueuedFileEntry {
+  id: string;
+  file: File;
+  previewUrl: string | null;
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  progress: number;
+  error?: string;
+}
+
+function getFileIcon(mimeType: string) {
+  if (mimeType.startsWith('image/')) return ImageIcon;
+  if (mimeType.startsWith('video/')) return Film;
+  if (
+    mimeType.startsWith('text/') ||
+    mimeType.includes('json') ||
+    mimeType.includes('javascript') ||
+    mimeType.includes('xml')
+  ) {
+    return Code;
+  }
+  if (mimeType.includes('pdf') || mimeType.includes('document')) {
+    return FileText;
+  }
+  return FileIcon;
+}
+
+export function QuickComposer({
+  onItemCreated,
+  isOpenDefault = false,
+  externalFiles,
+  onExternalFilesConsumed,
+}: QuickComposerProps) {
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isOpenDefault);
   const [mode, setMode] = useState<ComposerMode>('text');
 
   // Expiration states (Default: 24 hours = 86,400 seconds)
@@ -51,16 +90,18 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
   const [linkTitle, setLinkTitle] = useState('');
   const [linkNote, setLinkNote] = useState('');
 
-  // Upload composer states
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Multi-file upload composer states
+  const [queuedFiles, setQueuedFiles] = useState<QueuedFileEntry[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeFileIndex, setActiveFileIndex] = useState<number>(0);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeUploadSessionIdRef = useRef<string | null>(null);
+  const cancelRequestedRef = useRef<boolean>(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,11 +129,139 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
     });
   }, [effectiveExpirationSec]);
 
+  // Add files helper with deduplication, size validation, and instant image preview generation
+  const addFilesToQueue = useCallback((incoming: FileList | File[]) => {
+    const fileArray = Array.from(incoming);
+    if (fileArray.length === 0) return;
+
+    const maxBytes = SITE_CONFIG.maxUploadSizeBytes;
+    const maxMb = Math.round(maxBytes / (1024 * 1024));
+    const oversized = fileArray.filter((f) => f.size > maxBytes);
+    const valid = fileArray.filter((f) => f.size <= maxBytes);
+
+    if (oversized.length > 0) {
+      setUploadError(
+        oversized.length === 1
+          ? `"${oversized[0].name}" exceeds the ${maxMb} MB maximum size limit.`
+          : `${oversized.length} files exceed the ${maxMb} MB maximum size limit and were skipped.`
+      );
+    } else {
+      setUploadError(null);
+    }
+
+    if (valid.length === 0) return;
+
+    setQueuedFiles((prev) => {
+      const existingFingerprints = new Set(
+        prev.map((entry) => `${entry.file.name}-${entry.file.size}-${entry.file.lastModified}`)
+      );
+
+      const newEntries: QueuedFileEntry[] = [];
+      for (const file of valid) {
+        const fp = `${file.name}-${file.size}-${file.lastModified}`;
+        if (existingFingerprints.has(fp)) continue;
+        existingFingerprints.add(fp);
+
+        let previewUrl: string | null = null;
+        if (
+          typeof window !== 'undefined' &&
+          file.type.startsWith('image/') &&
+          file.size <= 25 * 1024 * 1024
+        ) {
+          try {
+            previewUrl = URL.createObjectURL(file);
+          } catch {
+            previewUrl = null;
+          }
+        }
+
+        newEntries.push({
+          id: `${fp}-${Math.random().toString(36).slice(2, 8)}`,
+          file,
+          previewUrl,
+          status: 'pending',
+          progress: 0,
+        });
+      }
+
+      return [...prev, ...newEntries];
+    });
+  }, []);
+
+  // Consume external files dropped anywhere on the Dashboard
+  useEffect(() => {
+    if (externalFiles && externalFiles.length > 0) {
+      setMode('upload');
+      setIsOpen(true);
+      addFilesToQueue(externalFiles);
+      onExternalFilesConsumed?.();
+    }
+  }, [externalFiles, addFilesToQueue, onExternalFilesConsumed]);
+
+  // Cleanup object URLs on unmount
+  const queuedFilesRef = useRef<QueuedFileEntry[]>([]);
+  useEffect(() => {
+    queuedFilesRef.current = queuedFiles;
+  }, [queuedFiles]);
+
+  useEffect(() => {
+    return () => {
+      queuedFilesRef.current.forEach((entry) => {
+        if (entry.previewUrl) {
+          URL.revokeObjectURL(entry.previewUrl);
+        }
+      });
+    };
+  }, []);
+
   useEffect(() => {
     if (isOpen && mode === 'text') {
       setTimeout(() => textAreaRef.current?.focus(), 50);
     }
   }, [isOpen, mode]);
+
+  const removeQueuedFile = (id: string) => {
+    setQueuedFiles((prev) => {
+      const target = prev.find((e) => e.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((e) => e.id !== id);
+    });
+  };
+
+  const clearQueuedFiles = () => {
+    queuedFiles.forEach((entry) => {
+      if (entry.previewUrl) {
+        URL.revokeObjectURL(entry.previewUrl);
+      }
+    });
+    setQueuedFiles([]);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const totalQueuedBytes = useMemo(
+    () => queuedFiles.reduce((sum, entry) => sum + entry.file.size, 0),
+    [queuedFiles]
+  );
+
+  const pendingOrErrorFiles = useMemo(
+    () => queuedFiles.filter((e) => e.status === 'pending' || e.status === 'error'),
+    [queuedFiles]
+  );
+
+  const overallBatchProgress = useMemo(() => {
+    if (queuedFiles.length === 0) return 0;
+    const totalBytes = queuedFiles.reduce((acc, e) => acc + Math.max(1, e.file.size), 0);
+    const uploadedBytes = queuedFiles.reduce((acc, e) => {
+      const pct = e.status === 'completed' ? 100 : e.progress;
+      return acc + Math.max(1, e.file.size) * (pct / 100);
+    }, 0);
+    return Math.min(100, Math.round((uploadedBytes / totalBytes) * 100));
+  }, [queuedFiles]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -101,6 +270,8 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         handleSaveText();
       } else if (mode === 'link' && linkUrl.trim()) {
         handleSaveLink();
+      } else if (mode === 'upload' && pendingOrErrorFiles.length > 0 && !isUploading) {
+        handleFileUpload();
       }
     }
   };
@@ -143,9 +314,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
     setLinkUrl('');
     setLinkTitle('');
     setLinkNote('');
-    setSelectedFile(null);
-    setUploadProgress(null);
-    setUploadError(null);
+    clearQueuedFiles();
     setSelectedPresetSec(SITE_CONFIG.defaultExpirationSeconds);
   };
 
@@ -230,6 +399,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
   };
 
   const handleCancelUpload = async () => {
+    cancelRequestedRef.current = true;
     if (xhrRef.current) {
       xhrRef.current.abort();
       xhrRef.current = null;
@@ -245,157 +415,265 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
         method: 'DELETE',
       }).catch(() => {});
     }
+    setQueuedFiles((prev) =>
+      prev.map((e) =>
+        e.status === 'uploading' ? { ...e, status: 'pending', progress: 0 } : e
+      )
+    );
     setIsUploading(false);
-    setUploadProgress(null);
-    setUploadError('Upload cancelled. Reserved storage quota has been released.');
+    setUploadError('Upload cancelled. Any already-completed files remain in your vault.');
   };
 
-  const handleFileUpload = async (fileToUpload?: File) => {
-    const file = fileToUpload || selectedFile;
-    if (!file) return;
-
-    if (file.size > SITE_CONFIG.maxUploadSizeBytes) {
-      setUploadError(
-        `File exceeds maximum size of ${Math.round(
-          SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024)
-        )} MiB.`
+  const uploadSingleEntry = async (
+    entry: QueuedFileEntry,
+    customItemTitle: string
+  ): Promise<Item> => {
+    const file = entry.file;
+    const updateEntryProgress = (progress: number) => {
+      setQueuedFiles((prev) =>
+        prev.map((item) => (item.id === entry.id ? { ...item, progress } : item))
       );
+    };
+
+    const CHUNK_THRESHOLD = 3.5 * 1024 * 1024;
+    if (file.size > CHUNK_THRESHOLD) {
+      const abortCtrl = new AbortController();
+      abortControllerRef.current = abortCtrl;
+
+      const initRes = await fetch('/api/storage/upload-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          title: customItemTitle || file.name,
+          expirationSeconds: effectiveExpirationSec,
+        }),
+        signal: abortCtrl.signal,
+      });
+
+      const initData = await initRes.json();
+      if (!initRes.ok) {
+        throw new Error(initData.error || 'Failed to initiate resumable upload');
+      }
+
+      const sessionId = initData.sessionId;
+      activeUploadSessionIdRef.current = sessionId;
+      const chunkSize = initData.chunkSize || 2 * 1024 * 1024;
+      let offset = 0;
+      let finalItem: Item | null = null;
+
+      while (offset < file.size) {
+        const slice = file.slice(offset, Math.min(offset + chunkSize, file.size));
+        const buf = await slice.arrayBuffer();
+
+        const putRes = await fetch(
+          `/api/storage/upload-session?sessionId=${encodeURIComponent(sessionId)}&offset=${offset}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: buf,
+            signal: abortCtrl.signal,
+          }
+        );
+
+        const putData = await putRes.json();
+        if (!putRes.ok) {
+          throw new Error(putData.error || 'Chunk upload failed');
+        }
+
+        offset += slice.size;
+        updateEntryProgress(Math.min(99, Math.round((offset / file.size) * 100)));
+
+        if (putData.completed && putData.item) {
+          finalItem = putData.item;
+          break;
+        }
+      }
+
+      activeUploadSessionIdRef.current = null;
+      abortControllerRef.current = null;
+
+      if (!finalItem) {
+        throw new Error('Upload finished without returning the finalized item');
+      }
+      return finalItem;
+    } else {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('expirationSeconds', String(effectiveExpirationSec));
+      if (customItemTitle) formData.append('title', customItemTitle);
+      if (tags.length > 0) formData.append('tags', JSON.stringify(tags));
+
+      return await new Promise<Item>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
+        xhr.open('POST', '/api/storage/upload', true);
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 95);
+            updateEntryProgress(Math.max(5, pct));
+          }
+        };
+
+        xhr.onload = () => {
+          try {
+            const response = JSON.parse(xhr.responseText || '{}');
+            if (xhr.status >= 200 && xhr.status < 300 && response.item) {
+              resolve(response.item);
+            } else {
+              reject(new Error(response.error || `Upload failed (status ${xhr.status})`));
+            }
+          } catch {
+            reject(new Error(`Upload failed (status ${xhr.status})`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during file transfer'));
+        xhr.onabort = () => reject(new Error('Upload cancelled'));
+        xhr.send(formData);
+      });
+    }
+  };
+
+  const handleFileUpload = async () => {
+    const targets = queuedFiles.filter(
+      (e) => e.status === 'pending' || e.status === 'error'
+    );
+    if (targets.length === 0) return;
+
+    cancelRequestedRef.current = false;
+    setIsUploading(true);
+    setUploadError(null);
+
+    let successCount = 0;
+    let failCount = 0;
+    const isMulti = queuedFiles.length > 1;
+    const trimmedTitle = title.trim();
+
+    for (let i = 0; i < targets.length; i++) {
+      if (cancelRequestedRef.current) break;
+
+      const entry = targets[i];
+      setActiveFileIndex(i + 1);
+
+      setQueuedFiles((prev) =>
+        prev.map((item) =>
+          item.id === entry.id
+            ? { ...item, status: 'uploading', progress: 5, error: undefined }
+            : item
+        )
+      );
+
+      const itemTitle = trimmedTitle
+        ? isMulti
+          ? `${trimmedTitle} (${entry.file.name})`
+          : trimmedTitle
+        : '';
+
+      try {
+        const uploadedItem = await uploadSingleEntry(entry, itemTitle);
+        successCount++;
+
+        setQueuedFiles((prev) =>
+          prev.map((item) =>
+            item.id === entry.id
+              ? { ...item, status: 'completed', progress: 100, error: undefined }
+              : item
+          )
+        );
+
+        onItemCreated(uploadedItem);
+      } catch (err: any) {
+        if (
+          cancelRequestedRef.current ||
+          err?.name === 'AbortError' ||
+          err?.message === 'Upload cancelled'
+        ) {
+          break;
+        }
+        failCount++;
+        const errMsg = err?.message || 'Upload failed';
+        setQueuedFiles((prev) =>
+          prev.map((item) =>
+            item.id === entry.id
+              ? { ...item, status: 'error', progress: 0, error: errMsg }
+              : item
+          )
+        );
+      } finally {
+        xhrRef.current = null;
+      }
+    }
+
+    setIsUploading(false);
+
+    if (cancelRequestedRef.current) {
       return;
     }
 
-    setIsUploading(true);
-    setUploadError(null);
-    setUploadProgress(1);
-
-    try {
-      const CHUNK_THRESHOLD = 3.5 * 1024 * 1024;
-      if (file.size > CHUNK_THRESHOLD) {
-        const abortCtrl = new AbortController();
-        abortControllerRef.current = abortCtrl;
-
-        const initRes = await fetch('/api/storage/upload-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            filename: file.name,
-            mimeType: file.type || 'application/octet-stream',
-            fileSize: file.size,
-            title: title.trim() || file.name,
-            expirationSeconds: effectiveExpirationSec,
-          }),
-          signal: abortCtrl.signal,
-        });
-
-        const initData = await initRes.json();
-        if (!initRes.ok) {
-          throw new Error(initData.error || 'Failed to initiate resumable upload');
-        }
-
-        const sessionId = initData.sessionId;
-        activeUploadSessionIdRef.current = sessionId;
-        const chunkSize = initData.chunkSize || 2 * 1024 * 1024;
-        let offset = 0;
-        let finalItem: Item | null = null;
-
-        while (offset < file.size) {
-          const slice = file.slice(offset, Math.min(offset + chunkSize, file.size));
-          const buf = await slice.arrayBuffer();
-
-          const putRes = await fetch(
-            `/api/storage/upload-session?sessionId=${encodeURIComponent(sessionId)}&offset=${offset}`,
-            {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/octet-stream' },
-              body: buf,
-              signal: abortCtrl.signal,
-            }
-          );
-
-          const putData = await putRes.json();
-          if (!putRes.ok) {
-            throw new Error(putData.error || 'Chunk upload failed');
-          }
-
-          offset += slice.size;
-          setUploadProgress(Math.min(99, Math.round((offset / file.size) * 100)));
-
-          if (putData.completed && putData.item) {
-            finalItem = putData.item;
-            break;
-          }
-        }
-
-        activeUploadSessionIdRef.current = null;
-        abortControllerRef.current = null;
-
-        if (!finalItem) {
-          throw new Error('Upload finished without returning the finalized item');
-        }
-
-        setUploadProgress(100);
-        toast.success(`${file.name} uploaded`);
-        onItemCreated(finalItem);
+    if (failCount === 0 && successCount > 0) {
+      toast.success(
+        successCount === 1
+          ? `${targets[0].file.name} uploaded`
+          : `Uploaded ${successCount} files to your vault`
+      );
+      setTimeout(() => {
         resetForm();
         setIsOpen(false);
-      } else {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('expirationSeconds', String(effectiveExpirationSec));
-        if (title.trim()) formData.append('title', title.trim());
-        if (tags.length > 0) formData.append('tags', JSON.stringify(tags));
-
-        const uploadedItem = await new Promise<Item>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhrRef.current = xhr;
-          xhr.open('POST', '/api/storage/upload', true);
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const pct = Math.round((event.loaded / event.total) * 95);
-              setUploadProgress(Math.max(5, pct));
-            }
-          };
-
-          xhr.onload = () => {
-            try {
-              const response = JSON.parse(xhr.responseText || '{}');
-              if (xhr.status >= 200 && xhr.status < 300 && response.item) {
-                resolve(response.item);
-              } else {
-                reject(new Error(response.error || `Upload failed (status ${xhr.status})`));
-              }
-            } catch {
-              reject(new Error(`Upload failed (status ${xhr.status})`));
-            }
-          };
-
-          xhr.onerror = () => reject(new Error('Network error during file transfer'));
-          xhr.onabort = () => reject(new Error('Upload cancelled'));
-          xhr.send(formData);
-        });
-
-        setUploadProgress(100);
-        toast.success(`${file.name} uploaded`);
-        onItemCreated(uploadedItem);
-        resetForm();
-        setIsOpen(false);
-      }
-    } catch (err: any) {
-      if (err?.name === 'AbortError' || err?.message === 'Upload cancelled') {
-        return;
-      }
-      setUploadError(err.message || 'Upload failed');
-      toast.error(err.message || 'Upload failed');
-    } finally {
-      setIsUploading(false);
-      xhrRef.current = null;
+      }, 220);
+    } else if (successCount > 0 && failCount > 0) {
+      setUploadError(
+        `Uploaded ${successCount} ${successCount === 1 ? 'file' : 'files'}, but ${failCount} failed. Click Retry to re-upload failed files.`
+      );
+      toast.error(`${failCount} ${failCount === 1 ? 'file' : 'files'} failed to upload`);
+    } else if (failCount > 0) {
+      setUploadError('Could not upload selected files. Please check your connection or storage quota.');
+      toast.error('Upload failed');
     }
   };
 
   return (
     <div className="mb-6">
+      {/* Shared hidden multi-file input so users can pick files from anywhere */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            setMode('upload');
+            setIsOpen(true);
+            addFilesToQueue(e.target.files);
+            e.target.value = '';
+          }
+        }}
+      />
+
       {!isOpen ? (
-        <div className="ios-card rounded-[16px] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              setMode('upload');
+              setIsOpen(true);
+              addFilesToQueue(e.dataTransfer.files);
+            }
+          }}
+          className={cn(
+            'ios-card rounded-[16px] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all',
+            isDragging && 'ring-2 ring-[#007aff] bg-[#007aff]/[0.06]'
+          )}
+        >
           <button
             type="button"
             onClick={() => {
@@ -408,7 +686,9 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             </span>
             <span className="text-[14px] text-[#6c6c70] dark:text-[#98989d]">
-              New note, code snippet, file upload, or web link…
+              {isDragging
+                ? 'Drop files here to queue for upload…'
+                : 'New note, code snippet, multiple files, or web link…'}
             </span>
           </button>
 
@@ -435,7 +715,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               }}
             >
               <Upload className="w-3.5 h-3.5" />
-              <span>File</span>
+              <span>Files</span>
             </Button>
             <Button
               type="button"
@@ -464,7 +744,14 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
               onChange={(v) => setMode(v)}
               options={[
                 { value: 'text', label: 'Note', icon: <FileText className="w-3.5 h-3.5" /> },
-                { value: 'upload', label: 'Upload File', icon: <Upload className="w-3.5 h-3.5" /> },
+                {
+                  value: 'upload',
+                  label:
+                    queuedFiles.length > 0
+                      ? `Upload Files (${queuedFiles.length})`
+                      : 'Upload Files',
+                  icon: <Upload className="w-3.5 h-3.5" />,
+                },
                 { value: 'link', label: 'Web Link', icon: <Link2 className="w-3.5 h-3.5" /> },
               ]}
             />
@@ -532,91 +819,223 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
             </div>
           )}
 
-          {/* 2. FILE UPLOAD COMPOSER */}
+          {/* 2. MULTI-FILE UPLOAD COMPOSER */}
           {mode === 'upload' && (
             <div className="space-y-3">
               <input
                 type="text"
-                placeholder="Custom display title (optional)"
+                placeholder={
+                  queuedFiles.length > 1
+                    ? 'Batch title prefix (optional — leave blank to use each file name)'
+                    : 'Custom display title (optional)'
+                }
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full text-[15px] font-semibold bg-transparent border-b border-black/[0.07] dark:border-white/[0.09] focus:border-[#007aff] pb-1.5 focus:outline-none text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
               />
 
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  const dropped = e.dataTransfer.files?.[0];
-                  if (dropped) {
-                    setSelectedFile(dropped);
-                    setUploadError(null);
-                  }
-                }}
-                onClick={() => !isUploading && fileInputRef.current?.click()}
-                className={cn(
-                  'border border-dashed rounded-[14px] p-6 text-center transition-colors cursor-pointer',
-                  isDragging
-                    ? 'border-[#007aff] bg-[#007aff]/[0.06]'
-                    : 'border-black/[0.16] dark:border-white/[0.18] bg-[#767680]/[0.04] dark:bg-[#767680]/[0.12] hover:border-[#007aff]'
-                )}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      setSelectedFile(f);
-                      setUploadError(null);
+              {queuedFiles.length === 0 ? (
+                /* Empty Dropzone */
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      addFilesToQueue(e.dataTransfer.files);
                     }
                   }}
-                />
-                <div className="w-10 h-10 rounded-[12px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto mb-2">
-                  <Upload className="w-5 h-5" />
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  className={cn(
+                    'border-2 border-dashed rounded-[16px] p-7 text-center transition-all cursor-pointer',
+                    isDragging
+                      ? 'border-[#007aff] bg-[#007aff]/[0.08] scale-[1.01]'
+                      : 'border-black/[0.14] dark:border-white/[0.16] bg-[#767680]/[0.04] dark:bg-[#767680]/[0.12] hover:border-[#007aff] hover:bg-[#007aff]/[0.02]'
+                  )}
+                >
+                  <div className="w-11 h-11 rounded-[14px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto mb-2.5">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[15px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                      Select multiple files or drag and drop here
+                    </p>
+                    <p className="text-[12.5px] text-[#8e8e93]">
+                      Pick photos, videos, PDFs, code, and archives at once · up to{' '}
+                      {Math.round(SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024))} MB per file
+                    </p>
+                  </div>
                 </div>
-                {selectedFile ? (
-                  <div className="space-y-0.5">
-                    <p className="text-[14px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate max-w-md mx-auto">
-                      {selectedFile.name}
-                    </p>
-                    <p className="text-[12px] text-[#8e8e93] tabular-nums">
-                      {formatBytes(selectedFile.size)} · Ready to upload
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-0.5">
-                    <p className="text-[14px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
-                      Choose a file or drag and drop here
-                    </p>
-                    <p className="text-[12px] text-[#8e8e93]">
-                      Photos, videos, PDFs, and archives up to{' '}
-                      {Math.round(SITE_CONFIG.maxUploadSizeBytes / (1024 * 1024))} MB
-                    </p>
-                  </div>
-                )}
-              </div>
+              ) : (
+                /* Populated Multi-File Queue with Drag-and-Drop Support */
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    if (!isUploading && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                      addFilesToQueue(e.dataTransfer.files);
+                    }
+                  }}
+                  className={cn(
+                    'rounded-[16px] border overflow-hidden transition-all',
+                    isDragging
+                      ? 'border-[#007aff] bg-[#007aff]/[0.05] ring-2 ring-[#007aff]/20'
+                      : 'border-black/[0.09] dark:border-white/[0.12] bg-[#767680]/[0.04] dark:bg-[#767680]/[0.1]'
+                  )}
+                >
+                  {/* Queue Header Toolbar */}
+                  <div className="px-3.5 py-2.5 bg-black/[0.03] dark:bg-white/[0.04] border-b border-black/[0.06] dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-[12.5px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#409cff] tabular-nums text-[11.5px]">
+                        {queuedFiles.length} {queuedFiles.length === 1 ? 'file' : 'files'}
+                      </span>
+                      <span className="text-[#8e8e93] font-normal tabular-nums">
+                        {formatBytes(totalQueuedBytes)} total
+                      </span>
+                    </div>
 
-              {isUploading && uploadProgress !== null && (
-                <div className="p-3.5 rounded-[12px] bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={isUploading}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-white dark:bg-[#2c2c2e] text-[#007aff] dark:text-[#409cff] border border-black/[0.08] dark:border-white/[0.12] hover:bg-[#007aff]/5 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add More Files</span>
+                      </button>
+
+                      {!isUploading && (
+                        <button
+                          type="button"
+                          onClick={clearQueuedFiles}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[12px] font-medium text-[#8e8e93] hover:text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors cursor-pointer"
+                          title="Clear all selected files"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Clear</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scrollable File Cards */}
+                  <div className="max-h-64 overflow-y-auto divide-y divide-black/[0.06] dark:divide-white/[0.07]">
+                    {queuedFiles.map((entry) => {
+                      const TypeIcon = getFileIcon(entry.file.type || '');
+                      return (
+                        <div
+                          key={entry.id}
+                          className="px-3.5 py-2.5 flex items-center justify-between gap-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Thumbnail or Icon */}
+                            {entry.previewUrl ? (
+                              <img
+                                src={entry.previewUrl}
+                                alt={entry.file.name}
+                                className="w-10 h-10 rounded-[10px] object-cover border border-black/[0.08] dark:border-white/[0.12] shrink-0 bg-black/5"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-[10px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#409cff] flex items-center justify-center shrink-0">
+                                <TypeIcon className="w-5 h-5" />
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[13.5px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+                                  {entry.file.name}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[#8e8e93] tabular-nums">
+                                <span>{formatBytes(entry.file.size)}</span>
+                                {entry.status === 'pending' && <span>· Ready</span>}
+                                {entry.status === 'uploading' && (
+                                  <span className="text-[#007aff] dark:text-[#409cff] font-medium">
+                                    · Uploading {entry.progress}%
+                                  </span>
+                                )}
+                                {entry.status === 'completed' && (
+                                  <span className="text-[#34c759] font-medium">
+                                    · Uploaded
+                                  </span>
+                                )}
+                                {entry.status === 'error' && (
+                                  <span className="text-[#ff3b30] dark:text-[#ff453a] font-medium truncate">
+                                    · {entry.error || 'Failed'}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Per-file progress bar while uploading */}
+                              {entry.status === 'uploading' && (
+                                <div className="h-1 w-full bg-black/[0.08] dark:bg-white/[0.12] rounded-full overflow-hidden mt-1.5">
+                                  <div
+                                    className="h-full bg-[#007aff] dark:bg-[#0a84ff] transition-all duration-150"
+                                    style={{ width: `${entry.progress}%` }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Right Action / Status Icon */}
+                          <div className="shrink-0 flex items-center">
+                            {entry.status === 'completed' ? (
+                              <span className="w-7 h-7 rounded-full bg-[#34c759]/15 text-[#34c759] flex items-center justify-center">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </span>
+                            ) : entry.status === 'uploading' ? (
+                              <span className="w-7 h-7 flex items-center justify-center text-[#007aff] dark:text-[#409cff]">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isUploading}
+                                onClick={() => removeQueuedFile(entry.id)}
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#8e8e93] hover:text-[#ff3b30] hover:bg-black/[0.06] dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
+                                aria-label={`Remove ${entry.file.name}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Overall Batch Progress Bar during upload */}
+              {isUploading && (
+                <div className="p-3.5 rounded-[12px] bg-[#007aff]/[0.07] dark:bg-[#0a84ff]/[0.14] border border-[#007aff]/20 space-y-2">
                   <div className="flex items-center justify-between text-[12px]">
-                    <span className="font-medium text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
-                      Uploading {selectedFile?.name}…
+                    <span className="font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
+                      {queuedFiles.length === 1
+                        ? `Uploading ${queuedFiles[0]?.file.name}…`
+                        : `Uploading file ${activeFileIndex} of ${queuedFiles.length}…`}
                     </span>
                     <div className="flex items-center gap-3 shrink-0 tabular-nums">
-                      <span className="font-semibold text-[#007aff] dark:text-[#0a84ff]">
-                        {uploadProgress}%
+                      <span className="font-bold text-[#007aff] dark:text-[#409cff]">
+                        {overallBatchProgress}%
                       </span>
                       <button
                         type="button"
                         onClick={handleCancelUpload}
-                        className="text-[#ff3b30] dark:text-[#ff453a] hover:underline font-medium cursor-pointer"
+                        className="text-[#ff3b30] dark:text-[#ff453a] hover:underline font-semibold cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -625,7 +1044,7 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                   <div className="h-1.5 w-full bg-black/[0.08] dark:bg-white/[0.12] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[#007aff] dark:bg-[#0a84ff] transition-all duration-200"
-                      style={{ width: `${uploadProgress}%` }}
+                      style={{ width: `${overallBatchProgress}%` }}
                     />
                   </div>
                 </div>
@@ -794,11 +1213,15 @@ export function QuickComposer({ onItemCreated }: QuickComposerProps) {
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => handleFileUpload()}
+                  onClick={handleFileUpload}
                   isLoading={isUploading}
-                  disabled={!selectedFile || isUploading}
+                  disabled={pendingOrErrorFiles.length === 0 || isUploading}
                 >
-                  Upload File
+                  {queuedFiles.some((e) => e.status === 'error')
+                    ? `Retry Failed (${queuedFiles.filter((e) => e.status === 'error').length})`
+                    : pendingOrErrorFiles.length > 1
+                    ? `Upload ${pendingOrErrorFiles.length} Files`
+                    : 'Upload File'}
                 </Button>
               )}
 
