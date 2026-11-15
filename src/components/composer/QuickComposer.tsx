@@ -670,8 +670,8 @@ export function QuickComposer({
             }
           }}
           className={cn(
-            'ios-card rounded-[16px] p-2.5 sm:p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 transition-all',
-            isDragging && 'ring-2 ring-[#007aff] bg-[#007aff]/[0.06]'
+            'rounded-[24px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 p-2 sm:p-2.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs hover:border-neutral-900/30 dark:hover:border-white/30 transition-all',
+            isDragging && 'border-[#111111] dark:border-white bg-[#CDFF5D]/10 ring-4 ring-[#CDFF5D]/30'
           )}
         >
           <button
@@ -680,81 +680,104 @@ export function QuickComposer({
               setMode('text');
               setIsOpen(true);
             }}
-            className="flex-1 flex items-center gap-2.5 text-left px-3 py-2 rounded-[10px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+            className="flex-1 flex items-center gap-3 text-left px-3 py-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
           >
-            <span className="w-6 h-6 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white flex items-center justify-center shrink-0">
-              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span className="w-8 h-8 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 flex items-center justify-center shrink-0 shadow-xs">
+              <Plus className="w-4 h-4 stroke-[3]" />
             </span>
-            <span className="text-[14px] text-[#6c6c70] dark:text-[#98989d]">
+            <span className="text-xs sm:text-sm font-medium text-neutral-500 dark:text-neutral-400">
               {isDragging
                 ? 'Drop files here to queue for upload…'
                 : 'New note, code snippet, multiple files, or web link…'}
             </span>
           </button>
 
-          <div className="flex items-center gap-1.5 px-1 sm:px-0">
-            <Button
+          <div className="flex items-center gap-2 px-1 sm:px-0">
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
               onClick={() => {
                 setMode('text');
                 setIsOpen(true);
               }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider bg-neutral-100 dark:bg-white/10 text-[#111111] dark:text-white hover:bg-[#111111] hover:text-white dark:hover:bg-white dark:hover:text-neutral-950 transition-all cursor-pointer shadow-2xs"
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText className="w-3.5 h-3.5 stroke-[2.2]" />
               <span>Note</span>
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
               onClick={() => {
                 setMode('upload');
                 setIsOpen(true);
               }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider bg-neutral-100 dark:bg-white/10 text-[#111111] dark:text-white hover:bg-[#111111] hover:text-white dark:hover:bg-white dark:hover:text-neutral-950 transition-all cursor-pointer shadow-2xs"
             >
-              <Upload className="w-3.5 h-3.5" />
+              <Upload className="w-3.5 h-3.5 stroke-[2.2]" />
               <span>Files</span>
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="secondary"
-              size="sm"
               onClick={() => {
                 setMode('link');
                 setIsOpen(true);
               }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider bg-neutral-100 dark:bg-white/10 text-[#111111] dark:text-white hover:bg-[#111111] hover:text-white dark:hover:bg-white dark:hover:text-neutral-950 transition-all cursor-pointer shadow-2xs"
             >
-              <Link2 className="w-3.5 h-3.5" />
+              <Link2 className="w-3.5 h-3.5 stroke-[2.2]" />
               <span>Link</span>
-            </Button>
+            </button>
           </div>
         </div>
       ) : (
         <div
           onKeyDown={handleKeyDown}
-          className="ios-card rounded-[18px] p-4 sm:p-5 space-y-4 animate-ios-sheet"
+          className="rounded-[28px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/15 dark:border-white/15 p-5 sm:p-6 space-y-5 shadow-lg animate-in fade-in-50 duration-200"
         >
           {/* Mode Switcher & Close */}
-          <div className="flex items-center justify-between gap-3 pb-3 border-b border-black/[0.07] dark:border-white/[0.09]">
-            <SegmentedControl
-              size="sm"
-              value={mode}
-              onChange={(v) => setMode(v)}
-              options={[
-                { value: 'text', label: 'Note', icon: <FileText className="w-3.5 h-3.5" /> },
-                {
-                  value: 'upload',
-                  label:
-                    queuedFiles.length > 0
-                      ? `Upload Files (${queuedFiles.length})`
-                      : 'Upload Files',
-                  icon: <Upload className="w-3.5 h-3.5" />,
-                },
-                { value: 'link', label: 'Web Link', icon: <Link2 className="w-3.5 h-3.5" /> },
-              ]}
-            />
+          <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-neutral-900/10 dark:border-white/10">
+            <div className="flex items-center gap-1 p-1 rounded-full bg-neutral-100 dark:bg-white/10 border border-neutral-200 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => setMode('text')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer',
+                  mode === 'text'
+                    ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                )}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Note</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('upload')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer',
+                  mode === 'upload'
+                    ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                )}
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>
+                  {queuedFiles.length > 0 ? `Files (${queuedFiles.length})` : 'Files'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('link')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer',
+                  mode === 'link'
+                    ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                    : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
+                )}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span>Link</span>
+              </button>
+            </div>
 
             <button
               type="button"
@@ -762,10 +785,10 @@ export function QuickComposer({
                 if (isUploading) handleCancelUpload();
                 setIsOpen(false);
               }}
-              className="w-7 h-7 rounded-full flex items-center justify-center bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-neutral-100 dark:bg-white/10 text-neutral-500 hover:text-black dark:hover:text-white hover:bg-neutral-200 transition-colors cursor-pointer"
               aria-label="Close composer"
             >
-              <X className="w-3.5 h-3.5 stroke-[2.25]" />
+              <X className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
 
@@ -1088,19 +1111,19 @@ export function QuickComposer({
             </div>
           )}
 
-          {/* EXPIRATION SELECTOR (iOS Grouped Row) */}
-          <div className="p-3 rounded-[12px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 text-[12px]">
-              <Clock className="w-3.5 h-3.5 text-[#007aff] dark:text-[#0a84ff] shrink-0" />
-              <span className="font-medium text-[#1c1c1e] dark:text-[#f5f5f7]">
+          {/* EXPIRATION SELECTOR (Neo-Editorial Grouped Row) */}
+          <div className="p-3.5 rounded-[20px] bg-neutral-100/80 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs">
+              <Clock className="w-4 h-4 text-neutral-900 dark:text-[#CDFF5D] shrink-0" />
+              <span className="font-bold text-[#111111] dark:text-white uppercase tracking-wider font-mono text-[11px]">
                 Auto-Delete:
               </span>
-              <span className="text-[#8e8e93] tabular-nums">
+              <span className="text-neutral-500 font-mono text-xs tabular-nums">
                 {previewExpirationLabel}
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1.5">
               {EXPIRATION_PRESETS.map((preset) => {
                 const isSelected = selectedPresetSec === preset.seconds;
                 return (
@@ -1109,10 +1132,10 @@ export function QuickComposer({
                     type="button"
                     onClick={() => setSelectedPresetSec(preset.seconds)}
                     className={cn(
-                      'px-2.5 py-1 rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer',
+                      'px-3 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer',
                       isSelected
-                        ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
-                        : 'bg-white dark:bg-[#2c2c2e] text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
+                        ? 'bg-[#CDFF5D] text-black shadow-xs'
+                        : 'bg-white dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-neutral-300/60 dark:border-white/10'
                     )}
                   >
                     {preset.label}
@@ -1123,10 +1146,10 @@ export function QuickComposer({
                 type="button"
                 onClick={() => setSelectedPresetSec('custom')}
                 className={cn(
-                  'px-2.5 py-1 rounded-[7px] text-[12px] font-medium transition-colors cursor-pointer',
+                  'px-3 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer',
                   selectedPresetSec === 'custom'
-                    ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
-                    : 'bg-white dark:bg-[#2c2c2e] text-[#6c6c70] dark:text-[#98989d] hover:text-[#1c1c1e] dark:hover:text-white'
+                    ? 'bg-[#CDFF5D] text-black shadow-xs'
+                    : 'bg-white dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-neutral-300/60 dark:border-white/10'
                 )}
               >
                 Custom
@@ -1140,19 +1163,19 @@ export function QuickComposer({
                     max="720"
                     value={customHours}
                     onChange={(e) => setCustomHours(e.target.value)}
-                    className="w-16 px-2 py-1 rounded-[7px] text-[12px] border border-black/[0.12] dark:border-white/[0.16] bg-white dark:bg-[#1c1c1e] text-[#1c1c1e] dark:text-[#f5f5f7] tabular-nums"
+                    className="w-16 px-2.5 py-1 rounded-full text-xs font-mono font-bold border border-neutral-300 dark:border-white/20 bg-white dark:bg-[#18181B] text-[#111111] dark:text-white tabular-nums"
                   />
-                  <span className="text-[11px] text-[#8e8e93]">hrs</span>
+                  <span className="text-[11px] font-mono font-bold text-neutral-400">hrs</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Tags & Submit Row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <div className="flex items-center gap-1.5 bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] px-2.5 py-1 rounded-[8px]">
-                <Tag className="w-3 h-3 text-[#8e8e93]" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 bg-neutral-100 dark:bg-white/10 px-3 py-1.5 rounded-full border border-neutral-200 dark:border-white/10">
+                <Tag className="w-3.5 h-3.5 text-neutral-400" />
                 <input
                   type="text"
                   placeholder="Add tag + Enter"
@@ -1164,77 +1187,78 @@ export function QuickComposer({
                       addTag(tagInput);
                     }
                   }}
-                  className="bg-transparent text-[12px] focus:outline-none w-28 text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93]"
+                  className="bg-transparent text-xs font-medium focus:outline-none w-28 text-[#111111] dark:text-white placeholder:text-neutral-400"
                 />
               </div>
               {tags.map((t, i) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[7px] text-[12px] font-medium bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#409cff]"
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#CDFF5D] text-black shadow-2xs"
                 >
                   #{t}
                   <button
                     type="button"
                     onClick={() => removeTag(i)}
-                    className="hover:text-[#ff3b30] cursor-pointer"
+                    className="hover:text-red-600 cursor-pointer"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3 stroke-[3]" />
                   </button>
                 </span>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-2">
-              <Button
+            <div className="flex items-center justify-end gap-2.5">
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
                 onClick={() => {
                   if (isUploading) handleCancelUpload();
                   setIsOpen(false);
                 }}
+                className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider text-neutral-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
               >
                 Cancel
-              </Button>
+              </button>
 
               {mode === 'text' && (
-                <Button
+                <button
                   type="button"
-                  size="sm"
                   onClick={handleSaveText}
-                  isLoading={isSaving}
-                  disabled={!textContent.trim()}
+                  disabled={!textContent.trim() || isSaving}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 font-black text-xs uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                 >
-                  Save Note
-                </Button>
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save Note</span>
+                </button>
               )}
 
               {mode === 'upload' && (
-                <Button
+                <button
                   type="button"
-                  size="sm"
                   onClick={handleFileUpload}
-                  isLoading={isUploading}
                   disabled={pendingOrErrorFiles.length === 0 || isUploading}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 font-black text-xs uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                 >
-                  {queuedFiles.some((e) => e.status === 'error')
-                    ? `Retry Failed (${queuedFiles.filter((e) => e.status === 'error').length})`
-                    : pendingOrErrorFiles.length > 1
-                    ? `Upload ${pendingOrErrorFiles.length} Files`
-                    : 'Upload File'}
-                </Button>
+                  {isUploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>
+                    {queuedFiles.some((e) => e.status === 'error')
+                      ? `Retry Failed (${queuedFiles.filter((e) => e.status === 'error').length})`
+                      : pendingOrErrorFiles.length > 1
+                      ? `Upload ${pendingOrErrorFiles.length} Files`
+                      : 'Upload File'}
+                  </span>
+                </button>
               )}
 
               {mode === 'link' && (
-                <Button
+                <button
                   type="button"
-                  size="sm"
                   onClick={handleSaveLink}
-                  isLoading={isSaving}
-                  disabled={!linkUrl.trim()}
+                  disabled={!linkUrl.trim() || isSaving}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 font-black text-xs uppercase tracking-wider shadow-md hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
                 >
-                  Save Link
-                </Button>
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Save Link</span>
+                </button>
               )}
             </div>
           </div>

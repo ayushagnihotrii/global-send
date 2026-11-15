@@ -16,22 +16,22 @@ export function MobileNavBar({
   onOpenComposer,
 }: MobileNavBarProps) {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 ios-material border-t border-black/[0.08] dark:border-white/[0.1] px-2 pt-1.5 pb-safe">
-      <div className="flex items-center justify-around max-w-md mx-auto">
+    <div className="md:hidden fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto rounded-full bg-white/95 dark:bg-[#18181B]/95 backdrop-blur-md border-2 border-neutral-900/10 dark:border-white/10 px-3 py-1.5 shadow-2xl">
+      <div className="flex items-center justify-around">
         {/* Vault */}
         <button
           type="button"
           onClick={() => onSelectSection('all')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[50px] py-1 transition-all cursor-pointer rounded-full',
             currentSection === 'all'
-              ? 'text-[#007aff] dark:text-[#0a84ff]'
-              : 'text-[#8e8e93]'
+              ? 'text-black dark:text-white font-bold'
+              : 'text-neutral-400 hover:text-black dark:hover:text-white'
           )}
           aria-label="Vault"
         >
-          <Layers className="w-[21px] h-[21px]" />
-          <span className="text-[10px] font-medium mt-0.5">Vault</span>
+          <Layers className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[9px] uppercase font-mono tracking-wider mt-0.5">Vault</span>
         </button>
 
         {/* Chats */}
@@ -39,25 +39,25 @@ export function MobileNavBar({
           type="button"
           onClick={() => onSelectSection('chats')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[50px] py-1 transition-all cursor-pointer rounded-full',
             currentSection === 'chats'
-              ? 'text-[#007aff] dark:text-[#0a84ff]'
-              : 'text-[#8e8e93]'
+              ? 'text-black dark:text-white font-bold'
+              : 'text-neutral-400 hover:text-black dark:hover:text-white'
           )}
           aria-label="Chats"
         >
-          <MessageSquare className="w-[21px] h-[21px]" />
-          <span className="text-[10px] font-medium mt-0.5">Chats</span>
+          <MessageSquare className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[9px] uppercase font-mono tracking-wider mt-0.5">Chats</span>
         </button>
 
         {/* New Item Button */}
         <button
           type="button"
           onClick={onOpenComposer}
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#007aff] dark:bg-[#0a84ff] text-white shadow-[0_2px_8px_rgba(0,122,255,0.35)] active:scale-95 transition-transform cursor-pointer"
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 shadow-md active:scale-90 transition-transform cursor-pointer"
           aria-label="New vault item"
         >
-          <Plus className="w-5 h-5 stroke-[2.5]" />
+          <Plus className="w-5 h-5 stroke-[3]" />
         </button>
 
         {/* Files */}
@@ -65,15 +65,15 @@ export function MobileNavBar({
           type="button"
           onClick={() => onSelectSection('file')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[50px] py-1 transition-all cursor-pointer rounded-full',
             currentSection === 'file'
-              ? 'text-[#007aff] dark:text-[#0a84ff]'
-              : 'text-[#8e8e93]'
+              ? 'text-black dark:text-white font-bold'
+              : 'text-neutral-400 hover:text-black dark:hover:text-white'
           )}
           aria-label="Documents"
         >
-          <Folder className="w-[21px] h-[21px]" />
-          <span className="text-[10px] font-medium mt-0.5">Files</span>
+          <Folder className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[9px] uppercase font-mono tracking-wider mt-0.5">Files</span>
         </button>
 
         {/* Settings */}
@@ -81,15 +81,15 @@ export function MobileNavBar({
           type="button"
           onClick={() => onSelectSection('settings')}
           className={cn(
-            'flex flex-col items-center justify-center min-w-[56px] py-1 transition-colors cursor-pointer',
+            'flex flex-col items-center justify-center min-w-[50px] py-1 transition-all cursor-pointer rounded-full',
             currentSection === 'settings'
-              ? 'text-[#007aff] dark:text-[#0a84ff]'
-              : 'text-[#8e8e93]'
+              ? 'text-black dark:text-white font-bold'
+              : 'text-neutral-400 hover:text-black dark:hover:text-white'
           )}
           aria-label="Settings"
         >
-          <User className="w-[21px] h-[21px]" />
-          <span className="text-[10px] font-medium mt-0.5">Settings</span>
+          <User className="w-5 h-5 stroke-[2.2]" />
+          <span className="text-[9px] uppercase font-mono tracking-wider mt-0.5">Settings</span>
         </button>
       </div>
     </div>

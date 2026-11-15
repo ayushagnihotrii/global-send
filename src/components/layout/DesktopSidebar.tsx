@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import {
   Layers,
   FileText,
@@ -65,57 +66,57 @@ export function DesktopSidebar({
     {
       id: 'all',
       label: 'All Items',
-      icon: <Layers className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#007aff] dark:text-[#0a84ff]',
+      icon: <Layers className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#111111] dark:text-white',
       countKey: 'all',
     },
     {
       id: 'text',
       label: 'Notes & Code',
-      icon: <FileText className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#ff9500] dark:text-[#ff9f0a]',
+      icon: <FileText className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#FF8559]',
       countKey: 'text',
     },
     {
       id: 'image',
       label: 'Photos',
-      icon: <ImageIcon className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#34c759] dark:text-[#30d158]',
+      icon: <ImageIcon className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#38BDF8]',
       countKey: 'image',
     },
     {
       id: 'video',
       label: 'Videos',
-      icon: <Film className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#af52de] dark:text-[#bf5af2]',
+      icon: <Film className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#C17BF3]',
       countKey: 'video',
     },
     {
       id: 'file',
       label: 'Documents',
-      icon: <Folder className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#007aff] dark:text-[#0a84ff]',
+      icon: <Folder className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#A3E635]',
       countKey: 'file',
     },
     {
       id: 'link',
       label: 'Web Links',
-      icon: <Link2 className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#5856d6] dark:text-[#5e5ce6]',
+      icon: <Link2 className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#FBBF24]',
       countKey: 'link',
     },
     {
       id: 'favourites',
       label: 'Favourites',
-      icon: <Star className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#ffcc00] dark:text-[#ffd60a]',
+      icon: <Star className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-[#F59E0B]',
       countKey: 'favourites',
     },
     {
       id: 'trash',
       label: 'Recently Deleted',
-      icon: <Trash2 className="w-[17px] h-[17px]" />,
-      tintClass: 'text-[#8e8e93]',
+      icon: <Trash2 className="w-4 h-4 stroke-[2.2]" />,
+      tintClass: 'text-neutral-400',
       countKey: 'trash',
     },
   ];
@@ -123,31 +124,36 @@ export function DesktopSidebar({
   const displayUsername = user.displayUsername || user.username;
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 ios-sidebar-material border-r border-black/[0.08] dark:border-white/[0.1] px-3 py-4 select-none shrink-0 justify-between">
-      <div>
-        {/* Brand Title */}
-        <div className="flex items-center gap-2.5 px-2.5 pb-3.5">
-          <Logo size={30} />
-          <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold tracking-[-0.015em] text-[#1c1c1e] dark:text-[#f5f5f7] leading-tight truncate">
-              {SITE_CONFIG.name}
-            </h1>
-            <p className="text-[11px] text-[#8e8e93] leading-tight mt-0.5">
-              iCloud-grade Vault
+    <aside className="hidden md:flex flex-col w-64 h-screen sticky top-0 bg-[#FBFBFC] dark:bg-[#121215] border-r-2 border-neutral-900/10 dark:border-white/10 px-4 py-5 select-none shrink-0 justify-between">
+      <div className="space-y-5">
+        {/* Brand Header */}
+        <div className="flex items-center gap-3 px-1">
+          <Logo size={34} className="shadow-xs" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-headline text-[17px] font-extrabold tracking-tight text-[#111111] dark:text-white uppercase leading-none truncate">
+                {SITE_CONFIG.name}
+              </h1>
+              <span className="bg-[#CDFF5D] text-black font-mono text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                VAULT
+              </span>
+            </div>
+            <p className="font-eyebrow text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              encrypted peer relay
             </p>
           </div>
         </div>
 
-        {/* iOS Segmented Mode Switcher */}
-        <div className="grid grid-cols-3 p-[2px] mb-5 rounded-[9px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24]">
+        {/* Neo-Editorial Capsule Segment Switcher */}
+        <div className="grid grid-cols-3 p-1 rounded-full bg-neutral-200/60 dark:bg-neutral-800/80 border border-neutral-300/40 dark:border-white/10">
           <button
             type="button"
             onClick={() => onSelectSection('all')}
             className={cn(
-              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
+              'py-1.5 px-2 rounded-full text-xs transition-all cursor-pointer text-center font-bold',
               currentSection !== 'chats' && currentSection !== 'settings'
-                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
-                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
+                ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
             )}
           >
             Vault
@@ -156,10 +162,10 @@ export function DesktopSidebar({
             type="button"
             onClick={() => onSelectSection('chats')}
             className={cn(
-              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
+              'py-1.5 px-2 rounded-full text-xs transition-all cursor-pointer text-center font-bold',
               currentSection === 'chats'
-                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
-                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
+                ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
             )}
           >
             Chats
@@ -168,122 +174,124 @@ export function DesktopSidebar({
             type="button"
             onClick={() => onSelectSection('settings')}
             className={cn(
-              'py-1 px-2 rounded-[7px] text-[12px] transition-all cursor-pointer text-center',
+              'py-1.5 px-2 rounded-full text-xs transition-all cursor-pointer text-center font-bold',
               currentSection === 'settings'
-                ? 'bg-white dark:bg-[#636366] text-[#1c1c1e] dark:text-white ios-segmented-thumb font-semibold'
-                : 'text-[#6c6c70] dark:text-[#ebebf5]/70 hover:text-[#1c1c1e] dark:hover:text-white font-medium'
+                ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                : 'text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white'
             )}
           >
             Settings
           </button>
         </div>
 
-        {/* macOS / iPadOS Source List Section Header */}
-        <div className="px-2.5 mb-1">
-          <span className="text-[11px] font-semibold text-[#8e8e93] tracking-[-0.005em]">
-            Library
-          </span>
+        {/* Library Section Header */}
+        <div>
+          <div className="px-2 mb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              LIBRARY
+            </span>
+          </div>
+
+          {/* Vault Categories */}
+          <nav className="space-y-1">
+            {vaultItems.map((item) => {
+              const isActive = currentSection === item.id;
+              const count = itemCounts && item.countKey ? itemCounts[item.countKey] : undefined;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectSection(item.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 h-10 rounded-full text-[13px] transition-all cursor-pointer',
+                    isActive
+                      ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-bold shadow-xs'
+                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/50 dark:hover:bg-white/10 font-medium'
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={cn('shrink-0', isActive ? 'text-inherit' : item.tintClass)}>
+                      {item.icon}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </div>
+
+                  {count !== undefined && count > 0 && (
+                    <span
+                      className={cn(
+                        'text-[10px] font-mono font-black px-2 py-0.5 rounded-full ml-2 tabular-nums',
+                        isActive
+                          ? 'bg-[#CDFF5D] text-black dark:bg-[#CDFF5D] dark:text-black'
+                          : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-
-        {/* Vault Categories */}
-        <nav className="space-y-0.5">
-          {vaultItems.map((item) => {
-            const isActive = currentSection === item.id;
-            const count = itemCounts && item.countKey ? itemCounts[item.countKey] : undefined;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectSection(item.id)}
-                className={cn(
-                  'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
-                  isActive
-                    ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
-                    : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] font-normal'
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={cn('shrink-0', isActive ? 'text-white' : item.tintClass)}>
-                    {item.icon}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </div>
-
-                {count !== undefined && count > 0 && (
-                  <span
-                    className={cn(
-                      'text-[12px] tabular-nums ml-2',
-                      isActive
-                        ? 'text-white/90 font-medium'
-                        : 'text-[#8e8e93]'
-                    )}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
 
         {/* Direct Messages Section */}
-        <div className="px-2.5 mt-5 mb-1">
-          <span className="text-[11px] font-semibold text-[#8e8e93] tracking-[-0.005em]">
-            Messages
-          </span>
-        </div>
+        <div>
+          <div className="px-2 mb-2 flex items-center justify-between">
+            <span className="font-mono text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+              MESSAGES &amp; PREFS
+            </span>
+          </div>
 
-        <div className="space-y-0.5">
-          <button
-            type="button"
-            onClick={() => onSelectSection('chats')}
-            className={cn(
-              'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
-              currentSection === 'chats'
-                ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
-                : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]'
-            )}
-          >
-            <div className="flex items-center gap-2.5">
-              <MessageSquare
-                className={cn(
-                  'w-[17px] h-[17px]',
-                  currentSection === 'chats'
-                    ? 'text-white'
-                    : 'text-[#34c759] dark:text-[#30d158]'
-                )}
-              />
-              <span>Private Chats</span>
-            </div>
-          </button>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => onSelectSection('chats')}
+              className={cn(
+                'w-full flex items-center justify-between px-3 h-10 rounded-full text-[13px] transition-all cursor-pointer',
+                currentSection === 'chats'
+                  ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-bold shadow-xs'
+                  : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/50 dark:hover:bg-white/10 font-medium'
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <MessageSquare
+                  className={cn(
+                    'w-4 h-4 stroke-[2.2]',
+                    currentSection === 'chats' ? 'text-inherit' : 'text-[#38BDF8]'
+                  )}
+                />
+                <span>Private Chats</span>
+              </div>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onSelectSection('settings')}
-            className={cn(
-              'w-full flex items-center justify-between px-2.5 h-9 rounded-[9px] text-[13.5px] transition-colors duration-100 cursor-pointer',
-              currentSection === 'settings'
-                ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white font-medium'
-                : 'text-[#1c1c1e] dark:text-[#ebebf5] hover:bg-black/[0.05] dark:hover:bg-white/[0.07]'
-            )}
-          >
-            <div className="flex items-center gap-2.5">
-              <Settings
-                className={cn(
-                  'w-[17px] h-[17px]',
-                  currentSection === 'settings' ? 'text-white' : 'text-[#8e8e93]'
-                )}
-              />
-              <span>Settings</span>
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() => onSelectSection('settings')}
+              className={cn(
+                'w-full flex items-center justify-between px-3 h-10 rounded-full text-[13px] transition-all cursor-pointer',
+                currentSection === 'settings'
+                  ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-bold shadow-xs'
+                  : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/50 dark:hover:bg-white/10 font-medium'
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <Settings
+                  className={cn(
+                    'w-4 h-4 stroke-[2.2]',
+                    currentSection === 'settings' ? 'text-inherit' : 'text-neutral-400'
+                  )}
+                />
+                <span>Settings</span>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Bottom Apple Account Row */}
-      <div className="pt-3 border-t border-black/[0.07] dark:border-white/[0.09]">
-        <div className="flex items-center justify-between p-2 rounded-[12px] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors">
+      {/* Bottom User Card */}
+      <div className="pt-3 border-t-2 border-neutral-900/10 dark:border-white/10">
+        <div className="flex items-center justify-between p-2 rounded-[20px] bg-white dark:bg-[#18181B] border border-neutral-900/10 dark:border-white/10 shadow-xs">
           <div
             onClick={() => onSelectSection('settings')}
             className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
@@ -293,18 +301,18 @@ export function DesktopSidebar({
               <img
                 src={user.avatarUrl}
                 alt={displayUsername}
-                className="w-8 h-8 rounded-full object-cover border border-black/[0.08] dark:border-white/[0.12] shrink-0"
+                className="w-8 h-8 rounded-full object-cover border border-neutral-900/10 dark:border-white/20 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#409cff] font-semibold text-[12px] flex items-center justify-center shrink-0 uppercase">
+              <div className="w-8 h-8 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 font-black text-xs flex items-center justify-center shrink-0 uppercase">
                 {displayUsername.slice(0, 2)}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate leading-tight">
+              <p className="text-xs font-bold text-[#111111] dark:text-white truncate leading-tight">
                 @{displayUsername}
               </p>
-              <p className="text-[11px] text-[#8e8e93] truncate leading-tight mt-0.5">
+              <p className="font-mono text-[10px] text-neutral-400 truncate leading-tight mt-0.5">
                 Account &amp; Storage
               </p>
             </div>
@@ -312,7 +320,7 @@ export function DesktopSidebar({
           <button
             type="button"
             onClick={onLogout}
-            className="text-[#8e8e93] hover:text-[#ff3b30] dark:hover:text-[#ff453a] p-1.5 rounded-[8px] transition-colors cursor-pointer shrink-0"
+            className="text-neutral-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-full transition-colors cursor-pointer shrink-0"
             title="Sign Out"
           >
             <LogOut className="w-4 h-4" />

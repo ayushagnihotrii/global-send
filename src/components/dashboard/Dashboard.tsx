@@ -317,20 +317,20 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }}
-      className="relative min-h-screen flex bg-[#f2f2f7] dark:bg-[#000000] text-[#1c1c1e] dark:text-[#f5f5f7]"
+      className="relative min-h-screen flex bg-[#F0F0F0] dark:bg-[#0E0E10] text-[#111111] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950"
     >
       {/* Full-Screen Drag & Drop Overlay */}
       {isWorkspaceDragging && (
-        <div className="fixed inset-0 z-50 pointer-events-none bg-[#007aff]/10 dark:bg-[#0a84ff]/15 backdrop-blur-[2px] flex items-center justify-center p-6 animate-in fade-in duration-150">
-          <div className="rounded-[24px] border-2 border-dashed border-[#007aff] dark:border-[#0a84ff] bg-white/95 dark:bg-[#1c1c1e]/95 px-8 py-7 shadow-2xl text-center max-w-sm">
-            <div className="w-12 h-12 rounded-[14px] bg-[#007aff]/12 dark:bg-[#0a84ff]/20 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto mb-3">
-              <Upload className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 pointer-events-none bg-neutral-900/30 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-150">
+          <div className="rounded-[28px] border-3 border-dashed border-[#111111] dark:border-white bg-white dark:bg-[#18181B] px-10 py-9 shadow-2xl text-center max-w-sm">
+            <div className="w-14 h-14 rounded-2xl bg-[#CDFF5D] text-black flex items-center justify-center mx-auto mb-3 shadow-sm">
+              <Upload className="w-7 h-7 stroke-[2.5]" />
             </div>
-            <p className="text-[16px] font-bold text-[#1c1c1e] dark:text-[#f5f5f7]">
-              Drop files anywhere to queue
+            <p className="font-headline text-xl font-extrabold text-[#111111] dark:text-white uppercase tracking-tight">
+              DROP FILES ANYWHERE
             </p>
-            <p className="text-[13px] text-[#8e8e93] mt-1">
-              Drop one or multiple files to add them to your vault
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-medium">
+              Queue one or multiple files directly into your encrypted vault
             </p>
           </div>
         </div>
@@ -348,10 +348,10 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
       {/* 2. MAIN WORKSPACE */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-8 lg:px-10 lg:py-8 pb-24 md:pb-12 max-w-6xl mx-auto w-full">
         {/* Mobile Top Navigation Bar */}
-        <div className="flex md:hidden items-center justify-between pb-3.5 mb-4 border-b border-black/[0.07] dark:border-white/[0.09]">
+        <div className="flex md:hidden items-center justify-between pb-3.5 mb-5 border-b-2 border-neutral-900/10 dark:border-white/10">
           <div className="flex items-center gap-2">
-            <Logo size={26} />
-            <span className="font-semibold text-[16px] tracking-[-0.015em] text-[#1c1c1e] dark:text-[#f5f5f7]">
+            <Logo size={28} />
+            <span className="font-headline font-extrabold text-[17px] tracking-tight text-[#111111] dark:text-white uppercase">
               {SITE_CONFIG.name}
             </span>
           </div>
@@ -359,7 +359,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           <button
             type="button"
             onClick={() => setCurrentSection('settings')}
-            className="flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.12] text-[#1c1c1e] dark:text-[#f5f5f7] cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 text-[#111111] dark:text-white shadow-xs cursor-pointer"
           >
             {user.avatarUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -386,88 +386,92 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           />
         ) : (
           <>
-            {/* iOS Large Title Header & Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+            {/* Editorial Title Header & Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-[26px] sm:text-[30px] font-bold tracking-[-0.025em] text-[#1c1c1e] dark:text-[#f5f5f7] leading-tight">
-                  {getSectionTitle()}
-                </h2>
-                <p className="text-[13px] text-[#8e8e93] mt-0.5 tabular-nums">
-                  {currentSection === 'trash'
-                    ? `${items.length} ${items.length === 1 ? 'item' : 'items'} · Items expire on schedule`
-                    : `${items.length} ${items.length === 1 ? 'item' : 'items'} in vault`}
-                </p>
+                <span className="font-eyebrow text-xl text-neutral-500 dark:text-neutral-400 block mb-1">
+                  client-sealed repository
+                </span>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[#111111] dark:text-white uppercase leading-none">
+                    {getSectionTitle()}
+                  </h2>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-black uppercase tracking-wider bg-[#CDFF5D] text-black">
+                    {currentSection === 'trash'
+                      ? `${items.length} expiring`
+                      : `${items.length} ${items.length === 1 ? 'item' : 'items'}`}
+                  </span>
+                </div>
               </div>
 
               {/* Search & Sort Controls */}
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                {/* Native iOS Search Field */}
+                {/* Pill Search Field */}
                 <div className="relative flex-1 sm:w-64">
-                  <Search className="w-4 h-4 text-[#8e8e93] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     id="search-input"
                     type="text"
-                    placeholder="Search"
+                    placeholder="Search vault…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-9 pl-9 pr-14 rounded-[10px] bg-[#767680]/[0.12] dark:bg-[#767680]/[0.24] text-[14px] text-[#1c1c1e] dark:text-[#f5f5f7] placeholder:text-[#8e8e93] focus:bg-white dark:focus:bg-[#1c1c1e] focus:outline-none focus:ring-2 focus:ring-[#007aff]/25 border border-transparent focus:border-[#007aff] transition-all"
+                    className="w-full h-11 pl-10 pr-12 rounded-full bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 text-xs sm:text-sm font-medium text-[#111111] dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-white focus:outline-none transition-all shadow-xs"
                   />
                   {searchQuery ? (
                     <button
                       type="button"
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8e8e93] hover:text-[#1c1c1e] dark:hover:text-white cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-black dark:hover:text-white cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <span className="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#8e8e93] font-mono">
+                    <span className="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 font-mono font-bold bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
                       ⌘K
                     </span>
                   )}
                 </div>
 
                 {/* Sort Pill */}
-                <div className="inline-flex items-center gap-1 h-9 px-3 rounded-[10px] bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.12] text-[13px] font-medium text-[#1c1c1e] dark:text-[#f5f5f7] shrink-0">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-[#8e8e93]" />
+                <div className="inline-flex items-center gap-1.5 h-11 px-3.5 rounded-full bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 text-xs font-bold font-mono text-[#111111] dark:text-white shrink-0 shadow-xs">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-neutral-400" />
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="bg-transparent focus:outline-none cursor-pointer pr-1"
+                    className="bg-transparent focus:outline-none cursor-pointer pr-1 uppercase tracking-wider"
                     aria-label="Sort items"
                   >
-                    <option value="created_desc">Newest</option>
-                    <option value="created_asc">Oldest</option>
-                    <option value="title_asc">Name</option>
+                    <option value="created_desc" className="bg-white dark:bg-[#18181B]">Newest</option>
+                    <option value="created_asc" className="bg-white dark:bg-[#18181B]">Oldest</option>
+                    <option value="title_asc" className="bg-white dark:bg-[#18181B]">Name</option>
                   </select>
                 </div>
 
-                <Button
+                {/* Refresh Pill */}
+                <button
                   type="button"
-                  variant="outline"
-                  size="icon"
                   onClick={fetchItems}
-                  className="h-9 w-9 rounded-[10px] shrink-0"
-                  title="Refresh"
+                  className="h-11 w-11 rounded-full bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 text-neutral-700 dark:text-neutral-200 flex items-center justify-center shrink-0 shadow-xs hover:border-neutral-900 dark:hover:border-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  title="Refresh items"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                </Button>
+                </button>
               </div>
             </div>
 
             {/* TAG FILTER CHIPS */}
             {availableTags.length > 0 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 scrollbar-none">
-                <span className="text-[#8e8e93] text-[12px] font-medium mr-1 flex items-center gap-1">
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-5 scrollbar-none">
+                <span className="text-neutral-400 text-xs font-mono font-bold mr-1 flex items-center gap-1">
                   <Tag className="w-3 h-3" />
                 </span>
                 <button
                   type="button"
                   onClick={() => setSelectedTag(null)}
-                  className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                     selectedTag === null
-                      ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
-                      : 'bg-white dark:bg-[#1c1c1e] text-[#6c6c70] dark:text-[#98989d] border border-black/[0.07] dark:border-white/[0.1]'
+                      ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                      : 'bg-white dark:bg-[#18181B] text-neutral-600 dark:text-neutral-400 border border-neutral-900/10 dark:border-white/10 hover:border-neutral-900/30'
                   }`}
                 >
                   All
@@ -477,10 +481,10 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                     key={tag}
                     type="button"
                     onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
-                    className={`px-2.5 py-1 rounded-full text-[12px] font-medium transition-colors cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                       selectedTag === tag
-                        ? 'bg-[#007aff] dark:bg-[#0a84ff] text-white'
-                        : 'bg-white dark:bg-[#1c1c1e] text-[#6c6c70] dark:text-[#98989d] border border-black/[0.07] dark:border-white/[0.1]'
+                        ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                        : 'bg-white dark:bg-[#18181B] text-neutral-600 dark:text-neutral-400 border border-neutral-900/10 dark:border-white/10 hover:border-neutral-900/30'
                     }`}
                   >
                     #{tag}
@@ -491,7 +495,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
             {/* RECENTLY DELETED BANNER */}
             {currentSection === 'trash' && (
-              <div className="mb-5 px-4 py-3 rounded-[14px] bg-white dark:bg-[#1c1c1e] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-between gap-3 text-[13px] text-[#6c6c70] dark:text-[#98989d]">
+              <div className="mb-6 px-5 py-4 rounded-[22px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 flex items-center justify-between gap-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 shadow-xs">
                 <span>Items in Recently Deleted continue to expire on schedule.</span>
                 <Button
                   size="sm"
@@ -503,7 +507,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                       fetchItems();
                     }
                   }}
-                  className="text-[#ff3b30] dark:text-[#ff453a] hover:bg-[#ff3b30]/10 shrink-0"
+                  className="rounded-full text-red-600 hover:bg-red-500/10 font-bold shrink-0"
                 >
                   Delete All
                 </Button>
@@ -521,50 +525,56 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
             {/* ITEMS LIST */}
             {isLoading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <div
                     key={n}
-                    className="h-36 rounded-[16px] bg-white/70 dark:bg-[#1c1c1e]/70 border border-black/[0.06] dark:border-white/[0.08] animate-pulse p-4"
+                    className="h-40 rounded-[24px] bg-white/70 dark:bg-[#18181B]/70 border-2 border-neutral-900/10 dark:border-white/10 animate-pulse p-5"
                   />
                 ))}
               </div>
             ) : items.length === 0 ? (
-              /* NATIVE iOS EMPTY STATE */
-              <div className="text-center py-16 px-4 ios-card rounded-[18px]">
-                <div className="w-12 h-12 rounded-[14px] bg-[#767680]/[0.1] dark:bg-[#767680]/[0.22] text-[#8e8e93] flex items-center justify-center mx-auto mb-3">
-                  <FolderOpen className="w-6 h-6" />
+              /* PLAYFUL RIDICULOUS.DESIGN EMPTY STATE */
+              <div className="text-center py-16 px-6 rounded-[28px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#18181B] shadow-xs relative overflow-hidden">
+                <div className="relative inline-block mb-4 select-none">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/stickers/sticker-peace.png"
+                    alt="Peace sticker"
+                    className="w-16 sm:w-20 h-auto mx-auto drop-shadow-md animate-bounce"
+                  />
                 </div>
-                <h3 className="text-[16px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7]">
-                  {searchQuery ? 'No Results' : 'No Items'}
+                <span className="font-eyebrow text-2xl text-neutral-500 dark:text-neutral-400 block mb-1">
+                  clean slate
+                </span>
+                <h3 className="font-headline text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-[#111111] dark:text-white">
+                  {searchQuery ? 'NO MATCHING ITEMS' : 'VAULT IS EMPTY'}
                 </h3>
-                <p className="text-[13px] text-[#8e8e93] mt-1 max-w-xs mx-auto leading-relaxed">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm mx-auto leading-relaxed font-medium">
                   {searchQuery
-                    ? `No items matched "${searchQuery}".`
-                    : 'Add a note, code snippet, document, photo, or web link above.'}
+                    ? `No vault items matched "${searchQuery}".`
+                    : 'Drop files anywhere on screen or use the composer above to seal notes, code, documents, or links on your device.'}
                 </p>
-                {searchQuery && (
-                  <Button
+                {searchQuery ? (
+                  <button
                     type="button"
-                    variant="secondary"
-                    size="sm"
                     onClick={() => setSearchQuery('')}
-                    className="mt-4"
+                    className="mt-5 inline-flex items-center px-6 py-2.5 rounded-full bg-[#111111] dark:bg-white text-white dark:text-neutral-950 font-bold text-xs uppercase tracking-wider shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
                     Clear Search
-                  </Button>
-                )}
+                  </button>
+                ) : null}
               </div>
             ) : (
               /* TIMELINE DATE GROUPS */
               <div className="space-y-7">
                 {dateGroups.map((group) => (
                   <section key={group.key} className="space-y-2.5">
-                    <div className="flex items-center justify-between px-0.5">
-                      <h3 className="text-[14px] font-semibold tracking-[-0.01em] text-[#6c6c70] dark:text-[#98989d]">
+                    <div className="flex items-center justify-between px-1 mb-1">
+                      <h3 className="font-mono text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
                         {group.title}
                       </h3>
-                      <span className="text-[12px] text-[#8e8e93] tabular-nums">
+                      <span className="font-mono text-[11px] font-bold text-neutral-400 bg-neutral-200/60 dark:bg-neutral-800/60 px-2 py-0.5 rounded-full tabular-nums">
                         {group.items.length}
                       </span>
                     </div>

@@ -108,32 +108,32 @@ export function ItemCard({
     switch (item.type) {
       case 'text':
         return (
-          <div className="w-8 h-8 rounded-[9px] bg-[#ff9500]/12 dark:bg-[#ff9f0a]/18 text-[#ff9500] dark:text-[#ff9f0a] flex items-center justify-center shrink-0">
-            <FileText className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-2xl bg-[#FF8559] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <FileText className="w-4 h-4 stroke-[2.2]" />
           </div>
         );
       case 'image':
         return (
-          <div className="w-8 h-8 rounded-[9px] bg-[#34c759]/12 dark:bg-[#30d158]/18 text-[#34c759] dark:text-[#30d158] flex items-center justify-center shrink-0">
-            <ImageIcon className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-2xl bg-[#38BDF8] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <ImageIcon className="w-4 h-4 stroke-[2.2]" />
           </div>
         );
       case 'video':
         return (
-          <div className="w-8 h-8 rounded-[9px] bg-[#af52de]/12 dark:bg-[#bf5af2]/18 text-[#af52de] dark:text-[#bf5af2] flex items-center justify-center shrink-0">
-            <Film className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-2xl bg-[#C17BF3] text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Film className="w-4 h-4 stroke-[2.2]" />
           </div>
         );
       case 'link':
         return (
-          <div className="w-8 h-8 rounded-[9px] bg-[#5856d6]/12 dark:bg-[#5e5ce6]/18 text-[#5856d6] dark:text-[#5e5ce6] flex items-center justify-center shrink-0">
-            <Link2 className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-2xl bg-[#FBBF24] text-black flex items-center justify-center shrink-0 shadow-xs">
+            <Link2 className="w-4 h-4 stroke-[2.2]" />
           </div>
         );
       default:
         return (
-          <div className="w-8 h-8 rounded-[9px] bg-[#007aff]/12 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center shrink-0">
-            <FileCode className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-2xl bg-[#CDFF5D] text-black flex items-center justify-center shrink-0 shadow-xs">
+            <FileCode className="w-4 h-4 stroke-[2.2]" />
           </div>
         );
     }
@@ -143,25 +143,25 @@ export function ItemCard({
     <div
       onClick={() => !expInfo.isExpired && onOpenDetail(item)}
       className={cn(
-        'group relative ios-card rounded-[16px] hover:border-black/[0.2] dark:hover:border-white/[0.24] transition-all duration-150 p-4 flex flex-col justify-between cursor-pointer active:scale-[0.995]',
-        expInfo.isExpired && 'opacity-55 pointer-events-none'
+        'group relative rounded-[24px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#18181B] hover:border-neutral-900/30 dark:hover:border-white/30 transition-all duration-150 p-4 sm:p-5 flex flex-col justify-between cursor-pointer active:scale-[0.99] shadow-xs hover:shadow-md',
+        expInfo.isExpired && 'opacity-50 pointer-events-none'
       )}
     >
       <div>
-        <div className="flex items-start justify-between gap-2.5 mb-2.5">
+        <div className="flex items-start justify-between gap-2.5 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             {getTypeIcon()}
             <div className="min-w-0">
-              <h4 className="text-[14.5px] font-semibold tracking-[-0.012em] text-[#1c1c1e] dark:text-[#f5f5f7] truncate leading-snug">
+              <h4 className="text-[15px] font-bold tracking-tight text-[#111111] dark:text-white truncate leading-snug">
                 {item.title}
               </h4>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 text-[11px] tabular-nums',
+                    'inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full tabular-nums',
                     expInfo.isUrgent
-                      ? 'text-[#ff9500] dark:text-[#ff9f0a] font-medium'
-                      : 'text-[#8e8e93]'
+                      ? 'bg-[#FC6742] text-white'
+                      : 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-400'
                   )}
                   title={
                     item.expiresAt
@@ -169,7 +169,7 @@ export function ItemCard({
                       : undefined
                   }
                 >
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-2.5 h-2.5" />
                   <span>{expInfo.label}</span>
                 </span>
               </div>
@@ -182,10 +182,10 @@ export function ItemCard({
                 type="button"
                 onClick={() => onToggleFavourite(item)}
                 className={cn(
-                  'w-7 h-7 rounded-[8px] flex items-center justify-center transition-colors cursor-pointer',
+                  'w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer',
                   item.isFavourite
-                    ? 'text-[#ffcc00] dark:text-[#ffd60a] bg-[#ffcc00]/12'
-                    : 'text-[#8e8e93] hover:text-[#ffcc00] hover:bg-black/[0.04] dark:hover:bg-white/[0.06]'
+                    ? 'text-amber-500 bg-amber-500/15'
+                    : 'text-neutral-400 hover:text-amber-500 hover:bg-neutral-100 dark:hover:bg-white/10'
                 )}
                 aria-label={item.isFavourite ? 'Remove favourite' : 'Add favourite'}
               >
@@ -197,11 +197,11 @@ export function ItemCard({
               <button
                 type="button"
                 onClick={handleCopy}
-                className="w-7 h-7 rounded-[8px] flex items-center justify-center bg-[#767680]/[0.08] dark:bg-[#767680]/[0.2] text-[#6c6c70] dark:text-[#ebebf5]/80 hover:text-[#007aff] dark:hover:text-[#0a84ff] transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-300 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
                 title="Copy to clipboard"
               >
                 {copied ? (
-                  <Check className="w-3.5 h-3.5 text-[#34c759]" />
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
                 ) : (
                   <Copy className="w-3.5 h-3.5" />
                 )}
@@ -212,13 +212,13 @@ export function ItemCard({
 
         {/* Content Previews */}
         {item.type === 'text' && item.textContent && (
-          <p className="text-[13px] text-[#6c6c70] dark:text-[#98989d] line-clamp-3 leading-relaxed mb-3 whitespace-pre-wrap">
+          <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-400 line-clamp-3 leading-relaxed mb-3.5 whitespace-pre-wrap font-medium">
             {item.textContent}
           </p>
         )}
 
         {item.type === 'image' && item.file?.downloadUrl && !expInfo.isExpired && (
-          <div className="relative w-full h-36 rounded-[12px] overflow-hidden bg-[#f2f2f7] dark:bg-[#2c2c2e] border border-black/[0.06] dark:border-white/[0.08] mb-3">
+          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 mb-3.5">
             <Image
               src={item.file.downloadUrl}
               alt={item.title}
@@ -231,22 +231,22 @@ export function ItemCard({
         )}
 
         {item.type === 'video' && item.file && (
-          <div className="relative w-full h-28 rounded-[12px] overflow-hidden bg-[#1c1c1e] flex items-center justify-center text-white mb-3">
+          <div className="relative w-full h-28 rounded-2xl overflow-hidden bg-[#111111] flex items-center justify-center text-white mb-3.5">
             <Film className="w-6 h-6 text-white/75" />
-            <span className="absolute bottom-2 right-2 text-[11px] font-mono tabular-nums px-2 py-0.5 rounded-[6px] bg-black/65">
+            <span className="absolute bottom-2 right-2 text-[10px] font-mono font-bold uppercase tracking-wider tabular-nums px-2 py-0.5 rounded-full bg-black/75">
               {formatBytes(item.file.fileSize)}
             </span>
           </div>
         )}
 
         {item.type === 'link' && item.url && (
-          <div className="mb-3 p-2.5 rounded-[10px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] text-[12.5px]">
-            <div className="flex items-center gap-1.5 text-[#007aff] dark:text-[#0a84ff] font-medium truncate">
+          <div className="mb-3.5 p-3 rounded-2xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 text-xs">
+            <div className="flex items-center gap-1.5 text-neutral-900 dark:text-white font-bold truncate">
               <ExternalLink className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{item.url}</span>
             </div>
             {item.note && (
-              <p className="text-[#6c6c70] dark:text-[#98989d] mt-1 line-clamp-2 text-[12px]">
+              <p className="text-neutral-500 dark:text-neutral-400 mt-1 line-clamp-2 text-xs font-medium">
                 {item.note}
               </p>
             )}
@@ -254,11 +254,11 @@ export function ItemCard({
         )}
 
         {item.type === 'file' && item.file && (
-          <div className="mb-3 p-2.5 rounded-[10px] bg-[#767680]/[0.06] dark:bg-[#767680]/[0.16] flex items-center justify-between gap-2 text-[12.5px]">
-            <span className="text-[#1c1c1e] dark:text-[#f5f5f7] font-medium truncate">
+          <div className="mb-3.5 p-3 rounded-2xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs">
+            <span className="text-[#111111] dark:text-white font-bold truncate">
               {item.file.sanitizedFilename || item.file.originalFilename}
             </span>
-            <span className="text-[#8e8e93] font-mono tabular-nums text-[11px] shrink-0">
+            <span className="text-neutral-400 font-mono text-[10px] font-bold uppercase shrink-0">
               {formatBytes(item.file.fileSize)}
             </span>
           </div>
@@ -266,7 +266,7 @@ export function ItemCard({
       </div>
 
       {/* Footer Actions */}
-      <div className="pt-2.5 border-t border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between text-[11.5px] text-[#8e8e93] tabular-nums">
+      <div className="pt-3 border-t-2 border-neutral-900/5 dark:border-white/5 flex items-center justify-between text-[11px] font-mono font-semibold text-neutral-400 tabular-nums">
         <span>{formatDate(item.createdAt)}</span>
 
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -275,7 +275,7 @@ export function ItemCard({
               <button
                 type="button"
                 onClick={() => onRestore && onRestore(item)}
-                className="p-1.5 rounded-[7px] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] hover:text-[#007aff] dark:hover:text-[#0a84ff] cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white cursor-pointer"
                 title="Restore item"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -283,7 +283,7 @@ export function ItemCard({
               <button
                 type="button"
                 onClick={() => onDelete(item, true)}
-                className="p-1.5 rounded-[7px] hover:bg-[#ff3b30]/10 hover:text-[#ff3b30] cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-red-500/10 hover:text-red-600 cursor-pointer"
                 title="Delete permanently"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -295,7 +295,7 @@ export function ItemCard({
                 <button
                   type="button"
                   onClick={() => onShareInChat(item)}
-                  className="p-1.5 rounded-[7px] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] hover:text-[#007aff] dark:hover:text-[#0a84ff] cursor-pointer"
+                  className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white cursor-pointer"
                   title="Share in Chat"
                 >
                   <Share2 className="w-3.5 h-3.5" />
@@ -306,7 +306,7 @@ export function ItemCard({
                 <a
                   href={`${item.file.downloadUrl}?download=true`}
                   download={item.file.sanitizedFilename || item.file.originalFilename}
-                  className="p-1.5 rounded-[7px] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] hover:text-[#007aff] dark:hover:text-[#0a84ff]"
+                  className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white"
                   title="Download file"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -316,7 +316,7 @@ export function ItemCard({
               <button
                 type="button"
                 onClick={() => onDelete(item, true)}
-                className="p-1.5 rounded-[7px] hover:bg-[#ff3b30]/10 hover:text-[#ff3b30] cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-red-500/10 hover:text-red-600 cursor-pointer"
                 title="Delete permanently"
               >
                 <Trash2 className="w-3.5 h-3.5" />
