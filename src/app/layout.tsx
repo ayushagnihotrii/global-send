@@ -10,13 +10,19 @@ export const metadata: Metadata = {
   ),
   title: `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
   description: SITE_CONFIG.description,
+  applicationName: SITE_CONFIG.name,
+  manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/icon.png', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
       { url: '/logo.png', type: 'image/png' },
     ],
-    shortcut: '/icon.png',
-    apple: '/apple-touch-icon.png',
+    shortcut: '/icon-192.png',
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   openGraph: {
     title: `${SITE_CONFIG.name} — ${SITE_CONFIG.tagline}`,
@@ -31,7 +37,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: SITE_CONFIG.name,
   },
 };
