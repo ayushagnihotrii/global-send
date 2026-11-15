@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { ArrowRight, Sparkles, Shield, Terminal } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
@@ -23,23 +24,24 @@ function GithubIcon({ className, strokeWidth = 1.75 }: { className?: string; str
   )
 }
 
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, size = 28 }: { className?: string; size?: number }) {
   return (
-    <svg
-      viewBox="0 0 32 32"
-      fill="none"
-      className={className}
-      aria-hidden="true"
+    <div
+      className={cn(
+        'relative inline-flex items-center justify-center shrink-0 select-none rounded-[22%] overflow-hidden shadow-sm border border-black/10 dark:border-white/15 bg-black',
+        className
+      )}
+      style={{ width: size, height: size }}
     >
-      <circle cx="16" cy="16" r="14" fill="#CCFF00" />
-      <path
-        d="M9 22L22 9M22 9H13M22 9V18"
-        stroke="#111111"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+      <Image
+        src="/logo.png"
+        alt="Global Send Logo"
+        width={size}
+        height={size}
+        priority
+        className="w-full h-full object-cover"
       />
-    </svg>
+    </div>
   )
 }
 
@@ -63,7 +65,7 @@ export function SiteNav() {
       >
         {/* Brand identity */}
         <a href="#top" className="flex items-center gap-2.5 group">
-          <LogoMark className="size-6 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-105" />
+          <LogoMark size={30} className="transition-transform duration-300 group-hover:scale-105" />
           <div className="flex items-center gap-1.5">
             <span className="text-[15px] font-black tracking-tight text-white uppercase">
               Global<span className="text-[#CCFF00]">Send</span>

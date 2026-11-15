@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import {
   CloudUpload,
   File as FileIcon,
@@ -290,10 +291,22 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
 
       {/* Ridiculous Window Header */}
       <div className="flex items-center justify-between rounded-t-[26px] bg-[#111111] dark:bg-[#0A0A0C] px-5 py-3.5 text-white">
-        <div className="flex items-center gap-2">
-          <span className="size-3 rounded-full bg-[#FF5F56] inline-block shadow-sm" />
-          <span className="size-3 rounded-full bg-[#FFBD2E] inline-block shadow-sm" />
-          <span className="size-3 rounded-full bg-[#27C93F] inline-block shadow-sm" />
+        <div className="flex items-center gap-2.5">
+          <div className="relative size-7 rounded-[22%] overflow-hidden shadow-sm border border-white/15 shrink-0 bg-black">
+            <Image
+              src="/logo.png"
+              alt="Global Send Icon"
+              width={28}
+              height={28}
+              priority
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-[#FF5F56] inline-block shadow-sm" />
+            <span className="size-2.5 rounded-full bg-[#FFBD2E] inline-block shadow-sm" />
+            <span className="size-2.5 rounded-full bg-[#27C93F] inline-block shadow-sm" />
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1 text-[11px] font-mono font-medium text-neutral-300 border border-white/10">

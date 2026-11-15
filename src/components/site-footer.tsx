@@ -50,9 +50,7 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-6xl flex-col items-start gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between">
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-xl bg-white text-neutral-950">
-              <LogoMark className="size-5" />
-            </span>
+            <LogoMark size={32} />
             <span className="text-base font-black uppercase tracking-tight text-white">
               Global<span className="text-[#CCFF00]">Send</span>
             </span>
