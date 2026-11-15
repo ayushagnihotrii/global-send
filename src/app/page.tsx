@@ -6,6 +6,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   Lock,
+  Shield,
+  Clock,
+  Zap,
+  Server,
+  CheckCircle2,
 } from 'lucide-react'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
@@ -18,23 +23,51 @@ import { User } from '@/lib/types'
 const principles = [
   {
     no: '01',
+    date: 'OCT 24, 2026',
+    tag: 'ARCHITECTURE',
+    tagColor: 'bg-[#CDFF5D] text-[#111111]',
+    bgBox: 'bg-[#FF8559]',
     title: 'Encrypted by default',
-    body: 'Every file is sealed on your device before it reaches any relay. The key never leaves you; the relay sees only ciphertext.',
+    body: 'Every file is sealed on your device before it reaches any relay. The key never leaves you; the relay sees only ciphertext. Imagine privacy without trusting servers.',
+    previewTitle: 'Zero-Knowledge Relay',
+    previewBadge: 'Client Cipher',
+    icon: Shield,
   },
   {
     no: '02',
+    date: 'OCT 25, 2026',
+    tag: 'EPHEMERAL',
+    tagColor: 'bg-[#FC6742] text-white',
+    bgBox: 'bg-[#38BDF8]',
     title: 'Ephemeral by design',
-    body: 'Pick a TTL of an hour, a day, or a week. When it lapses, the vault is wiped from every relay and every cache.',
+    body: 'Pick a TTL of an hour, a day, or a week. When it lapses, the vault is wiped from every relay and every cache. Zero residual traces left behind.',
+    previewTitle: 'Auto-Disintegration',
+    previewBadge: '1h · 24h · 7d',
+    icon: Clock,
   },
   {
     no: '03',
+    date: 'OCT 26, 2026',
+    tag: 'NO TRACKING',
+    tagColor: 'bg-[#C17BF3] text-white',
+    bgBox: 'bg-[#A3E635]',
     title: 'No accounts, ever',
-    body: 'No email, no sign-up, no profile. A username and a private key are the entire identity — and the entire access list.',
+    body: 'No email, no sign-up, no profile. A username and a private key are the entire identity — and the entire access list. Total anonymity by design.',
+    previewTitle: 'Anonymous Keys',
+    previewBadge: 'Zero Signups',
+    icon: Zap,
   },
   {
     no: '04',
+    date: 'OCT 27, 2026',
+    tag: 'SELF-HOSTED',
+    tagColor: 'bg-[#CDFF5D] text-[#111111]',
+    bgBox: 'bg-[#FB7185]',
     title: 'Yours to run',
-    body: 'Open-source and self-hostable. Run your own relay, use the public grid, or move between them. Your keys, your terms.',
+    body: 'Open-source and self-hostable. Run your own relay, use the public grid, or move between them. Your keys, your rules, your infrastructure.',
+    previewTitle: 'MIT Mesh Relay',
+    previewBadge: 'Audit Ready',
+    icon: Server,
   },
 ]
 
@@ -43,16 +76,19 @@ const steps = [
     no: '01',
     title: 'Drop a file or a note',
     body: 'Choose a TTL. It is encrypted in your browser with a key only you and your recipient hold.',
+    highlight: 'Instant preview & client seal',
   },
   {
     no: '02',
     title: 'Share the key',
     body: 'Send the username and key over any channel you already trust. The link opens from any device.',
+    highlight: 'No registration required',
   },
   {
     no: '03',
     title: 'It opens, then disappears',
     body: 'Your recipient unlocks it once. When the timer ends, the vault is gone — from every relay, for good.',
+    highlight: 'Zero residual forensic traces',
   },
 ]
 
@@ -60,6 +96,7 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [showSplash, setShowSplash] = useState(false)
+  const [activePrincipleIndex, setActivePrincipleIndex] = useState(0)
 
   const checkSession = async () => {
     try {
@@ -109,6 +146,8 @@ export default function Home() {
     )
   }
 
+  const activePrinciple = principles[activePrincipleIndex]
+
   return (
     <div className="flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111] dark:bg-[#0E0E10] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950">
       {showSplash && (
@@ -119,18 +158,18 @@ export default function Home() {
       <SiteNav />
 
       <main className="flex-1 pt-24 sm:pt-28">
-        {/* HERO SECTION WITH ORIGINAL TEXT + RIDICULOUS.DESIGN TYPOGRAPHY & STICKERS */}
+        {/* HERO SECTION MATCHING RIDICULOUS.DESIGN EXACT COMPOSITION */}
         <section id="transfer" className="relative overflow-hidden px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
           <div className="mx-auto max-w-5xl">
             
-            {/* Eyebrow in handwritten Shadow Into Light font */}
+            {/* 1. Eyebrow: Shadow Into Light font */}
             <div className="text-center mb-6">
               <p className="font-eyebrow text-2xl sm:text-3xl tracking-normal">
                 v1.0 · open-source peer relay
               </p>
             </div>
 
-            {/* Main Display Headline with Peace Sign & Googly Eyes Stickers */}
+            {/* 2. Main Title Row: Flanked by exact Sticker 1 (Peace) and Sticker 2 (Googly Eyes) */}
             <div className="relative flex items-center justify-center gap-3 sm:gap-6 my-2">
               
               {/* Pink Peace Sign Sticker */}
@@ -166,7 +205,7 @@ export default function Home() {
 
             </div>
 
-            {/* Subtitle Row with Heart and Sunglasses Stickers + Original Paragraph */}
+            {/* 3. Subtitle Row: Flanked by exact Sticker 4 (Green Heart) and Sticker 5 (Thug Sunglasses) */}
             <div className="relative max-w-3xl mx-auto flex items-center justify-center gap-4 sm:gap-8 my-8 px-4">
               
               {/* Green Heart Sticker */}
@@ -200,7 +239,7 @@ export default function Home() {
 
             </div>
 
-            {/* Down Arrow Sticker pointing to the interactive vault console */}
+            {/* 4. Down Arrow Sticker pointing to the interactive vault console */}
             <div className="flex justify-center mb-8 sticker-arrow select-none">
               <Image
                 src="/stickers/sticker-arrow.png"
@@ -220,31 +259,115 @@ export default function Home() {
           </div>
         </section>
 
-        {/* PRINCIPLES */}
-        <section id="principles" className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 border-t-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#0A0A0C]">
-          <div className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-            <div className="lg:sticky lg:top-28 lg:self-start">
-              <span className="font-eyebrow text-2xl text-neutral-500 dark:text-neutral-400 block mb-2">
-                principles
-              </span>
-              <h2 className="font-headline text-3xl sm:text-4xl tracking-tight text-neutral-950 dark:text-white">
-                BUILT ON FOUR IDEAS. NO COMPROMISES.
-              </h2>
-              <p className="mt-4 max-w-md text-base leading-relaxed text-[#161616] dark:text-neutral-400 font-normal">
-                Global Send is a relay, not a storage company. The grid moves your bytes; your keys never leave your hands.
-              </p>
+        {/* EXACT RIDICULOUS SIPS LAYOUT FOR "PRINCIPLES: BUILT ON FOUR IDEAS. NO COMPROMISES." */}
+        <section id="principles" className="py-24 sm:py-32 px-4 sm:px-8 lg:px-12 bg-white dark:bg-[#0A0A0C] border-t-2 border-neutral-900/10 dark:border-white/10">
+          <div className="mx-auto max-w-6xl">
+            
+            {/* Top Title Bar: Exact Ridiculous Sips Headline + Subtitle Left, Big Black Pill "See All >" Right */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-14 border-b border-neutral-100 dark:border-white/5">
+              <div className="max-w-2xl space-y-4">
+                <h2 className="text-4xl sm:text-6xl md:text-[76px] font-extrabold text-[#111111] dark:text-white leading-[1.02] tracking-tight">
+                  Built on four ideas.
+                </h2>
+                <p className="text-base sm:text-lg text-[#161616] dark:text-neutral-400 font-normal leading-[1.4] max-w-xl">
+                  Global Send is a relay, not a storage company. The grid moves your bytes; your keys never leave your hands.
+                </p>
+              </div>
+
+              {/* Big Black Pill Button: "See All >" */}
+              <div className="shrink-0 flex items-center gap-2">
+                <a
+                  href="#how"
+                  className="inline-flex items-center gap-3 rounded-full bg-[#111111] dark:bg-white px-8 py-3.5 text-base font-bold text-white dark:text-[#111111] transition-all hover:scale-105 active:scale-95 shadow-md group cursor-pointer"
+                >
+                  <span>See All</span>
+                  <ArrowRight className="size-4 stroke-[2.5] transition-transform group-hover:translate-x-1" />
+                </a>
+              </div>
             </div>
-            <div className="divide-y divide-neutral-200 dark:divide-white/10">
-              {principles.map((p) => (
-                <div key={p.no} className="flex gap-6 py-7 first:pt-0 last:pb-0">
-                  <span className="font-mono text-sm font-bold text-neutral-400 dark:text-neutral-500">{p.no}</span>
-                  <div className="flex-1">
-                    <h3 className="font-headline text-lg sm:text-xl tracking-tight text-neutral-950 dark:text-white">{p.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 font-normal">{p.body}</p>
+
+            {/* Featured Showcase Card (Matching Apple News+ Case Study Style) */}
+            <div className="mt-12 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 sm:gap-12 items-center">
+              
+              {/* Left Vivid Rounded Container (#FF8559 Coral/Peach or Dynamic) */}
+              <div
+                className={`relative w-full aspect-[4/3] sm:aspect-[16/11] rounded-[24px] ${activePrinciple.bgBox} p-6 sm:p-10 flex items-center justify-center overflow-hidden shadow-sm transition-colors duration-500`}
+              >
+                {/* Floating Mockup Card Inside the Orange Box */}
+                <div className="w-full max-w-[320px] rounded-[24px] bg-white dark:bg-[#18181B] p-6 shadow-2xl border border-black/5 dark:border-white/10 space-y-4 transition-transform duration-300 hover:scale-[1.02]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-black uppercase text-neutral-400">
+                      PRINCIPLE {activePrinciple.no}
+                    </span>
+                    <span className="inline-flex size-2 rounded-full bg-[#10B981]" />
+                  </div>
+
+                  <div className="size-12 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center">
+                    <activePrinciple.icon className="size-6 text-neutral-900 dark:text-white stroke-[2.2]" />
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-black text-neutral-900 dark:text-white leading-tight">
+                      {activePrinciple.previewTitle}
+                    </h4>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      {activePrinciple.body.slice(0, 85)}…
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <div className="w-full py-2.5 rounded-full bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 text-xs font-bold text-center">
+                      Verified Client Key
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Right Typography Content (Matching "Let me read this one article, please!") */}
+              <div className="space-y-4">
+                {/* Date & Pill Tag */}
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                    {activePrinciple.date}
+                  </span>
+                  <span
+                    className={`rounded-full px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider ${activePrinciple.tagColor}`}
+                  >
+                    {activePrinciple.tag}
+                  </span>
+                </div>
+
+                {/* Big Headline */}
+                <h3 className="text-3xl sm:text-4xl md:text-[44px] font-black text-[#111111] dark:text-white leading-[1.12] tracking-tight">
+                  {activePrinciple.title}
+                </h3>
+
+                {/* Subtitle / Description */}
+                <p className="text-base sm:text-lg text-neutral-600 dark:text-neutral-400 font-medium leading-[1.5] max-w-lg">
+                  {activePrinciple.body}
+                </p>
+
+                {/* Switcher selector pills for the 4 principles */}
+                <div className="pt-4 flex flex-wrap gap-2">
+                  {principles.map((p, idx) => (
+                    <button
+                      key={p.no}
+                      type="button"
+                      onClick={() => setActivePrincipleIndex(idx)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        activePrincipleIndex === idx
+                          ? 'bg-[#111111] text-white dark:bg-white dark:text-[#111111] shadow-xs'
+                          : 'bg-neutral-100 dark:bg-white/5 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      {p.no}. {p.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
+
           </div>
         </section>
 
