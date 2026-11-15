@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -20,20 +21,20 @@ const steps = [
   {
     no: '01',
     title: 'Drop Files or Notes',
-    body: 'Select multiple files or type your note. Choose how long it lives before self-destruction.',
-    highlight: 'Instant preview & client encryption',
+    body: 'Select multiple files or write your note. Choose an expiration duration (1h, 24h, or 7d) before client-side encryption.',
+    highlight: 'Instant preview & AES-GCM-256 seal',
   },
   {
     no: '02',
     title: 'Share Username & Key',
-    body: 'Pass the username and key over any channel you trust (Signal, WhatsApp, or voice).',
-    highlight: 'No registration required',
+    body: 'Deliver the username and private key over any channel you already trust (Signal, WhatsApp, voice, or in-person).',
+    highlight: 'No registration or personal data',
   },
   {
     no: '03',
     title: 'Access & It Vanishes',
-    body: 'The recipient views or downloads the items. When the timer expires, it is gone forever.',
-    highlight: 'Zero forensic recovery',
+    body: 'The recipient accesses and downloads the vaulted files. Once the expiration timer lapses, everything is wiped forever.',
+    highlight: 'Zero residual forensic recovery',
   },
 ]
 
@@ -91,7 +92,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F4F4F7] text-neutral-900 dark:bg-[#0C0C0E] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950">
+    <div className="flex min-h-screen flex-col bg-[#F0F0F0] text-[#111111] dark:bg-[#0E0E10] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950">
       {showSplash && (
         <SplashScreen durationMs={1000} onFinish={() => setShowSplash(false)} />
       )}
@@ -100,72 +101,116 @@ export default function Home() {
       <SiteNav />
 
       <main className="flex-1 pt-24 sm:pt-28">
-        {/* HERO SECTION */}
-        <section id="transfer" className="relative overflow-hidden px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
-          <div className="mx-auto max-w-6xl">
+        {/* HERO SECTION MATCHING RIDICULOUS.DESIGN EXACT COMPOSITION */}
+        <section id="transfer" className="relative overflow-hidden px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
+          <div className="mx-auto max-w-5xl">
             
-            {/* Top Eyebrow Sticker + Playful Badges */}
-            <div className="text-center mb-8 relative">
-              <div className="inline-flex items-center gap-2 rounded-full border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-neutral-900 px-4 py-1.5 shadow-sm">
-                <span className="size-2 rounded-full bg-[#CCFF00] animate-pulse" />
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
-                  Global Send v2.4 · Ephemeral P2P Relay
-                </span>
-              </div>
-
-              {/* Floating stickers in Ridiculous.design fashion */}
-              <div className="hidden lg:block absolute -top-4 left-10 rd-sticker-left">
-                <span className="inline-block rounded-xl bg-[#CCFF00] px-3.5 py-1.5 text-xs font-black uppercase text-neutral-950 shadow-md border-2 border-neutral-950">
-                  ⚡️ FAST &amp; LIGHT
-                </span>
-              </div>
-              <div className="hidden lg:block absolute -top-4 right-10 rd-sticker-right">
-                <span className="inline-block rounded-xl bg-[#FB7185] px-3.5 py-1.5 text-xs font-black uppercase text-white shadow-md border-2 border-neutral-950">
-                  🔥 100% PRIVATE
-                </span>
-              </div>
-            </div>
-
-            {/* Display Headline */}
-            <div className="text-center max-w-4xl mx-auto mb-14">
-              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black uppercase tracking-tight leading-[0.95] text-neutral-950 dark:text-white">
-                RIDICULOUSLY <br />
-                <span className="text-[#CCFF00] drop-shadow-[0_4px_16px_rgba(204,255,0,0.3)]">FAST TRANSFERS.</span>
-              </h1>
-              <p className="mt-6 max-w-2xl mx-auto text-base sm:text-xl text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
-                Send files, notes, and code directly across devices with end-to-end client encryption. No cloud accounts, zero tracking, and vanishes on your schedule.
+            {/* 1. Eyebrow: Shadow Into Light font */}
+            <div className="text-center mb-6">
+              <p className="font-eyebrow text-2xl sm:text-3xl tracking-normal">
+                UX ideas that make you pause and rethink
               </p>
             </div>
 
-            {/* Main Interactive Login & Multi-File Staging Console */}
-            <div className="max-w-2xl mx-auto mb-20 gs-fade-up">
+            {/* 2. Main Title Row: Flanked by exact Sticker 1 (Peace) and Sticker 2 (Googly Eyes) */}
+            <div className="relative flex items-center justify-center gap-3 sm:gap-6 my-2">
+              
+              {/* Left Peace Sign Sticker */}
+              <div className="relative shrink-0 sticker-peace -mt-8 sm:-mt-12 select-none">
+                <Image
+                  src="/stickers/sticker-peace.png"
+                  alt="Peace sign sticker"
+                  width={110}
+                  height={110}
+                  priority
+                  className="w-14 sm:w-24 md:w-28 h-auto drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                />
+              </div>
+
+              {/* Exact Abcwhyte Inktrap Typography: DISRUPTING ORDINARY */}
+              <div className="text-center">
+                <h1 className="font-headline text-5xl sm:text-7xl md:text-[108px] lg:text-[124px] tracking-tight leading-[0.88] select-none">
+                  DISRUPTING<br />ORDINARY
+                </h1>
+              </div>
+
+              {/* Right Googly Eyes Sticker */}
+              <div className="relative shrink-0 sticker-eyes -mt-8 sm:-mt-12 select-none">
+                <Image
+                  src="/stickers/sticker-eyes.png"
+                  alt="Eyes sticker"
+                  width={115}
+                  height={115}
+                  priority
+                  className="w-14 sm:w-24 md:w-28 h-auto drop-shadow-[0_8px_16px_rgba(0,0,0,0.15)]"
+                />
+              </div>
+
+            </div>
+
+            {/* 3. Subtitle Row: Flanked by exact Sticker 4 (Green Heart) and Sticker 5 (Thug Sunglasses) */}
+            <div className="relative max-w-3xl mx-auto flex items-center justify-center gap-4 sm:gap-8 my-8 px-4">
+              
+              {/* Green Heart Sticker */}
+              <div className="shrink-0 sticker-heart select-none hidden sm:block">
+                <Image
+                  src="/stickers/sticker-heart.png"
+                  alt="Green heart sticker"
+                  width={90}
+                  height={90}
+                  priority
+                  className="w-14 sm:w-20 md:w-22 h-auto drop-shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
+                />
+              </div>
+
+              {/* Center Body Copy in Satoshi Regular font */}
+              <p className="text-center text-sm sm:text-base md:text-[17px] text-[#161616] dark:text-neutral-300 font-normal leading-[1.45] max-w-xl mx-auto">
+                Welcome to our community of unconventional thinkers with ideas that break the mold. Uncover our collection of absurd design concepts you wish existed.
+              </p>
+
+              {/* Pixel Sunglasses Sticker */}
+              <div className="shrink-0 sticker-glasses select-none hidden sm:block">
+                <Image
+                  src="/stickers/sticker-glasses.png"
+                  alt="Pixel sunglasses sticker"
+                  width={95}
+                  height={95}
+                  priority
+                  className="w-14 sm:w-20 md:w-22 h-auto drop-shadow-[0_6px_14px_rgba(0,0,0,0.12)]"
+                />
+              </div>
+
+            </div>
+
+            {/* 4. Down Arrow Sticker pointing directly to the interactive console */}
+            <div className="flex justify-center mb-8 sticker-arrow select-none">
+              <Image
+                src="/stickers/sticker-arrow.png"
+                alt="Down arrow sticker"
+                width={48}
+                height={68}
+                priority
+                className="w-8 sm:w-11 h-auto drop-shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
+              />
+            </div>
+
+            {/* 5. Main Interactive Vault Login & Staging Console */}
+            <div className="max-w-2xl mx-auto mb-16 gs-fade-up">
               <VaultPreview onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />
             </div>
 
           </div>
         </section>
 
-        {/* HIGH-VOLTAGE CALLOUT STRIP */}
-        <section className="bg-[#CCFF00] border-y-2 border-neutral-950 py-5 overflow-hidden">
-          <div className="flex items-center justify-around gap-8 text-neutral-950 font-black text-sm sm:text-base uppercase tracking-widest overflow-hidden whitespace-nowrap">
-            <span className="flex items-center gap-2">✦ ZERO CLOUD ACCOUNTS REQUIRED</span>
-            <span className="flex items-center gap-2">✦ 256-BIT CLIENT-SIDE CIPHER</span>
-            <span className="flex items-center gap-2">✦ UP TO 250 MB PER FILE FREE</span>
-            <span className="flex items-center gap-2">✦ AUTO-DISINTEGRATION PROTOCOL</span>
-            <span className="hidden md:flex items-center gap-2">✦ OPEN SOURCE MIT</span>
-          </div>
-        </section>
-
         {/* HOW IT WORKS SECTION */}
-        <section id="how" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-b-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#0A0A0C]">
-          <div className="mx-auto max-w-6xl">
+        <section id="how" className="py-20 sm:py-24 px-4 sm:px-6 lg:px-8 border-t-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#0A0A0C]">
+          <div className="mx-auto max-w-5xl">
             <div className="text-center max-w-2xl mx-auto mb-16">
-              <span className="inline-block rounded-full bg-neutral-100 dark:bg-white/10 px-3.5 py-1 text-xs font-mono font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-300 mb-3">
-                SIMPLIFIED ARCHITECTURE
+              <span className="font-eyebrow text-2xl text-neutral-500 dark:text-neutral-400 block mb-2">
+                how it works
               </span>
-              <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
-                Three moves. <br />
-                <span className="text-[#CCFF00]">Done.</span>
+              <h2 className="font-headline text-3xl sm:text-5xl tracking-tight">
+                THREE MOVES. DONE.
               </h2>
             </div>
 
@@ -179,10 +224,10 @@ export default function Home() {
                     <span className="inline-flex size-10 items-center justify-center rounded-xl bg-neutral-900 text-[#CCFF00] dark:bg-white dark:text-neutral-950 font-mono font-black text-sm mb-6">
                       {st.no}
                     </span>
-                    <h3 className="text-xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
+                    <h3 className="font-headline text-lg sm:text-xl tracking-tight text-neutral-950 dark:text-white">
                       {st.title}
                     </h3>
-                    <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed font-normal">
                       {st.body}
                     </p>
                   </div>
@@ -203,11 +248,11 @@ export default function Home() {
               <Lock className="size-8 stroke-[2.2]" />
             </div>
 
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
-              Data shouldn&apos;t live in the cloud forever.
+            <h2 className="font-headline text-3xl sm:text-5xl md:text-6xl tracking-tight text-neutral-950 dark:text-white">
+              DATA SHOULDN&apos;T LIVE IN THE CLOUD FOREVER.
             </h2>
-            <p className="mt-6 max-w-xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400 font-medium">
-              Global Send gives you complete ownership over your files and clips. Self-hosted, client-sealed, and wiped clean when you say so.
+            <p className="mt-6 max-w-xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400 font-normal">
+              Global Send gives you complete ownership over your files and clips. Self-hosted, client-sealed, and wiped clean on your terms.
             </p>
 
             <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
