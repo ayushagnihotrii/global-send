@@ -6,14 +6,7 @@ import {
   ArrowUpRight,
   Lock,
   Zap,
-  Shield,
-  Layers,
-  Sparkles,
-  Flame,
   CheckCircle2,
-  Clock,
-  Terminal,
-  Share2,
 } from 'lucide-react'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
@@ -22,57 +15,6 @@ import { Dashboard } from '@/components/dashboard/Dashboard'
 import { SecurityQuestionSetupModal } from '@/components/auth/SecurityQuestionSetupModal'
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import { User } from '@/lib/types'
-
-const bentoFeatures = [
-  {
-    tag: 'ARCHITECTURE',
-    title: 'Zero Knowledge. Total Secrecy.',
-    description: 'Every file and note is encrypted directly on your device before moving across the relay. The server only sees impenetrable ciphertext.',
-    colorBox: 'bg-[#D1FAE5] dark:bg-[#064E3B]/40 text-emerald-800 dark:text-emerald-300',
-    badge: 'AES-GCM-256',
-    icon: Shield,
-  },
-  {
-    tag: 'EPHEMERAL',
-    title: 'Auto-Disintegrating Vaults.',
-    description: 'Choose your TTL: 1 hour, 24 hours, or 7 days. When the timer hits zero, the data is permanently erased from memory, disk, and cache.',
-    colorBox: 'bg-[#FFE4E6] dark:bg-[#881337]/40 text-rose-800 dark:text-rose-300',
-    badge: '1H · 24H · 7D',
-    icon: Clock,
-  },
-  {
-    tag: 'NO ACCOUNTS',
-    title: 'Identity Without Tracking.',
-    description: 'No email required. No phone numbers. No passwords to leak. Your chosen username and private key serve as your complete, isolated identity.',
-    colorBox: 'bg-[#ECFCCB] dark:bg-[#365314]/40 text-lime-900 dark:text-lime-300',
-    badge: '100% PRIVATE',
-    icon: Zap,
-  },
-  {
-    tag: 'MULTI-FILE BATCH',
-    title: 'High-Volume File Queue.',
-    description: 'Drag one or a hundred files directly onto your screen. Enjoy live per-file progress, image thumbnails, and resumable transfers.',
-    colorBox: 'bg-[#E0F2FE] dark:bg-[#0C4A6E]/40 text-sky-900 dark:text-sky-300',
-    badge: 'BATCH UPLOAD',
-    icon: Layers,
-  },
-  {
-    tag: 'P2P CHAT & VAULT SHARING',
-    title: 'Instant Ephemeral Direct Chat.',
-    description: 'Share encrypted files and notes privately with other usernames with automated live expiration tracking and zero persistent history.',
-    colorBox: 'bg-[#F3E8FF] dark:bg-[#581C87]/40 text-purple-900 dark:text-purple-300',
-    badge: 'DIRECT MESSAGE',
-    icon: Share2,
-  },
-  {
-    tag: 'SELF-HOSTABLE',
-    title: 'MIT Licensed & Auditable.',
-    description: 'Run your own relay on Docker, fly.io, or Railway, or join the global public mesh. Transparent and auditable code.',
-    colorBox: 'bg-[#FEF3C7] dark:bg-[#78350F]/40 text-amber-900 dark:text-amber-300',
-    badge: 'OPEN SOURCE',
-    icon: Terminal,
-  },
-]
 
 const steps = [
   {
@@ -211,69 +153,6 @@ export default function Home() {
             <span className="flex items-center gap-2">✦ UP TO 250 MB PER FILE FREE</span>
             <span className="flex items-center gap-2">✦ AUTO-DISINTEGRATION PROTOCOL</span>
             <span className="hidden md:flex items-center gap-2">✦ OPEN SOURCE MIT</span>
-          </div>
-        </section>
-
-        {/* BENTO GRID FEATURE SHOWCASE */}
-        <section id="features" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-b-2 border-neutral-900/10 dark:border-white/10">
-          <div className="mx-auto max-w-6xl">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
-              <div>
-                <span className="text-xs font-mono font-black uppercase tracking-widest text-neutral-400">
-                  CRAFTED WITH PRECISION
-                </span>
-                <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-neutral-950 dark:text-white mt-1">
-                  Built to be untouchable.
-                </h2>
-              </div>
-              <p className="max-w-xs text-sm text-neutral-500 dark:text-neutral-400 font-medium">
-                Everything you expect from an ultra-modern privacy tool, with zero friction.
-              </p>
-            </div>
-
-            {/* Bento Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bentoFeatures.map((feat, idx) => {
-                const Icon = feat.icon
-                return (
-                  <div
-                    key={feat.title}
-                    className="group rounded-[28px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#141416] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Top Visual Container */}
-                      <div className={`w-full h-36 rounded-2xl ${feat.colorBox} p-5 flex items-center justify-between mb-6 border border-black/5 dark:border-white/5`}>
-                        <div className="size-12 rounded-xl bg-white/80 dark:bg-black/40 backdrop-blur-sm flex items-center justify-center shadow-xs">
-                          <Icon className="size-6 stroke-[2.2]" />
-                        </div>
-                        <span className="font-mono text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-white/80 dark:bg-black/40 shadow-xs">
-                          {feat.badge}
-                        </span>
-                      </div>
-
-                      <span className="font-mono text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
-                        {feat.tag}
-                      </span>
-                      <h3 className="text-xl font-black tracking-tight text-neutral-950 dark:text-white mt-1 group-hover:text-blue-600 dark:group-hover:text-[#CCFF00] transition-colors">
-                        {feat.title}
-                      </h3>
-                      <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-normal">
-                        {feat.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
-                      <span className="font-mono text-xs text-neutral-400 font-bold">
-                        0{idx + 1}
-                      </span>
-                      <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                        Explore <ArrowRight className="size-3" />
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
         </section>
 

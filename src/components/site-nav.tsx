@@ -83,12 +83,6 @@ export function SiteNav() {
             Vault Drop
           </a>
           <a
-            href="#features"
-            className="text-xs font-semibold uppercase tracking-wider text-neutral-300 hover:text-white transition-colors"
-          >
-            Features
-          </a>
-          <a
             href="#how"
             className="text-xs font-semibold uppercase tracking-wider text-neutral-300 hover:text-white transition-colors"
           >
