@@ -185,9 +185,21 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err: any) {
-    console.error('[Global Send Registration Error]:', err?.message || 'Unknown error');
+    const errorMsg = err?.message || 'Unknown error';
+    console.error('[Global Send Registration Error]:', errorMsg);
+    const isDbUnreachable =
+      errorMsg.includes('ENOTFOUND') ||
+      errorMsg.includes('tenant') ||
+      errorMsg.includes('connection') ||
+      errorMsg.includes('database') ||
+      errorMsg.includes('ECONNREFUSED');
+
     return NextResponse.json(
-      { error: 'Failed to create account. Please try again.' },
+      {
+        error: isDbUnreachable
+          ? 'Database unreachable: your Supabase database appears to be paused or inactive. Please restore/unpause it in your Supabase dashboard.'
+          : 'Failed to create account. Please try again.',
+      },
       { status: 500 }
     );
   }

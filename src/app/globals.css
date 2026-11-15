@@ -168,16 +168,18 @@
 
 /* Glassmorphism Capsule Nav matching ridiculous.design gradient */
 .rd-capsule-nav {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  background-image: linear-gradient(rgba(64, 64, 64, 0.75), rgba(64, 64, 64, 0.6));
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(24, 24, 27, 0.94);
+  background-image: linear-gradient(rgba(38, 38, 42, 0.95), rgba(24, 24, 27, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.35);
 }
 
 .dark .rd-capsule-nav {
-  background-image: linear-gradient(rgba(24, 24, 27, 0.85), rgba(24, 24, 27, 0.7));
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background-color: rgba(18, 18, 20, 0.96);
+  background-image: linear-gradient(rgba(26, 26, 30, 0.96), rgba(18, 18, 20, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
 }
 
