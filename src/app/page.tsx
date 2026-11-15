@@ -1,7 +1,20 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { ArrowRight, ArrowUpRight, Lock } from 'lucide-react'
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Lock,
+  Zap,
+  Shield,
+  Layers,
+  Sparkles,
+  Flame,
+  CheckCircle2,
+  Clock,
+  Terminal,
+  Share2,
+} from 'lucide-react'
 import { SiteNav } from '@/components/site-nav'
 import { SiteFooter } from '@/components/site-footer'
 import { VaultPreview } from '@/components/vault-preview'
@@ -10,44 +23,75 @@ import { SecurityQuestionSetupModal } from '@/components/auth/SecurityQuestionSe
 import { SplashScreen } from '@/components/ui/SplashScreen'
 import { User } from '@/lib/types'
 
-const principles = [
+const bentoFeatures = [
   {
-    no: '01',
-    title: 'Encrypted by default',
-    body: 'Every file is sealed on your device before it reaches any relay. The key never leaves you; the relay sees only ciphertext.',
+    tag: 'ARCHITECTURE',
+    title: 'Zero Knowledge. Total Secrecy.',
+    description: 'Every file and note is encrypted directly on your device before moving across the relay. The server only sees impenetrable ciphertext.',
+    colorBox: 'bg-[#D1FAE5] dark:bg-[#064E3B]/40 text-emerald-800 dark:text-emerald-300',
+    badge: 'AES-GCM-256',
+    icon: Shield,
   },
   {
-    no: '02',
-    title: 'Ephemeral by design',
-    body: 'Pick a TTL of an hour, a day, or a week. When it lapses, the vault is wiped from every relay and every cache.',
+    tag: 'EPHEMERAL',
+    title: 'Auto-Disintegrating Vaults.',
+    description: 'Choose your TTL: 1 hour, 24 hours, or 7 days. When the timer hits zero, the data is permanently erased from memory, disk, and cache.',
+    colorBox: 'bg-[#FFE4E6] dark:bg-[#881337]/40 text-rose-800 dark:text-rose-300',
+    badge: '1H · 24H · 7D',
+    icon: Clock,
   },
   {
-    no: '03',
-    title: 'No accounts, ever',
-    body: 'No email, no sign-up, no profile. A username and a private key are the entire identity — and the entire access list.',
+    tag: 'NO ACCOUNTS',
+    title: 'Identity Without Tracking.',
+    description: 'No email required. No phone numbers. No passwords to leak. Your chosen username and private key serve as your complete, isolated identity.',
+    colorBox: 'bg-[#ECFCCB] dark:bg-[#365314]/40 text-lime-900 dark:text-lime-300',
+    badge: '100% PRIVATE',
+    icon: Zap,
   },
   {
-    no: '04',
-    title: 'Yours to run',
-    body: 'Open-source and self-hostable. Run your own relay, use the public grid, or move between them. Your keys, your terms.',
+    tag: 'MULTI-FILE BATCH',
+    title: 'High-Volume File Queue.',
+    description: 'Drag one or a hundred files directly onto your screen. Enjoy live per-file progress, image thumbnails, and resumable transfers.',
+    colorBox: 'bg-[#E0F2FE] dark:bg-[#0C4A6E]/40 text-sky-900 dark:text-sky-300',
+    badge: 'BATCH UPLOAD',
+    icon: Layers,
+  },
+  {
+    tag: 'P2P CHAT & VAULT SHARING',
+    title: 'Instant Ephemeral Direct Chat.',
+    description: 'Share encrypted files and notes privately with other usernames with automated live expiration tracking and zero persistent history.',
+    colorBox: 'bg-[#F3E8FF] dark:bg-[#581C87]/40 text-purple-900 dark:text-purple-300',
+    badge: 'DIRECT MESSAGE',
+    icon: Share2,
+  },
+  {
+    tag: 'SELF-HOSTABLE',
+    title: 'MIT Licensed & Auditable.',
+    description: 'Run your own relay on Docker, fly.io, or Railway, or join the global public mesh. Transparent and auditable code.',
+    colorBox: 'bg-[#FEF3C7] dark:bg-[#78350F]/40 text-amber-900 dark:text-amber-300',
+    badge: 'OPEN SOURCE',
+    icon: Terminal,
   },
 ]
 
 const steps = [
   {
     no: '01',
-    title: 'Drop a file or a note',
-    body: 'Choose a TTL. It is encrypted in your browser with a key only you and your recipient hold.',
+    title: 'Drop Files or Notes',
+    body: 'Select multiple files or type your note. Choose how long it lives before self-destruction.',
+    highlight: 'Instant preview & client encryption',
   },
   {
     no: '02',
-    title: 'Share the key',
-    body: 'Send the username and key over any channel you already trust. The link opens from any device.',
+    title: 'Share Username & Key',
+    body: 'Pass the username and key over any channel you trust (Signal, WhatsApp, or voice).',
+    highlight: 'No registration required',
   },
   {
     no: '03',
-    title: 'It opens, then disappears',
-    body: 'Your recipient unlocks it once. When the timer ends, the vault is gone — from every relay, for good.',
+    title: 'Access & It Vanishes',
+    body: 'The recipient views or downloads the items. When the timer expires, it is gone forever.',
+    highlight: 'Zero forensic recovery',
   },
 ]
 
@@ -105,7 +149,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100 selection:bg-emerald-600 selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[#F4F4F7] text-neutral-900 dark:bg-[#0C0C0E] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950">
       {showSplash && (
         <SplashScreen durationMs={1000} onFinish={() => setShowSplash(false)} />
       )}
@@ -113,64 +157,159 @@ export default function Home() {
       <span id="top" className="sr-only">Top</span>
       <SiteNav />
 
-      <main className="flex-1">
-        {/* HERO */}
-        <section id="transfer" className="relative overflow-hidden border-b border-stone-200/70 dark:border-stone-800/70">
-          <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:px-8 sm:py-28 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-32">
-            <div className="gs-fade-up">
-              <span className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-wider text-stone-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
-                <span className="size-1.5 rounded-full bg-emerald-500" />
-                v1.0 · public beta
-              </span>
-              <h1 className="mt-6 text-4xl font-medium leading-[1.05] tracking-[-0.025em] text-stone-900 dark:text-stone-50 sm:text-5xl lg:text-6xl">
-                Send files anywhere
-                <br />
-                on Earth.{' '}
-                <span className="text-emerald-600 dark:text-emerald-500">Privately.</span>
-              </h1>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-stone-600 dark:text-stone-400 sm:text-lg">
-                An open-source, end-to-end encrypted vault for files and text. Drop something in, share the key, and it expires on its own. No accounts. No tracking. No third-party clouds.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <a
-                  href="#transfer"
-                  className="group inline-flex h-11 items-center gap-1.5 rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300 cursor-pointer"
-                >
-                  Open the vault
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
-                </a>
-                <a
-                  href="#how"
-                  className="inline-flex h-11 items-center gap-1.5 rounded-full border border-stone-300 bg-transparent px-5 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-900 cursor-pointer"
-                >
-                  How it works
-                </a>
+      <main className="flex-1 pt-24 sm:pt-28">
+        {/* HERO SECTION */}
+        <section id="transfer" className="relative overflow-hidden px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
+          <div className="mx-auto max-w-6xl">
+            
+            {/* Top Eyebrow Sticker + Playful Badges */}
+            <div className="text-center mb-8 relative">
+              <div className="inline-flex items-center gap-2 rounded-full border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-neutral-900 px-4 py-1.5 shadow-sm">
+                <span className="size-2 rounded-full bg-[#CCFF00] animate-pulse" />
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
+                  Global Send v2.4 · Ephemeral P2P Relay
+                </span>
               </div>
-              <p className="mt-8 font-mono text-[11px] uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                open-source · end-to-end encrypted · zero-knowledge · self-hostable
+
+              {/* Floating stickers in Ridiculous.design fashion */}
+              <div className="hidden lg:block absolute -top-4 left-10 rd-sticker-left">
+                <span className="inline-block rounded-xl bg-[#CCFF00] px-3.5 py-1.5 text-xs font-black uppercase text-neutral-950 shadow-md border-2 border-neutral-950">
+                  ⚡️ FAST &amp; LIGHT
+                </span>
+              </div>
+              <div className="hidden lg:block absolute -top-4 right-10 rd-sticker-right">
+                <span className="inline-block rounded-xl bg-[#FB7185] px-3.5 py-1.5 text-xs font-black uppercase text-white shadow-md border-2 border-neutral-950">
+                  🔥 100% PRIVATE
+                </span>
+              </div>
+            </div>
+
+            {/* Display Headline */}
+            <div className="text-center max-w-4xl mx-auto mb-14">
+              <h1 className="text-5xl sm:text-7xl md:text-8xl font-black uppercase tracking-tight leading-[0.95] text-neutral-950 dark:text-white">
+                RIDICULOUSLY <br />
+                <span className="text-[#CCFF00] drop-shadow-[0_4px_16px_rgba(204,255,0,0.3)]">FAST TRANSFERS.</span>
+              </h1>
+              <p className="mt-6 max-w-2xl mx-auto text-base sm:text-xl text-neutral-600 dark:text-neutral-400 font-medium leading-relaxed">
+                Send files, notes, and code directly across devices with end-to-end client encryption. No cloud accounts, zero tracking, and vanishes on your schedule.
               </p>
             </div>
-            <div className="gs-fade-up-delay lg:pl-4">
+
+            {/* Main Interactive Login & Multi-File Staging Console */}
+            <div className="max-w-2xl mx-auto mb-20 gs-fade-up">
               <VaultPreview onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />
+            </div>
+
+          </div>
+        </section>
+
+        {/* HIGH-VOLTAGE CALLOUT STRIP */}
+        <section className="bg-[#CCFF00] border-y-2 border-neutral-950 py-5 overflow-hidden">
+          <div className="flex items-center justify-around gap-8 text-neutral-950 font-black text-sm sm:text-base uppercase tracking-widest overflow-hidden whitespace-nowrap">
+            <span className="flex items-center gap-2">✦ ZERO CLOUD ACCOUNTS REQUIRED</span>
+            <span className="flex items-center gap-2">✦ 256-BIT CLIENT-SIDE CIPHER</span>
+            <span className="flex items-center gap-2">✦ UP TO 250 MB PER FILE FREE</span>
+            <span className="flex items-center gap-2">✦ AUTO-DISINTEGRATION PROTOCOL</span>
+            <span className="hidden md:flex items-center gap-2">✦ OPEN SOURCE MIT</span>
+          </div>
+        </section>
+
+        {/* BENTO GRID FEATURE SHOWCASE */}
+        <section id="features" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-b-2 border-neutral-900/10 dark:border-white/10">
+          <div className="mx-auto max-w-6xl">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-12">
+              <div>
+                <span className="text-xs font-mono font-black uppercase tracking-widest text-neutral-400">
+                  CRAFTED WITH PRECISION
+                </span>
+                <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-neutral-950 dark:text-white mt-1">
+                  Built to be untouchable.
+                </h2>
+              </div>
+              <p className="max-w-xs text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                Everything you expect from an ultra-modern privacy tool, with zero friction.
+              </p>
+            </div>
+
+            {/* Bento Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bentoFeatures.map((feat, idx) => {
+                const Icon = feat.icon
+                return (
+                  <div
+                    key={feat.title}
+                    className="group rounded-[28px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#141416] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Top Visual Container */}
+                      <div className={`w-full h-36 rounded-2xl ${feat.colorBox} p-5 flex items-center justify-between mb-6 border border-black/5 dark:border-white/5`}>
+                        <div className="size-12 rounded-xl bg-white/80 dark:bg-black/40 backdrop-blur-sm flex items-center justify-center shadow-xs">
+                          <Icon className="size-6 stroke-[2.2]" />
+                        </div>
+                        <span className="font-mono text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-white/80 dark:bg-black/40 shadow-xs">
+                          {feat.badge}
+                        </span>
+                      </div>
+
+                      <span className="font-mono text-[10px] font-bold tracking-widest text-neutral-400 uppercase">
+                        {feat.tag}
+                      </span>
+                      <h3 className="text-xl font-black tracking-tight text-neutral-950 dark:text-white mt-1 group-hover:text-blue-600 dark:group-hover:text-[#CCFF00] transition-colors">
+                        {feat.title}
+                      </h3>
+                      <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-normal">
+                        {feat.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-neutral-100 dark:border-white/5 flex items-center justify-between">
+                      <span className="font-mono text-xs text-neutral-400 font-bold">
+                        0{idx + 1}
+                      </span>
+                      <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                        Explore <ArrowRight className="size-3" />
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </section>
 
-        {/* PRINCIPLES */}
-        <section id="principles" className="border-b border-stone-200/70 dark:border-stone-800/70">
-          <div className="mx-auto grid max-w-6xl gap-12 px-5 py-20 sm:px-8 sm:py-24 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
-            <div className="lg:sticky lg:top-28 lg:self-start">
-              <p className="font-mono text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Principles</p>
-              <h2 className="mt-4 text-3xl font-medium tracking-[-0.02em] text-stone-900 dark:text-stone-50 sm:text-4xl">Built on four ideas. No compromises.</h2>
-              <p className="mt-4 max-w-md text-base leading-relaxed text-stone-600 dark:text-stone-400">Global Send is a relay, not a storage company. The grid moves your bytes; your keys never leave your hands.</p>
+        {/* HOW IT WORKS SECTION */}
+        <section id="how" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-b-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#0A0A0C]">
+          <div className="mx-auto max-w-6xl">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <span className="inline-block rounded-full bg-neutral-100 dark:bg-white/10 px-3.5 py-1 text-xs font-mono font-bold uppercase tracking-wider text-neutral-600 dark:text-neutral-300 mb-3">
+                SIMPLIFIED ARCHITECTURE
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
+                Three moves. <br />
+                <span className="text-[#CCFF00]">Done.</span>
+              </h2>
             </div>
-            <div className="divide-y divide-stone-200 dark:divide-stone-800">
-              {principles.map((p) => (
-                <div key={p.no} className="flex gap-6 py-7 first:pt-0 last:pb-0">
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-500">{p.no}</span>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">{p.title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-stone-600 dark:text-stone-400">{p.body}</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {steps.map((st) => (
+                <div
+                  key={st.no}
+                  className="rounded-[28px] border-2 border-neutral-900/10 dark:border-white/10 bg-[#F4F4F7] dark:bg-[#141416] p-8 flex flex-col justify-between"
+                >
+                  <div>
+                    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-neutral-900 text-[#CCFF00] dark:bg-white dark:text-neutral-950 font-mono font-black text-sm mb-6">
+                      {st.no}
+                    </span>
+                    <h3 className="text-xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
+                      {st.title}
+                    </h3>
+                    <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                      {st.body}
+                    </p>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-white/10 flex items-center gap-2 text-xs font-bold text-neutral-500 dark:text-neutral-400 font-mono">
+                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                    <span>{st.highlight}</span>
                   </div>
                 </div>
               ))}
@@ -178,68 +317,61 @@ export default function Home() {
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <section id="how" className="border-b border-stone-200/70 dark:border-stone-800/70">
-          <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
-            <div className="max-w-2xl">
-              <p className="font-mono text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-500">How it works</p>
-              <h2 className="mt-4 text-3xl font-medium tracking-[-0.02em] text-stone-900 dark:text-stone-50 sm:text-4xl">Three steps. No ceremony.</h2>
+        {/* SECURITY & STATS STRIP */}
+        <section id="security" className="py-20 sm:py-28 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="size-16 rounded-3xl bg-neutral-900 dark:bg-white text-[#CCFF00] dark:text-neutral-950 flex items-center justify-center mx-auto mb-6 shadow-xl">
+              <Lock className="size-8 stroke-[2.2]" />
             </div>
-            <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 dark:border-stone-800 dark:bg-stone-800 sm:grid-cols-3">
-              {steps.map((s) => (
-                <div key={s.no} className="flex flex-col gap-3 bg-stone-50 p-7 dark:bg-stone-950">
-                  <span className="font-mono text-sm font-medium text-emerald-600 dark:text-emerald-500">{s.no}</span>
-                  <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-100">{s.title}</h3>
-                  <p className="text-sm leading-relaxed text-stone-600 dark:text-stone-400">{s.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        {/* SECURITY / CLOSING */}
-        <section id="security" className="relative overflow-hidden">
-          <div className="mx-auto max-w-4xl px-5 py-24 text-center sm:px-8 sm:py-32">
-            <div className="mx-auto mb-8 flex size-14 items-center justify-center rounded-2xl border border-stone-200 bg-white text-emerald-600 dark:border-stone-800 dark:bg-stone-900 dark:text-emerald-500">
-              <Lock className="size-6" strokeWidth={1.75} />
-            </div>
-            <h2 className="mx-auto max-w-2xl text-3xl font-medium leading-[1.15] tracking-[-0.02em] text-stone-900 dark:text-stone-50 sm:text-4xl lg:text-[2.75rem]">
-              Some things shouldn&apos;t live in the cloud forever.
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tight text-neutral-950 dark:text-white">
+              Data shouldn&apos;t live in the cloud forever.
             </h2>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-stone-600 dark:text-stone-400">
-              Global Send is for those things. Open, encrypted, and gone when you say so. The relay never holds a key; you always do.
+            <p className="mt-6 max-w-xl mx-auto text-base sm:text-lg text-neutral-600 dark:text-neutral-400 font-medium">
+              Global Send gives you complete ownership over your files and clips. Self-hosted, client-sealed, and wiped clean when you say so.
             </p>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
               <a
                 href="#transfer"
-                className="group inline-flex h-11 items-center gap-1.5 rounded-full bg-stone-900 px-5 text-sm font-medium text-white transition-colors hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-300 cursor-pointer"
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-[#111111] dark:bg-[#CCFF00] px-7 text-sm font-black uppercase text-white dark:text-neutral-950 transition-all hover:scale-105 active:scale-95 shadow-lg"
               >
-                Open the vault
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+                <span>Launch Console</span>
+                <ArrowRight className="size-4 stroke-[2.5]" />
               </a>
+
               <a
                 href="https://github.com/ayushagnihotrii/global-send"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-11 items-center gap-1.5 rounded-full border border-stone-300 px-5 text-sm font-medium text-stone-800 transition-colors hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-900 cursor-pointer"
+                className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-neutral-900/20 dark:border-white/20 bg-transparent px-7 text-sm font-black uppercase text-neutral-900 dark:text-white transition-all hover:bg-neutral-900 hover:text-white dark:hover:bg-white dark:hover:text-neutral-950"
               >
-                Star on GitHub
-                <ArrowUpRight className="size-4" strokeWidth={2} />
+                <span>Star on GitHub</span>
+                <ArrowUpRight className="size-4" />
               </a>
             </div>
-            <dl className="mx-auto mt-16 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-stone-200 bg-stone-200 text-left dark:border-stone-800 dark:bg-stone-800 sm:grid-cols-4">
+
+            {/* Quick Stats Bento */}
+            <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { k: '256-bit', v: 'client-side cipher' },
-                { k: '0', v: 'accounts required' },
-                { k: '250 MB', v: 'per vault, free' },
-                { k: 'MIT', v: 'licensed, auditable' },
+                { k: '256-BIT', v: 'AES-GCM CIPHER' },
+                { k: '0', v: 'ACCOUNTS REQUIRED' },
+                { k: '250 MB', v: 'PER VAULT FREE' },
+                { k: '100%', v: 'OPEN SOURCE MIT' },
               ].map((s) => (
-                <div key={s.k} className="bg-stone-50 p-5 dark:bg-stone-950">
-                  <dt className="font-mono text-lg font-medium text-stone-900 dark:text-stone-100">{s.k}</dt>
-                  <dd className="mt-1 text-xs text-stone-500 dark:text-stone-400">{s.v}</dd>
+                <div
+                  key={s.k}
+                  className="rounded-2xl border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#141416] p-5 text-center shadow-xs"
+                >
+                  <p className="font-black text-2xl sm:text-3xl font-mono text-neutral-950 dark:text-[#CCFF00]">
+                    {s.k}
+                  </p>
+                  <p className="mt-1 text-[11px] font-bold text-neutral-400 uppercase tracking-wider font-mono">
+                    {s.v}
+                  </p>
                 </div>
               ))}
-            </dl>
+            </div>
           </div>
         </section>
       </main>

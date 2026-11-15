@@ -1,13 +1,12 @@
-import * as React from 'react'
 import { LogoMark } from '@/components/site-nav'
 
-function Github({ className, strokeWidth = 1.75 }: { className?: string; strokeWidth?: number }) {
+function GithubIcon({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={strokeWidth}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
@@ -20,28 +19,46 @@ function Github({ className, strokeWidth = 1.75 }: { className?: string; strokeW
 }
 
 const footerLinks = [
-  { label: 'Docs', href: '#' },
-  { label: 'Security', href: '#' },
-  { label: 'Privacy', href: '#' },
-  { label: 'Status', href: '#' },
-  { label: 'Changelog', href: '#' },
+  { label: 'Documentation', href: '#how' },
+  { label: 'Security Model', href: '#security' },
+  { label: 'Privacy Manifesto', href: '#principles' },
+  { label: 'Status & Uptime', href: '/api/health' },
+  { label: 'GitHub Repository', href: 'https://github.com/ayushagnihotrii/global-send' },
 ]
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-stone-200/70 bg-stone-50/60 dark:border-stone-800/70 dark:bg-stone-950">
-      <div className="mx-auto flex max-w-6xl flex-col items-start gap-8 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
+    <footer className="border-t-2 border-neutral-900/10 dark:border-white/10 bg-[#111111] text-white">
+      {/* Giant Stylized Neo-Editorial Marquee Banner */}
+      <div className="border-b border-white/10 py-12 px-5 sm:px-8 overflow-hidden">
+        <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+          <div>
+            <span className="inline-block rounded-full bg-[#CCFF00] px-3 py-1 font-mono text-[11px] font-black uppercase tracking-widest text-neutral-950 mb-3">
+              ZERO RETENTION
+            </span>
+            <h2 className="text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tighter leading-none">
+              RIDICULOUSLY <br />
+              <span className="text-[#CCFF00]">PRIVATE.</span>
+            </h2>
+          </div>
+          <p className="max-w-xs text-sm text-neutral-400 font-medium leading-relaxed">
+            Global Send is a temporary peer relay. Zero database tracking, no accounts, and ephemeral by architecture.
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto flex max-w-6xl flex-col items-start gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-center md:justify-between">
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900">
-              <LogoMark className="size-4" />
+            <span className="flex size-8 items-center justify-center rounded-xl bg-white text-neutral-950">
+              <LogoMark className="size-5" />
             </span>
-            <span className="text-sm font-semibold tracking-tight text-stone-900 dark:text-stone-100">
-              Global Send
+            <span className="text-base font-black uppercase tracking-tight text-white">
+              Global<span className="text-[#CCFF00]">Send</span>
             </span>
           </div>
-          <p className="max-w-xs font-mono text-[11px] uppercase tracking-wider text-stone-400 dark:text-stone-500">
-            Open-source · end-to-end encrypted · self-hostable
+          <p className="max-w-xs font-mono text-[11px] uppercase tracking-wider text-neutral-400">
+            Open-source · end-to-end encrypted · zero-knowledge relay
           </p>
         </div>
 
@@ -50,27 +67,31 @@ export function SiteFooter() {
             <a
               key={l.label}
               href={l.href}
-              className="text-sm text-stone-500 transition-colors hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+              className="text-xs font-semibold uppercase tracking-wider text-neutral-400 transition-colors hover:text-[#CCFF00]"
             >
               {l.label}
             </a>
           ))}
           <a
-            href="https://github.com"
+            href="https://github.com/ayushagnihotrii/global-send"
             target="_blank"
             rel="noreferrer"
-            aria-label="GitHub"
-            className="inline-flex size-8 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-stone-200/60 hover:text-stone-900 dark:hover:bg-stone-800/60 dark:hover:text-stone-100"
+            aria-label="GitHub repository"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-white/10 text-neutral-300 transition-all hover:bg-white/10 hover:text-white"
           >
-            <Github className="size-4" strokeWidth={1.75} />
+            <GithubIcon className="size-4" />
           </a>
         </nav>
       </div>
 
-      <div className="border-t border-stone-200/70 dark:border-stone-800/70">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 px-5 py-5 text-xs text-stone-400 dark:text-stone-500 sm:flex-row sm:items-center sm:px-8">
-          <p className="font-mono tracking-tight">© 2026 Global Send. No rights reserved — MIT licensed.</p>
-          <p className="font-mono tracking-tight">Made by people who&apos;d rather not shout.</p>
+      <div className="border-t border-white/10">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-2 px-5 py-6 text-xs text-neutral-500 sm:flex-row sm:items-center sm:px-8">
+          <p className="font-mono tracking-tight">
+            © 2026 Global Send. Licensed under MIT. Free for personal &amp; team use.
+          </p>
+          <p className="font-mono tracking-tight text-neutral-400">
+            Crafted with high-speed peer relays
+          </p>
         </div>
       </div>
     </footer>

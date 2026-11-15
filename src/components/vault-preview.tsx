@@ -17,6 +17,11 @@ import {
   Plus,
   CheckCircle2,
   Loader2,
+  Sparkles,
+  KeyRound,
+  User,
+  ShieldAlert,
+  Flame,
 } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { SITE_CONFIG } from '@/config/site'
@@ -83,7 +88,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
     if (oversized.length > 0) {
       const maxMb = Math.round(maxBytes / (1024 * 1024))
       setError(
-        `${oversized.length === 1 ? `"${oversized[0].name}" exceeds` : `${oversized.length} files exceed`} the ${maxMb} MB per-file limit.`
+        `${oversized.length === 1 ? `"${oversized[0].name}" exceeds` : `${oversized.length} files exceed`} the ${maxMb} MB limit.`
       )
     } else {
       setError(null)
@@ -212,7 +217,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Invalid credentials.')
+        setError(data.error || 'Invalid credentials. Please double-check username and key.')
         setIsLoading(false)
         return
       }
@@ -225,18 +230,18 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
           const file = stagedFiles[i]
           setUploadStatusText(
             stagedFiles.length === 1
-              ? `Uploading ${file.name}…`
-              : `Uploading file ${i + 1} of ${stagedFiles.length}…`
+              ? `Syncing ${file.name}…`
+              : `Vaulting file ${i + 1} of ${stagedFiles.length}…`
           )
           try {
             await uploadSingleFile(file, ttlSeconds)
             setUploadedCount(i + 1)
           } catch {
-            // Continue remaining files even if one fails
+            // Continue remaining
           }
         }
       } else if (tab === 'note' && stagedNote.trim()) {
-        setUploadStatusText('Saving note to vault…')
+        setUploadStatusText('Syncing private note to vault…')
         try {
           await fetch('/api/items', {
             method: 'POST',
@@ -248,7 +253,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
             }),
           })
         } catch {
-          // Ignore secondary note error
+          // Ignore
         }
       }
 
@@ -260,7 +265,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         window.location.reload()
       }
     } catch {
-      setError('Connection error. Please try again.')
+      setError('Connection timeout. Please check your network.')
     } finally {
       setIsLoading(false)
       setUploadStatusText(null)
@@ -270,7 +275,7 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
   return (
     <div
       className={cn(
-        'relative w-full overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_24px_48px_-12px_rgba(28,25,23,0.12)] dark:border-stone-800 dark:bg-stone-900 dark:shadow-[0_24px_48px_-12px_rgba(0,0,0,0.5)]',
+        'relative w-full rounded-[32px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#141416] p-2 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.04)] dark:shadow-[0_28px_65px_-12px_rgba(0,0,0,0.7)] transition-all',
         className
       )}
     >
@@ -283,33 +288,39 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
         onChange={handleFileSelect}
       />
 
-      <div className="flex items-center gap-3 border-b border-stone-200/70 bg-stone-50/80 px-4 py-3 dark:border-stone-800 dark:bg-stone-900/60">
+      {/* Ridiculous Window Header */}
+      <div className="flex items-center justify-between rounded-t-[26px] bg-[#111111] dark:bg-[#0A0A0C] px-5 py-3.5 text-white">
+        <div className="flex items-center gap-2">
+          <span className="size-3 rounded-full bg-[#FF5F56] inline-block shadow-sm" />
+          <span className="size-3 rounded-full bg-[#FFBD2E] inline-block shadow-sm" />
+          <span className="size-3 rounded-full bg-[#27C93F] inline-block shadow-sm" />
+        </div>
+
+        <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1 text-[11px] font-mono font-medium text-neutral-300 border border-white/10">
+          <Lock className="size-3 text-[#CCFF00]" strokeWidth={2.5} />
+          <span>globalsend.app/v/{username.trim() || 'rmin'}</span>
+        </div>
+
         <div className="flex items-center gap-1.5">
-          <span className="size-3 rounded-full bg-stone-300 dark:bg-stone-700" />
-          <span className="size-3 rounded-full bg-stone-300 dark:bg-stone-700" />
-          <span className="size-3 rounded-full bg-stone-300 dark:bg-stone-700" />
-        </div>
-        <div className="mx-auto flex h-7 w-full max-w-[260px] items-center justify-center gap-1.5 rounded-md border border-stone-200 bg-white px-2 text-[11px] font-medium text-stone-500 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-400">
-          <Lock className="size-3 text-emerald-600 dark:text-emerald-500" strokeWidth={2} />
-          <span className="font-mono tracking-tight">
-            globalsend.app/v/{username.trim() || 'rmin'}
+          <span className="size-2 rounded-full bg-[#CCFF00] animate-ping" />
+          <span className="text-[10px] font-bold tracking-widest text-[#CCFF00] uppercase font-mono">
+            E2EE
           </span>
-        </div>
-        <div className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-400 sm:flex">
-          <ShieldCheck className="size-3.5" strokeWidth={2} />
-          <span className="font-mono uppercase tracking-wide">encrypted</span>
         </div>
       </div>
 
-      <form onSubmit={handleUnlock} className="px-5 py-5 sm:px-7 sm:py-6">
+      {/* Main Card Console Interior */}
+      <form onSubmit={handleUnlock} className="p-5 sm:p-7 space-y-5">
         {error && (
-          <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-400">
-            {error}
+          <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-3.5 text-xs font-semibold text-red-600 dark:text-red-400 flex items-center gap-2.5 animate-in fade-in">
+            <ShieldAlert className="size-4 shrink-0 text-red-500" />
+            <span>{error}</span>
           </div>
         )}
 
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div className="inline-flex rounded-lg border border-stone-200 bg-stone-50 p-0.5 text-sm dark:border-stone-800 dark:bg-stone-900">
+        {/* Top Control Bar: Mode Toggle Pill + Expiration Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex rounded-full bg-neutral-100 dark:bg-white/5 p-1 border border-neutral-200/80 dark:border-white/10">
             <button
               type="button"
               onClick={() => {
@@ -317,10 +328,10 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
                 setAuthMode('signin')
               }}
               className={cn(
-                'cursor-pointer rounded-md px-3 py-1.5 font-medium transition-colors',
+                'rounded-full px-4 py-1.5 text-xs font-bold transition-all cursor-pointer',
                 authMode === 'signin'
-                  ? 'bg-white text-stone-900 shadow-xs dark:bg-stone-800 dark:text-stone-100'
-                  : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
               )}
             >
               Sign in
@@ -332,30 +343,32 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
                 setAuthMode('register')
               }}
               className={cn(
-                'cursor-pointer rounded-md px-3 py-1.5 font-medium transition-colors',
+                'rounded-full px-4 py-1.5 text-xs font-bold transition-all cursor-pointer',
                 authMode === 'register'
-                  ? 'bg-white text-stone-900 shadow-xs dark:bg-stone-800 dark:text-stone-100'
-                  : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
               )}
             >
               Create vault
             </button>
           </div>
+
+          {/* TTL Pills */}
           <div className="flex items-center gap-1 text-xs">
-            <span className="font-mono uppercase tracking-wide text-stone-400 dark:text-stone-500">
-              ttl
+            <span className="font-mono text-[10px] uppercase font-bold text-neutral-400 dark:text-neutral-500 mr-1">
+              TTL:
             </span>
-            <div className="inline-flex rounded-md border border-stone-200 bg-white p-0.5 dark:border-stone-800 dark:bg-stone-950">
+            <div className="inline-flex rounded-full bg-neutral-100 dark:bg-white/5 p-0.5 border border-neutral-200/80 dark:border-white/10">
               {(['1h', '24h', '7d'] as Ttl[]).map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setTtl(t)}
                   className={cn(
-                    'rounded px-2 py-1 font-mono text-[11px] font-medium transition-colors cursor-pointer',
+                    'rounded-full px-2.5 py-1 font-mono text-[11px] font-bold transition-all cursor-pointer',
                     ttl === t
-                      ? 'bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900'
-                      : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                      ? 'bg-neutral-900 text-white dark:bg-[#CCFF00] dark:text-neutral-950 shadow-sm'
+                      : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
                   )}
                 >
                   {t}
@@ -365,11 +378,12 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
           </div>
         </div>
 
-        <div className="mb-5 flex items-center gap-1 border-b border-stone-200 dark:border-stone-800">
+        {/* Tab Selection: Files vs Note */}
+        <div className="flex items-center gap-2 border-b border-neutral-200/80 dark:border-white/10 pb-2">
           {(
             [
-              { key: 'file', label: 'Files', icon: FileIcon },
-              { key: 'note', label: 'Note & Code', icon: NotebookPen },
+              { key: 'file', label: 'Drop Files', icon: FileIcon },
+              { key: 'note', label: 'Secret Note & Code', icon: NotebookPen },
             ] as const
           ).map(({ key, label, icon: Icon }) => (
             <button
@@ -377,26 +391,27 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
               type="button"
               onClick={() => setTab(key)}
               className={cn(
-                'relative -mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer',
+                'relative flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold transition-all cursor-pointer',
                 tab === key
-                  ? 'border-emerald-500 text-stone-900 dark:text-stone-100'
-                  : 'border-transparent text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 shadow-sm'
+                  : 'text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white'
               )}
             >
-              <Icon className="size-4" strokeWidth={1.75} />
-              {label}
+              <Icon className="size-3.5 stroke-[2.2]" />
+              <span>{label}</span>
               {key === 'file' && stagedFiles.length > 0 && (
-                <span className="inline-flex items-center justify-center rounded-full bg-emerald-500/15 px-1.5 py-0.2 font-mono text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="rounded-full bg-[#CCFF00] px-1.5 py-0.2 font-mono text-[10px] font-black text-neutral-950">
                   {stagedFiles.length}
                 </span>
               )}
               {key === 'note' && stagedNote.trim() && (
-                <span className="size-1.5 rounded-full bg-emerald-500" />
+                <span className="size-1.5 rounded-full bg-[#CCFF00]" />
               )}
             </button>
           ))}
         </div>
 
+        {/* Tab 1: Multi-File Staging Dropzone */}
         {tab === 'file' ? (
           stagedFiles.length > 0 ? (
             <div
@@ -404,17 +419,17 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={cn(
-                'mb-5 overflow-hidden rounded-xl border transition-colors',
+                'overflow-hidden rounded-2xl border-2 transition-all',
                 isDragOver
-                  ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
-                  : 'border-stone-200 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-950/70'
+                  ? 'border-[#CCFF00] bg-[#CCFF00]/10 scale-[1.01]'
+                  : 'border-neutral-900/10 bg-neutral-50 dark:border-white/10 dark:bg-white/[0.02]'
               )}
             >
-              {/* Queue Header Bar */}
-              <div className="flex items-center justify-between border-b border-stone-200/80 bg-stone-100/70 px-3.5 py-2 dark:border-stone-800 dark:bg-stone-900/80">
+              {/* Staged File Header */}
+              <div className="flex items-center justify-between border-b border-neutral-200/80 bg-neutral-100/80 px-4 py-2.5 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex size-2 rounded-full bg-emerald-500" />
-                  <span className="font-mono text-xs font-medium text-stone-700 dark:text-stone-200">
+                  <span className="size-2 rounded-full bg-[#CCFF00]" />
+                  <span className="font-mono text-xs font-bold text-neutral-800 dark:text-neutral-200">
                     {stagedFiles.length} {stagedFiles.length === 1 ? 'file' : 'files'} ·{' '}
                     {formatBytes(totalStagedBytes)}
                   </span>
@@ -424,24 +439,24 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
                     type="button"
                     disabled={isLoading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-stone-700 shadow-2xs ring-1 ring-stone-200/80 transition-colors hover:bg-stone-50 hover:text-stone-900 disabled:opacity-50 dark:bg-stone-800 dark:text-stone-200 dark:ring-stone-700 dark:hover:bg-stone-700 cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-neutral-900 shadow-xs border border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-800 dark:border-white/10 dark:text-white cursor-pointer"
                   >
                     <Plus className="size-3" />
-                    Add more
+                    Add More
                   </button>
                   <button
                     type="button"
                     disabled={isLoading}
                     onClick={() => setStagedFiles([])}
-                    className="rounded-md px-1.5 py-1 text-xs text-stone-400 transition-colors hover:text-red-600 disabled:opacity-50 dark:hover:text-red-400 cursor-pointer"
+                    className="text-xs font-semibold text-neutral-400 hover:text-red-500 transition-colors cursor-pointer"
                   >
                     Clear
                   </button>
                 </div>
               </div>
 
-              {/* Scrollable Multi-File List */}
-              <div className="max-h-44 divide-y divide-stone-200/60 overflow-y-auto dark:divide-stone-800/60">
+              {/* Scrollable File List */}
+              <div className="max-h-40 divide-y divide-neutral-200/60 overflow-y-auto dark:divide-white/5">
                 {stagedFiles.map((file, idx) => {
                   const ItemIcon = getFileTypeIcon(file.type || '')
                   const isDone = isLoading && idx < uploadedCount
@@ -450,35 +465,33 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
                   return (
                     <div
                       key={`${file.name}-${file.size}-${file.lastModified}`}
-                      className="flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors hover:bg-stone-100/50 dark:hover:bg-stone-900/40"
+                      className="flex items-center justify-between gap-3 px-4 py-2 hover:bg-neutral-100/50 dark:hover:bg-white/[0.03] transition-colors"
                     >
                       <div className="flex min-w-0 items-center gap-2.5">
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-400">
-                          <ItemIcon className="size-4" />
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-neutral-200/80 text-neutral-800 dark:bg-white/10 dark:text-neutral-200">
+                          <ItemIcon className="size-3.5" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-medium text-stone-900 dark:text-stone-100">
+                          <p className="truncate text-xs font-bold text-neutral-900 dark:text-neutral-100">
                             {file.name}
                           </p>
-                          <p className="font-mono text-[11px] text-stone-500 dark:text-stone-400">
+                          <p className="font-mono text-[10px] text-neutral-500 dark:text-neutral-400">
                             {formatBytes(file.size)}
                           </p>
                         </div>
                       </div>
 
                       {isDone ? (
-                        <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="size-3.5" />
-                        </span>
+                        <CheckCircle2 className="size-4 text-emerald-500" />
                       ) : isCurrent ? (
-                        <Loader2 className="size-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                        <Loader2 className="size-3.5 animate-spin text-[#CCFF00]" />
                       ) : (
                         <button
                           type="button"
                           disabled={isLoading}
                           onClick={() => removeStagedFile(idx)}
                           aria-label={`Remove ${file.name}`}
-                          className="rounded-full p-1 text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-stone-700 disabled:opacity-40 dark:hover:bg-stone-800 dark:hover:text-stone-200 cursor-pointer"
+                          className="rounded-full p-1 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
                         >
                           <X className="size-3.5" />
                         </button>
@@ -495,139 +508,150 @@ export function VaultPreview({ className, onLoginSuccess }: VaultPreviewProps) {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
               className={cn(
-                'mb-5 rounded-xl border border-dashed px-4 py-7 text-center cursor-pointer transition-all',
+                'rounded-2xl border-2 border-dashed p-7 text-center cursor-pointer transition-all duration-200',
                 isDragOver
-                  ? 'border-emerald-500 bg-emerald-50/40 scale-[1.01] dark:bg-emerald-950/20'
-                  : 'border-stone-300 bg-stone-50/60 hover:border-stone-400 hover:bg-stone-100/50 dark:border-stone-700 dark:bg-stone-900/40 dark:hover:border-stone-600'
+                  ? 'border-[#CCFF00] bg-[#CCFF00]/10 scale-[1.01]'
+                  : 'border-neutral-300 bg-neutral-50/70 hover:border-neutral-900 hover:bg-neutral-100/60 dark:border-white/15 dark:bg-white/[0.02] dark:hover:border-white/30'
               )}
             >
-              <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-full bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                <CloudUpload className="size-5" strokeWidth={1.75} />
+              <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 shadow-md">
+                <CloudUpload className="size-5 stroke-[2]" />
               </div>
-              <p className="text-sm font-medium text-stone-700 dark:text-stone-200">
-                Drag files here or tap to select multiple
+              <p className="text-sm font-black uppercase tracking-tight text-neutral-900 dark:text-white">
+                Drop files here or browse multiple
               </p>
-              <p className="mt-0.5 font-mono text-[11px] text-stone-400 dark:text-stone-500">
-                select as many files as you want — up to 250&nbsp;MB each
+              <p className="mt-1 font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
+                P2P direct &amp; ephemeral · up to 250 MB per file
               </p>
             </div>
           )
         ) : (
-          <div className="mb-5">
+          <div>
             <textarea
               rows={3}
               value={stagedNote}
               onChange={(e) => setStagedNote(e.target.value)}
-              placeholder="Paste note, code snippet, or link to save into vault..."
-              className="w-full rounded-xl border border-stone-200 bg-stone-50/60 p-3 font-mono text-sm leading-relaxed text-stone-800 placeholder-stone-400 outline-none focus:border-stone-400 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-100 dark:placeholder-stone-600 resize-none"
+              placeholder="Paste secret note, password, or code snippet to seal in vault..."
+              className="w-full rounded-2xl border-2 border-neutral-200 bg-neutral-50 p-3.5 font-mono text-xs leading-relaxed text-neutral-900 placeholder-neutral-400 outline-none focus:border-neutral-900 dark:border-white/15 dark:bg-white/[0.02] dark:text-white dark:placeholder-neutral-500 dark:focus:border-[#CCFF00] resize-none transition-all"
             />
           </div>
         )}
 
-        <div className="space-y-3">
+        {/* Credentials Form Inputs */}
+        <div className="space-y-3 pt-1">
+          {/* Username */}
           <div>
-            <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500">
-              Username
+            <label className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+              Username Identity
             </label>
-            <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-950 focus-within:border-stone-400 dark:focus-within:border-stone-600">
-              <span className="font-mono text-stone-400">@</span>
+            <div className="flex items-center gap-2 rounded-full border-2 border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-900 dark:border-white/15 dark:bg-white/[0.04] dark:text-white focus-within:border-neutral-900 dark:focus-within:border-[#CCFF00] transition-colors">
+              <User className="size-3.5 text-neutral-400" />
+              <span className="font-mono text-neutral-400">@</span>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="rmin"
-                className="w-full bg-transparent font-mono text-stone-800 outline-none placeholder-stone-300 dark:text-stone-100 dark:placeholder-stone-700"
+                className="w-full bg-transparent font-mono outline-none placeholder-neutral-300 dark:placeholder-neutral-600"
               />
             </div>
           </div>
+
+          {/* Private Login Key */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="block font-mono text-[10px] uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                Private login key
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block font-mono text-[10px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                Private Login Key
               </label>
               <button
                 type="button"
                 onClick={() => {
-                  setError('Recovery flow: sign in or reset key with your security question.')
+                  setError('Recovery flow: sign in or reset your key with your recovery security question.')
                 }}
-                className="font-mono text-[10px] uppercase tracking-wider text-stone-400 underline-offset-2 hover:text-stone-700 hover:underline dark:hover:text-stone-200 cursor-pointer"
+                className="font-mono text-[10px] uppercase font-bold text-neutral-400 underline-offset-2 hover:text-neutral-900 hover:underline dark:hover:text-white cursor-pointer"
               >
-                forgot key?
+                Forgot key?
               </button>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-950 focus-within:border-stone-400 dark:focus-within:border-stone-600">
+            <div className="flex items-center gap-2 rounded-full border-2 border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-900 dark:border-white/15 dark:bg-white/[0.04] dark:text-white focus-within:border-neutral-900 dark:focus-within:border-[#CCFF00] transition-colors">
+              <KeyRound className="size-3.5 text-neutral-400" />
               <input
                 type={showKey ? 'text' : 'password'}
                 value={loginKey}
                 onChange={(e) => setLoginKey(e.target.value)}
                 placeholder="delta-falcon-44"
-                className="flex-1 bg-transparent font-mono tracking-wider text-stone-800 outline-none placeholder-stone-300 dark:text-stone-100 dark:placeholder-stone-700"
+                className="flex-1 bg-transparent font-mono tracking-wider outline-none placeholder-neutral-300 dark:placeholder-neutral-600"
               />
               <button
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
-                className="text-stone-400 transition-colors hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                className="text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
                 aria-label={showKey ? 'Hide key' : 'Show key'}
               >
                 {showKey ? (
-                  <EyeOff className="size-4" strokeWidth={1.75} />
+                  <EyeOff className="size-3.5" />
                 ) : (
-                  <Eye className="size-4" strokeWidth={1.75} />
+                  <Eye className="size-3.5" />
                 )}
               </button>
             </div>
           </div>
         </div>
 
+        {/* Big Action Pill Button */}
         <button
           type="submit"
           disabled={isLoading}
-          className="group mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+          className="group mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#CCFF00] px-6 py-3.5 text-sm font-black uppercase tracking-tight text-white dark:text-neutral-950 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 cursor-pointer shadow-lg hover:shadow-xl"
         >
-          {uploadStatusText
-            ? uploadStatusText
-            : isLoading
-            ? 'Opening vault…'
-            : tab === 'file' && stagedFiles.length > 0
-            ? stagedFiles.length === 1
-              ? 'Save file & unlock'
-              : `Save ${stagedFiles.length} files & unlock`
-            : tab === 'note' && stagedNote.trim()
-            ? 'Save note & unlock'
-            : authMode === 'register'
-            ? 'Create & open vault'
-            : 'Unlock vault'}
+          {uploadStatusText ? (
+            uploadStatusText
+          ) : isLoading ? (
+            'Unlocking Vault…'
+          ) : tab === 'file' && stagedFiles.length > 0 ? (
+            stagedFiles.length === 1 ? (
+              'Save 1 File & Unlock'
+            ) : (
+              `Save ${stagedFiles.length} Files & Unlock`
+            )
+          ) : tab === 'note' && stagedNote.trim() ? (
+            'Save Note & Unlock'
+          ) : authMode === 'register' ? (
+            'Create & Open Vault'
+          ) : (
+            'Unlock Vault'
+          )}
           <ArrowRight
-            className="size-4 transition-transform group-hover:translate-x-0.5"
-            strokeWidth={2}
+            className="size-4 stroke-[2.5] transition-transform group-hover:translate-x-1"
           />
         </button>
 
-        <p className="mt-3 text-center text-xs text-stone-500 dark:text-stone-400">
+        {/* Switch Mode Prompt */}
+        <p className="text-center text-xs text-neutral-500 dark:text-neutral-400">
           {authMode === 'signin' ? (
             <>
-              No vault yet?{' '}
+              Need a fresh locker?{' '}
               <button
                 type="button"
                 onClick={() => {
                   setError(null)
                   setAuthMode('register')
                 }}
-                className="font-medium text-stone-800 underline-offset-2 hover:underline dark:text-stone-200 cursor-pointer"
+                className="font-bold text-neutral-900 underline-offset-2 hover:underline dark:text-white cursor-pointer"
               >
                 Create a new vault
               </button>
             </>
           ) : (
             <>
-              Already have a vault?{' '}
+              Already have credentials?{' '}
               <button
                 type="button"
                 onClick={() => {
                   setError(null)
                   setAuthMode('signin')
                 }}
-                className="font-medium text-stone-800 underline-offset-2 hover:underline dark:text-stone-200 cursor-pointer"
+                className="font-bold text-neutral-900 underline-offset-2 hover:underline dark:text-white cursor-pointer"
               >
                 Sign in to vault
               </button>

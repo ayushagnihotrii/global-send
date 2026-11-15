@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --bg-main: #f2f2f7;
+    --bg-main: #f4f4f7;
     --surface: #ffffff;
     --surface-secondary: #f2f2f7;
     --surface-elevated: #ffffff;
@@ -12,7 +12,7 @@
     --fill-quaternary: rgba(118, 118, 128, 0.08);
     --border-subtle: rgba(60, 60, 67, 0.12);
     --border-hover: rgba(60, 60, 67, 0.24);
-    --text-primary: #1c1c1e;
+    --text-primary: #111111;
     --text-secondary: #6c6c70;
     --text-tertiary: #8e8e93;
     --accent: #007aff;
@@ -26,17 +26,17 @@
   }
 
   .dark {
-    --bg-main: #000000;
-    --surface: #1c1c1e;
-    --surface-secondary: #2c2c2e;
-    --surface-elevated: #2c2c2e;
+    --bg-main: #0c0c0e;
+    --surface: #18181b;
+    --surface-secondary: #27272a;
+    --surface-elevated: #27272a;
     --fill-tertiary: rgba(118, 118, 128, 0.24);
     --fill-quaternary: rgba(118, 118, 128, 0.16);
-    --border-subtle: rgba(84, 84, 88, 0.45);
-    --border-hover: rgba(120, 120, 128, 0.65);
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.2);
     --text-primary: #f5f5f7;
-    --text-secondary: #98989d;
-    --text-tertiary: #636366;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
     --accent: #0a84ff;
     --accent-hover: #409cff;
     --accent-subtle: rgba(10, 132, 255, 0.16);
@@ -55,11 +55,50 @@
     background-color: var(--bg-main);
     color: var(--text-primary);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, -system-ui, sans-serif;
-    letter-spacing: -0.011em;
+    letter-spacing: -0.015em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+}
+
+/* Ridiculous Neo-Editorial & Craft Animations */
+@keyframes rd-float-slow {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(-1deg); }
+}
+
+@keyframes rd-float-reverse {
+  0%, 100% { transform: translateY(0px) rotate(3deg); }
+  50% { transform: translateY(-5px) rotate(4deg); }
+}
+
+@keyframes rd-pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.98); }
+}
+
+.rd-sticker-left {
+  animation: rd-float-slow 6s ease-in-out infinite;
+}
+
+.rd-sticker-right {
+  animation: rd-float-reverse 5.5s ease-in-out infinite;
+}
+
+/* Glassmorphism Capsule Nav */
+.rd-capsule-nav {
+  background: rgba(17, 17, 17, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.4);
+}
+
+.dark .rd-capsule-nav {
+  background: rgba(10, 10, 12, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
 }
 
 /* Apple HIG Vibrancy & Material Utilities */
@@ -142,35 +181,13 @@ pre, code {
   font-family: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* LocalSend Design System Utilities */
-@keyframes ls-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.ls-rotating-logo {
-  animation: ls-spin 35s linear infinite;
-}
-
-.ls-gradient-accent {
-  background: linear-gradient(135deg, #006a60 0%, #00a99a 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.dark .ls-gradient-accent {
-  background: linear-gradient(135deg, #82d5c8 0%, #b3fff2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Global Send — single, restrained entrance. */
+/* Subtle entrance */
 @keyframes gs-fade-up {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .gs-fade-up { animation: gs-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.gs-fade-up-delay { animation: gs-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both; }
+.gs-fade-up-delay { animation: gs-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both; }
 @media (prefers-reduced-motion: reduce) {
   .gs-fade-up, .gs-fade-up-delay { animation: none; }
 }
