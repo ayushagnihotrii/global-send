@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { authorizeFileAccess } from '@/lib/db';
-import { getStorageProvider, GoogleDriveStorageProvider } from '@/lib/storage';
+import { getStorageProvider, GoogleDriveStorageProvider, TelegramStorageProvider } from '@/lib/storage';
 import { Readable } from 'stream';
 
 export async function GET(
@@ -53,6 +53,8 @@ export async function GET(
   try {
     const provider = file.storage_key.startsWith('gdrive://')
       ? new GoogleDriveStorageProvider()
+      : file.storage_key.startsWith('telegram://') || file.storage_key.startsWith('tg://')
+      ? new TelegramStorageProvider()
       : getStorageProvider();
 
     const result = await provider.getDownloadStream(file.storage_key, range);

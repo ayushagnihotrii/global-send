@@ -7,6 +7,7 @@ export type { StorageProvider, StorageProviderType } from './types';
 import { LocalStorageProvider } from './local-provider';
 import { CloudflareR2StorageProvider } from './r2-provider';
 import { GoogleDriveStorageProvider } from './google-drive-provider';
+import { TelegramStorageProvider } from './telegram-provider';
 import { getStorageConfig } from '@/lib/env-config';
 
 let cachedProvider: StorageProvider | null = null;
@@ -23,6 +24,8 @@ export function getStorageProvider(): StorageProvider {
 
   if (config.storage.driver === 'google_drive') {
     cachedProvider = new GoogleDriveStorageProvider();
+  } else if (config.storage.driver === 'telegram') {
+    cachedProvider = new TelegramStorageProvider(config.storage.telegram);
   } else if (config.storage.driver === 'r2' && config.storage.r2) {
     cachedProvider = new CloudflareR2StorageProvider(config.storage.r2);
   } else {
@@ -35,12 +38,18 @@ export function getStorageProvider(): StorageProvider {
 /**
  * Smart deletion helper: deletes the file using the appropriate provider based on the storage key format.
  * - Keys starting with 'gdrive://' -> GoogleDriveStorageProvider
+ * - Keys starting with 'telegram://' or 'tg://' -> TelegramStorageProvider
  * - Keys matching S3/local -> active provider
  */
 export async function deleteStorageFile(storageKey: string): Promise<boolean> {
   if (storageKey.startsWith('gdrive://') || storageKey.startsWith('pgblob://')) {
     const driveProvider = new GoogleDriveStorageProvider();
     return driveProvider.deleteFile(storageKey);
+  }
+
+  if (storageKey.startsWith('telegram://') || storageKey.startsWith('tg://')) {
+    const telegramProvider = new TelegramStorageProvider();
+    return telegramProvider.deleteFile(storageKey);
   }
 
   const provider = getStorageProvider();
@@ -52,3 +61,4 @@ export * from './local-provider';
 export * from './r2-provider';
 export * from './google-drive-provider';
 export * from './google-drive-auth';
+export * from './telegram-provider';

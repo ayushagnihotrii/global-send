@@ -10,7 +10,7 @@ export interface DatabaseConfig {
 }
 
 export interface StorageConfig {
-  driver: 'google_drive' | 'r2' | 'local';
+  driver: 'google_drive' | 'r2' | 'local' | 'telegram';
   googleDrive?: {
     clientId: string;
     clientSecret: string;
@@ -21,6 +21,13 @@ export interface StorageConfig {
     accessKeyId: string;
     secretAccessKey: string;
     bucketName: string;
+  };
+  telegram?: {
+    apiId: number;
+    apiHash: string;
+    botToken?: string;
+    sessionString?: string;
+    channelId: string;
   };
   localDir?: string;
 }
@@ -109,19 +116,29 @@ export function validateStorageConfig(env: NodeJS.ProcessEnv = process.env): App
   const r2SecretAccessKey = cleanEnvValue(env.R2_SECRET_ACCESS_KEY);
   const r2BucketName = cleanEnvValue(env.R2_BUCKET_NAME) || 'globalsend';
 
+  const telegramApiId = cleanEnvValue(env.TELEGRAM_API_ID);
+  const telegramApiHash = cleanEnvValue(env.TELEGRAM_API_HASH);
+  const telegramBotToken = cleanEnvValue(env.TELEGRAM_BOT_TOKEN);
+  const telegramSessionString = cleanEnvValue(env.TELEGRAM_SESSION_STRING);
+  const telegramChannelId = cleanEnvValue(env.TELEGRAM_STORAGE_CHANNEL_ID);
+
   let storageConfig: StorageConfig;
 
   // Determine target provider
-  let targetProvider: 'google_drive' | 'r2' | 'local' = 'local';
+  let targetProvider: 'google_drive' | 'r2' | 'local' | 'telegram' = 'local';
   if (requestedProvider === 'google_drive' || requestedProvider === 'gdrive') {
     targetProvider = 'google_drive';
+  } else if (requestedProvider === 'telegram' || requestedProvider === 'tg') {
+    targetProvider = 'telegram';
   } else if (requestedProvider === 'r2') {
     targetProvider = 'r2';
   } else if (requestedProvider === 'local') {
     targetProvider = 'local';
   } else {
     // Auto-detect based on provided credentials
-    if (gdriveClientId && gdriveClientSecret) {
+    if (telegramApiId && telegramApiHash && telegramChannelId) {
+      targetProvider = 'telegram';
+    } else if (gdriveClientId && gdriveClientSecret) {
       targetProvider = 'google_drive';
     } else if (r2AccountId && r2AccessKeyId && r2SecretAccessKey) {
       targetProvider = 'r2';
@@ -133,12 +150,38 @@ export function validateStorageConfig(env: NodeJS.ProcessEnv = process.env): App
   if (isProduction) {
     if (targetProvider === 'local') {
       throw new ConfigurationError(
-        'Production deployment aborted: Local filesystem storage cannot be used in production. Please configure Google Drive (GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET) or Cloudflare R2.',
+        'Production deployment aborted: Local filesystem storage cannot be used in production. Please configure Google Drive (GDRIVE_CLIENT_ID, GDRIVE_CLIENT_SECRET), Cloudflare R2, or Telegram MTProto.',
         ['GDRIVE_CLIENT_ID', 'GDRIVE_CLIENT_SECRET']
       );
     }
 
-    if (targetProvider === 'google_drive') {
+    if (targetProvider === 'telegram') {
+      const missingTgVars: string[] = [];
+      if (!telegramApiId) missingTgVars.push('TELEGRAM_API_ID');
+      if (!telegramApiHash) missingTgVars.push('TELEGRAM_API_HASH');
+      if (!telegramChannelId) missingTgVars.push('TELEGRAM_STORAGE_CHANNEL_ID');
+      if (!telegramBotToken && !telegramSessionString) {
+        missingTgVars.push('TELEGRAM_BOT_TOKEN or TELEGRAM_SESSION_STRING');
+      }
+
+      if (missingTgVars.length > 0) {
+        throw new ConfigurationError(
+          `Production deployment aborted: Telegram MTProto credentials missing (${missingTgVars.join(', ')}). Global Send requires valid MTProto credentials for Telegram storage driver.`,
+          missingTgVars
+        );
+      }
+
+      storageConfig = {
+        driver: 'telegram',
+        telegram: {
+          apiId: parseInt(telegramApiId!, 10),
+          apiHash: telegramApiHash!,
+          botToken: telegramBotToken,
+          sessionString: telegramSessionString,
+          channelId: telegramChannelId!,
+        },
+      };
+    } else if (targetProvider === 'google_drive') {
       const missingDriveVars: string[] = [];
       if (!gdriveClientId) missingDriveVars.push('GDRIVE_CLIENT_ID');
       if (!gdriveClientSecret) missingDriveVars.push('GDRIVE_CLIENT_SECRET');
@@ -184,7 +227,18 @@ export function validateStorageConfig(env: NodeJS.ProcessEnv = process.env): App
     }
   } else {
     // Development or Test mode
-    if (targetProvider === 'google_drive' && gdriveClientId && gdriveClientSecret) {
+    if (targetProvider === 'telegram') {
+      storageConfig = {
+        driver: 'telegram',
+        telegram: {
+          apiId: parseInt(telegramApiId || '0', 10),
+          apiHash: telegramApiHash || '',
+          botToken: telegramBotToken,
+          sessionString: telegramSessionString,
+          channelId: telegramChannelId || '',
+        },
+      };
+    } else if (targetProvider === 'google_drive' && gdriveClientId && gdriveClientSecret) {
       storageConfig = {
         driver: 'google_drive',
         googleDrive: {

@@ -4,7 +4,7 @@
 
 import { Readable } from 'stream';
 
-export type StorageProviderType = 'google_drive' | 'r2' | 'local';
+export type StorageProviderType = 'google_drive' | 'r2' | 'local' | 'telegram';
 
 export interface StorageUploadParams {
   storageKey: string;
