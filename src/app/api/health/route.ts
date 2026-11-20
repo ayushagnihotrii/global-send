@@ -26,15 +26,18 @@ export async function GET(req: NextRequest) {
   }
 
   const payload = {
-    status: health.ok ? 'ok' : 'unhealthy',
+    status: health.ok ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
+    version: '2.0.0',
     database: {
+      status: health.ok ? 'ok' : 'degraded',
       ok: health.ok,
       type: health.type,
       latencyMs: health.latencyMs,
       ...(health.error ? { error: health.error } : {}),
     },
     storage: {
+      status: 'ok',
       mode: storageMode,
     },
     environment: process.env.NODE_ENV || 'development',

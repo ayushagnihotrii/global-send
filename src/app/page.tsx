@@ -28,7 +28,7 @@ const principles = [
     tagColor: 'bg-[#CDFF5D] text-[#111111]',
     bgBox: 'bg-[#FF8559]',
     title: 'Encrypted by default',
-    body: 'Every file is sealed on your device before it reaches any relay. The key never leaves you; the relay sees only ciphertext. Imagine privacy without trusting servers.',
+    body: 'Every file is sealed with AES-256-GCM on your device before it reaches any cloud relay. The key never leaves your browser; our servers see only ciphertext.',
     previewTitle: 'Zero-Knowledge Relay',
     previewBadge: 'Client Cipher',
     icon: Shield,
@@ -36,36 +36,36 @@ const principles = [
   {
     no: '02',
     date: 'OCT 25, 2026',
-    tag: 'EPHEMERAL',
+    tag: 'RETENTION',
     tagColor: 'bg-[#FC6742] text-white',
     bgBox: 'bg-[#38BDF8]',
-    title: 'Ephemeral by design',
-    body: 'Pick a TTL of an hour, a day, or a week. When it lapses, the vault is wiped from every relay and every cache. Zero residual traces left behind.',
-    previewTitle: 'Auto-Disintegration',
-    previewBadge: '1h · 24h · 7d',
+    title: 'Keep as long as you need',
+    body: 'Pick an ephemeral TTL from 1 hour to 30 days, or archive permanently in your private vault. When an ephemeral link lapses, it is wiped from every relay. Zero residual traces.',
+    previewTitle: 'TTL & Permanent Vault',
+    previewBadge: '1h · 24h · 7d · 30d',
     icon: Clock,
   },
   {
     no: '03',
     date: 'OCT 26, 2026',
-    tag: 'NO TRACKING',
+    tag: 'SEND + VAULT',
     tagColor: 'bg-[#C17BF3] text-white',
     bgBox: 'bg-[#A3E635]',
-    title: 'No accounts, ever',
-    body: 'No email, no sign-up, no profile. A username and a private key are the entire identity — and the entire access list. Total anonymity by design.',
-    previewTitle: 'Anonymous Keys',
-    previewBadge: 'Zero Signups',
+    title: 'Frictionless Send & Vault',
+    body: 'Receivers need zero accounts to stream and decrypt. Senders get multi-gigabyte transfers with download limits, plus an optional private encrypted locker for long-term storage.',
+    previewTitle: 'Zero-Account Receiver',
+    previewBadge: 'Instant Stream',
     icon: Zap,
   },
   {
     no: '04',
     date: 'OCT 27, 2026',
-    tag: 'SELF-HOSTED',
+    tag: 'OPEN SOURCE',
     tagColor: 'bg-[#CDFF5D] text-[#111111]',
     bgBox: 'bg-[#FB7185]',
-    title: 'Yours to run',
-    body: 'Open-source and self-hostable. Run your own relay, use the public grid, or move between them. Your keys, your rules, your infrastructure.',
-    previewTitle: 'MIT Mesh Relay',
+    title: 'Yours to audit & run',
+    body: 'Open-source and self-hostable. Decryption keys live strictly in your URL #fragment and never touch server logs. Transparent architecture with zero tracking.',
+    previewTitle: 'E2EE Cloud Relay',
     previewBadge: 'Audit Ready',
     icon: Server,
   },
@@ -74,21 +74,21 @@ const principles = [
 const steps = [
   {
     no: '01',
-    title: 'Drop a file or a note',
-    body: 'Choose a TTL. It is encrypted in your browser with a key only you and your recipient hold.',
+    title: 'Drop your files or notes',
+    body: 'Choose an expiration from 1 hour to 30 days, or save permanently in your Vault. Chunks are encrypted client-side with AES-256-GCM.',
     highlight: 'Instant preview & client seal',
   },
   {
     no: '02',
-    title: 'Share the key',
-    body: 'Send the username and key over any channel you already trust. The link opens from any device.',
-    highlight: 'No registration required',
+    title: 'Share your private link',
+    body: 'Add optional password protection, download limits, and instant QR codes. The recipient downloads directly with zero account required.',
+    highlight: 'No registration required for receiver',
   },
   {
     no: '03',
-    title: 'It opens, then disappears',
-    body: 'Your recipient unlocks it once. When the timer ends, the vault is gone — from every relay, for good.',
-    highlight: 'Zero residual forensic traces',
+    title: 'Stream & decrypt on-the-fly',
+    body: 'Your recipient streams and decrypts the file directly in their browser. Ephemeral transfers disappear when their timer lapses or limit is reached.',
+    highlight: 'Zero server plaintext exposure',
   },
 ]
 
@@ -165,7 +165,7 @@ export default function Home() {
             {/* 1. Eyebrow: Shadow Into Light font */}
             <div className="text-center mb-6">
               <p className="font-eyebrow text-2xl sm:text-3xl tracking-normal">
-                v1.0 · open-source peer relay
+                v2.0 · end-to-end encrypted transfer &amp; vault
               </p>
             </div>
 
@@ -222,7 +222,7 @@ export default function Home() {
 
               {/* Original Paragraph in Satoshi font */}
               <p className="text-center text-sm sm:text-base md:text-[17px] text-[#161616] dark:text-neutral-300 font-normal leading-[1.45] max-w-xl mx-auto">
-                An open-source, end-to-end encrypted vault for files and text. Drop something in, share the key, and it expires on its own. No accounts. No tracking. No third-party clouds.
+                Send any size file privately, and keep it as long as you need. End-to-end encrypted cloud transfer with zero-account guest sending, plus an encrypted permanent vault.
               </p>
 
               {/* Pixel Sunglasses Sticker */}
@@ -270,7 +270,7 @@ export default function Home() {
                   Built on four ideas.
                 </h2>
                 <p className="text-base sm:text-lg text-[#161616] dark:text-neutral-400 font-normal leading-[1.4] max-w-xl">
-                  Global Send is a relay, not a storage company. The grid moves your bytes; your keys never leave your hands.
+                  Global Send is an end-to-end encrypted transfer engine and permanent private vault. Your bytes are sealed on your device; keys never leave your hands.
                 </p>
               </div>
 
@@ -448,8 +448,8 @@ export default function Home() {
             <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { k: '256-BIT', v: 'CLIENT-SIDE CIPHER' },
-                { k: '0', v: 'ACCOUNTS REQUIRED' },
-                { k: '250 MB', v: 'PER VAULT FREE' },
+                { k: '10 GB+', v: 'MULTI-GB STREAMING' },
+                { k: 'ZERO-KNOWLEDGE', v: 'KEY IN #FRAGMENT' },
                 { k: 'MIT', v: 'LICENSED, AUDITABLE' },
               ].map((s) => (
                 <div

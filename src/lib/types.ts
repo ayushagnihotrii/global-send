@@ -178,3 +178,20 @@ export interface ConversationSummary {
   lastMessagePreview?: string | null;
   createdAt: string;
 }
+
+export type ReportReason = 'copyright' | 'malware' | 'illegal' | 'harassment' | 'other';
+export type ReportStatus = 'pending' | 'reviewed' | 'resolved' | 'dismissed';
+
+export interface AbuseReport {
+  id: string;
+  targetType: 'share' | 'file' | 'user';
+  targetId: string;
+  reason: ReportReason;
+  details?: string | null;
+  reporterEmail?: string | null;
+  reporterIpMasked?: string | null;
+  status: ReportStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+

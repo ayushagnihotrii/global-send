@@ -19,11 +19,11 @@ function GithubIcon({ className }: { className?: string }) {
 }
 
 const footerLinks = [
-  { label: 'Documentation', href: '#how' },
-  { label: 'Security Model', href: '#security' },
-  { label: 'Privacy Manifesto', href: '#principles' },
+  { label: 'Terms', href: '/terms' },
+  { label: 'Privacy', href: '/privacy' },
+  { label: 'Report Abuse', href: '/report' },
   { label: 'Status & Uptime', href: '/api/health' },
-  { label: 'GitHub Repository', href: 'https://github.com/ayushagnihotrii/global-send' },
+  { label: 'GitHub', href: 'https://github.com/ayushagnihotrii/global-send' },
 ]
 
 export function SiteFooter() {
@@ -34,7 +34,7 @@ export function SiteFooter() {
         <div className="mx-auto max-w-6xl flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
           <div>
             <span className="inline-block rounded-full bg-[#CCFF00] px-3 py-1 font-mono text-[11px] font-black uppercase tracking-widest text-neutral-950 mb-3">
-              ZERO RETENTION
+              END-TO-END ENCRYPTED
             </span>
             <h2 className="text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tighter leading-none">
               RIDICULOUSLY <br />
@@ -42,7 +42,7 @@ export function SiteFooter() {
             </h2>
           </div>
           <p className="max-w-xs text-sm text-neutral-400 font-medium leading-relaxed">
-            Global Send is a temporary peer relay. Zero database tracking, no accounts, and ephemeral by architecture.
+            Send any size file privately, and keep it as long as you need. End-to-end encrypted cloud transfer &amp; private vault.
           </p>
         </div>
       </div>
@@ -56,7 +56,7 @@ export function SiteFooter() {
             </span>
           </div>
           <p className="max-w-xs font-mono text-[11px] uppercase tracking-wider text-neutral-400">
-            Open-source · end-to-end encrypted · zero-knowledge relay
+            Open-source · end-to-end encrypted · zero-knowledge cloud transfer
           </p>
         </div>
 

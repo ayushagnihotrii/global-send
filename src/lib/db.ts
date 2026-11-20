@@ -15,6 +15,7 @@ import {
   SharedAttachmentInfo,
   ShareLink,
   ShareAccessLog,
+  AbuseReport,
 } from './types';
 import { getStorageConfig } from './env-config';
 import { SITE_CONFIG } from '@/config/site';
@@ -331,6 +332,19 @@ export async function initDb(): Promise<void> {
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (share_id) REFERENCES shares(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS reports (
+        id TEXT PRIMARY KEY,
+        target_type TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        details TEXT DEFAULT NULL,
+        reporter_email TEXT DEFAULT NULL,
+        reporter_ip_masked TEXT DEFAULT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
     `);
 
     // Ensure columns exist if upgrading an older SQLite file
@@ -544,6 +558,23 @@ export async function initDb(): Promise<void> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_share_access_logs_share ON share_access_logs(share_id);
+
+        CREATE TABLE IF NOT EXISTS reports (
+          id TEXT PRIMARY KEY,
+          target_type VARCHAR(20) NOT NULL,
+          target_id TEXT NOT NULL,
+          reason VARCHAR(50) NOT NULL,
+          details TEXT DEFAULT NULL,
+          reporter_email TEXT DEFAULT NULL,
+          reporter_ip_masked TEXT DEFAULT NULL,
+          status VARCHAR(20) NOT NULL DEFAULT 'pending',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+        CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+        CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at DESC);
       `);
     } catch (e: any) {
       console.warn('[Global Send DB Schema Ensure]:', e.message);
@@ -3081,4 +3112,114 @@ export async function getShareAccessLogs(shareId: string, userId?: string): Prom
     userAgent: r.user_agent,
     createdAt: r.created_at,
   }));
+}
+
+// ============================================================================
+// TRUST & SAFETY: ABUSE REPORTS
+// ============================================================================
+
+export async function createReport(params: {
+  id?: string;
+  targetType: 'share' | 'file' | 'user';
+  targetId: string;
+  reason: 'copyright' | 'malware' | 'illegal' | 'harassment' | 'other';
+  details?: string | null;
+  reporterEmail?: string | null;
+  reporterIp?: string | null;
+}): Promise<AbuseReport> {
+  const id = params.id || crypto.randomUUID();
+  const nowIso = new Date().toISOString();
+
+  let ipMasked: string | null = null;
+  if (params.reporterIp) {
+    const parts = params.reporterIp.split('.');
+    if (parts.length === 4) {
+      ipMasked = `${parts[0]}.${parts[1]}.${parts[2]}.xxx`;
+    } else {
+      ipMasked = 'masked-ip';
+    }
+  }
+
+  await execute(
+    `INSERT INTO reports (
+      id, target_type, target_id, reason, details, reporter_email,
+      reporter_ip_masked, status, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $8)`,
+    [
+      id,
+      params.targetType,
+      params.targetId.trim(),
+      params.reason,
+      params.details?.trim() || null,
+      params.reporterEmail?.trim() || null,
+      ipMasked,
+      nowIso,
+    ]
+  );
+
+  const report = await getReportById(id);
+  if (!report) throw new Error('Failed to create report');
+  return report;
+}
+
+export async function getReportById(id: string): Promise<AbuseReport | null> {
+  const rows = await query(`SELECT * FROM reports WHERE id = $1 LIMIT 1`, [id]);
+  if (!rows[0]) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    targetType: r.target_type,
+    targetId: r.target_id,
+    reason: r.reason,
+    details: r.details || null,
+    reporterEmail: r.reporter_email || null,
+    reporterIpMasked: r.reporter_ip_masked || null,
+    status: r.status,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function listReports(options?: {
+  status?: string;
+  limit?: number;
+}): Promise<AbuseReport[]> {
+  const limit = options?.limit || 100;
+  let sql = `SELECT * FROM reports`;
+  const params: any[] = [];
+
+  if (options?.status) {
+    sql += ` WHERE status = $1`;
+    params.push(options.status);
+  }
+
+  sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+  params.push(limit);
+
+  const rows = await query(sql, params);
+  return rows.map((r) => ({
+    id: r.id,
+    targetType: r.target_type,
+    targetId: r.target_id,
+    reason: r.reason,
+    details: r.details || null,
+    reporterEmail: r.reporter_email || null,
+    reporterIpMasked: r.reporter_ip_masked || null,
+    status: r.status,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function updateReportStatus(
+  id: string,
+  status: 'pending' | 'reviewed' | 'resolved' | 'dismissed'
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  await execute(`UPDATE reports SET status = $1, updated_at = $2 WHERE id = $3`, [
+    status,
+    nowIso,
+    id,
+  ]);
+  return true;
 }

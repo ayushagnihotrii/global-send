@@ -100,5 +100,23 @@ The database maintains full backward compatibility while introducing:
   - Public Receiver Page (`src/app/s/[id]/page.tsx`): Zero-account recipient experience with URL hash key extraction (`#key=...`), password gate, real-time download streaming with speed indicator, and client-side WebCrypto AES-GCM decryption.
   - Verification Suite: 8 automated tests verifying open links, password protection, burn-after-reading limits, revocation, expiration, and privacy-preserving access logs (`test_phase3_shares_access.mjs`).
 
-- **Phase 4 [NEXT]:** Trust & safety reporting, rate limiting, legal pages (Terms/Privacy), and honest landing page positioning.
-- **Phase 5:** In-browser media previews/streaming and PWA share-target integration.
+- **Phase 4 [COMPLETED]:**
+  - Abuse Reporting & Trust/Safety Pipeline:
+    - Database migration `007_trust_safety_reports.sql` (`reports` table) with target classification (share, file, user) and reason taxonomies (copyright/DMCA, malware, illegal, harassment).
+    - `POST /api/reports`: Public rate-limited report submission endpoint with automated URL parsing and IP masking.
+    - `GET /api/reports`: Admin report management endpoint with status filtering (`pending`, `reviewed`, `resolved`, `dismissed`).
+    - Dedicated `/report` page (`src/app/report/page.tsx`) with zero-tolerance policy declaration, clean submission form, and reference tracking.
+  - Rate Limiting Engine (`rate-limit.ts`):
+    - Sliding-window in-memory rate limiter with periodic unref timers and standard headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`).
+  - Production Health Status Endpoint (`GET /api/health`):
+    - Real database latency ping (`SELECT 1`), storage provider driver detection, server uptime metrics, and environment reporting.
+  - Legal & Governance Pages:
+    - Terms of Service (`/terms`): Acceptable Use Policy, key custody disclaimer, DMCA procedures, and liability disclaimers in Apple Notes theme.
+    - Privacy Policy (`/privacy`): Zero-knowledge cryptographic guarantees, explanation of URL `#fragment` key mechanics, masked IP auditing, and automatic data purging.
+  - Honest Landing Page Copy & Positioning:
+    - Updated `src/app/page.tsx` and `src/components/site-footer.tsx` to honestly position Global Send: "Send any size file privately, and keep it as long as you need."
+    - Removed false claims ("no accounts ever", "P2P direct", "no third party clouds"); clearly articulated the architecture as end-to-end encrypted cloud transfer with zero-account guest send and encrypted permanent vault.
+    - Updated stats bento: 10 GB+ multi-gigabyte streaming, 256-bit client-side cipher, and zero-knowledge fragment keys.
+  - Verification Suite: 5 automated tests verifying report creation, privacy masking, lifecycle status updates, and sliding-window rate limiting (`test_phase4_trust_safety.mjs`).
+
+- **Phase 5 [NEXT]:** In-browser media previews/streaming, client-side thumbnail generation (keeping E2EE), and PWA share-target integration.

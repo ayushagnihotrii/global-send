@@ -16,7 +16,8 @@
     "test:phase1": "npx tsx test_phase1_resumable.mjs",
     "test:phase2": "npx tsx test_phase2_folders_trash.mjs",
     "test:phase3": "npx tsx test_phase3_shares_access.mjs",
-    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs && npx tsx test_phase2_folders_trash.mjs && npx tsx test_phase3_shares_access.mjs"
+    "test:phase4": "npx tsx test_phase4_trust_safety.mjs",
+    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs && npx tsx test_phase2_folders_trash.mjs && npx tsx test_phase3_shares_access.mjs && npx tsx test_phase4_trust_safety.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1155.0",
