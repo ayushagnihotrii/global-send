@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -67,7 +67,7 @@ function getFileCategoryIcon(mimeType: string, type: string) {
   return FileIcon;
 }
 
-export default function ShareReceiverPage() {
+function ShareReceiverContent() {
   const params = useParams();
   const shareId = params?.id as string;
 
@@ -544,5 +544,22 @@ export default function ShareReceiverPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ShareReceiverPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center p-6">
+          <div className="p-8 rounded-[28px] bg-[#18181B] border-2 border-white/10 text-center space-y-4">
+            <RefreshCw className="w-8 h-8 text-[#0071e3] animate-spin mx-auto" />
+            <p className="text-sm font-mono text-neutral-400">Loading share...</p>
+          </div>
+        </div>
+      }
+    >
+      <ShareReceiverContent />
+    </Suspense>
   );
 }
