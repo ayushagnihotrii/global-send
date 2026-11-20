@@ -112,6 +112,29 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
       url.searchParams.delete('gdrive_error');
       window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
     }
+
+    const pwaStagedId = url.searchParams.get('pwa_staged');
+    if (pwaStagedId) {
+      url.searchParams.delete('pwa_staged');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+      fetch(`/api/pwa-stash/${pwaStagedId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.entry?.files?.length) {
+            const files: File[] = data.entry.files.map((f: any) => {
+              const binary = atob(f.dataBase64);
+              const bytes = new Uint8Array(binary.length);
+              for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+              }
+              return new File([bytes], f.name, { type: f.type });
+            });
+            setExternalDroppedFiles(files);
+            toast.info(`Received ${files.length} shared file${files.length > 1 ? 's' : ''}`);
+          }
+        })
+        .catch((e) => console.error('Failed to load PWA shared files:', e));
+    }
   }, [toast]);
 
   // Fetch folders for current parent
@@ -873,6 +896,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         onClose={() => setSelectedMediaItem(null)}
         onDelete={(item) => handleDeleteItem(item, false)}
         onToggleFavourite={handleToggleFavourite}
+        onShare={(item) => setSharingItem(item)}
       />
 
       {/* 5.5. SECURE SHARE MODAL */}

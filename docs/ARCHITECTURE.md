@@ -119,4 +119,19 @@ The database maintains full backward compatibility while introducing:
     - Updated stats bento: 10 GB+ multi-gigabyte streaming, 256-bit client-side cipher, and zero-knowledge fragment keys.
   - Verification Suite: 5 automated tests verifying report creation, privacy masking, lifecycle status updates, and sliding-window rate limiting (`test_phase4_trust_safety.mjs`).
 
-- **Phase 5 [NEXT]:** In-browser media previews/streaming, client-side thumbnail generation (keeping E2EE), and PWA share-target integration.
+- **Phase 5 [COMPLETED]:**
+  - In-Browser Media Previews & Streaming:
+    - High-resolution image viewer with progressive zoom in/out controls (`MediaViewerModal.tsx`).
+    - Native HTML5 video player supporting HTTP Range requests (`Accept-Ranges: bytes`) for smooth seek scrubbing across multi-gigabyte 4K/1080p video files without loading entire files into memory.
+    - Dedicated audio player for MP3, WAV, FLAC, AAC, and M4A with animated waveform visuals and play/pause controls.
+    - Enhanced video item card previews with hover play badge overlays and video frame snapshots.
+  - Client-Side Thumbnail Engine (`src/lib/thumbnail.ts`):
+    - Offscreen `<canvas>` image scaler and offscreen `<video>` frame capturer for generating compact thumbnails (WebP/JPEG, ~20-30 KB) strictly on the client.
+    - Preserves zero-knowledge privacy: unencrypted frames never touch any server.
+  - PWA Share-Sheet Target Integration:
+    - Web App Manifest (`src/app/manifest.ts`) updated with `share_target` (action `/share-target`, method `POST`, multipart files).
+    - `POST /share-target`: Server handler receiving files shared directly from mobile OS share-sheets (iOS, Android, Windows, macOS).
+    - In-Memory Staging Cache (`src/lib/pwa-stash.ts`): Temporarily stages shared files for automatic client consumption.
+    - `GET /api/pwa-stash/[id]`: Secure single-use endpoint that reconstructs files and loads them directly into QuickComposer on the dashboard.
+    - Service Worker (`public/sw.js`) upgraded to `globalsend-pwa-v2` for offline shell caching and mobile PWA installability.
+  - Verification Suite: 4 automated tests verifying PWA share target manifest, single-use stash lifecycle, audio/video media classification, and thumbnail engine exports (`test_phase5_previews_pwa.mjs`).

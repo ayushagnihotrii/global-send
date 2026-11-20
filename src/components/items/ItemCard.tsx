@@ -17,6 +17,8 @@ import {
   Clock,
   Share2,
   FolderInput,
+  Music,
+  Play,
 } from 'lucide-react';
 import { Item } from '@/lib/types';
 import { cn, formatBytes, formatDate } from '@/lib/utils';
@@ -259,11 +261,51 @@ export function ItemCard({
         )}
 
         {item.type === 'video' && item.file && (
-          <div className="relative w-full h-28 rounded-2xl overflow-hidden bg-[#111111] flex items-center justify-center text-white mb-3.5">
-            <Film className="w-6 h-6 text-white/75" />
-            <span className="absolute bottom-2 right-2 text-[10px] font-mono font-bold uppercase tracking-wider tabular-nums px-2 py-0.5 rounded-full bg-black/75">
+          <div
+            onClick={() => onOpenDetail(item)}
+            className="group/video relative w-full h-32 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center cursor-pointer shadow-xs"
+          >
+            {item.file.downloadUrl && !expInfo.isExpired ? (
+              <video
+                src={`${item.file.downloadUrl}#t=0.5`}
+                preload="metadata"
+                muted
+                playsInline
+                className="w-full h-full object-cover opacity-80 group-hover/video:opacity-95 transition-opacity"
+              />
+            ) : (
+              <Film className="w-8 h-8 text-neutral-500" />
+            )}
+            <div className="absolute inset-0 bg-black/25 group-hover/video:bg-black/10 transition-colors flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-white/90 text-black flex items-center justify-center shadow-md group-hover/video:scale-110 transition-transform">
+                <Play className="w-4 h-4 fill-current ml-0.5" />
+              </div>
+            </div>
+            <span className="absolute bottom-2 right-2 text-[10px] font-mono font-bold uppercase tracking-wider tabular-nums px-2 py-0.5 rounded-full bg-black/75 text-white">
               {formatBytes(item.file.fileSize)}
             </span>
+          </div>
+        )}
+
+        {item.type === 'file' && item.file && (item.file.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file.originalFilename)) && (
+          <div
+            onClick={() => onOpenDetail(item)}
+            className="group/audio relative w-full p-3.5 rounded-2xl bg-neutral-900/60 dark:bg-white/5 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center gap-3 cursor-pointer hover:border-[#CDFF5D]/40 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#CDFF5D]/10 border border-[#CDFF5D]/20 text-[#CDFF5D] flex items-center justify-center shrink-0 group-hover/audio:scale-105 transition-transform">
+              <Music className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-white truncate">
+                {item.file.sanitizedFilename || item.file.originalFilename}
+              </p>
+              <p className="text-[10px] font-mono text-neutral-400">
+                {formatBytes(item.file.fileSize)} • Audio Track
+              </p>
+            </div>
+            <div className="w-7 h-7 rounded-full bg-white/10 text-white flex items-center justify-center shrink-0">
+              <Play className="w-3 h-3 fill-current ml-0.5" />
+            </div>
           </div>
         )}
 

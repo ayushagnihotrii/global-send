@@ -1,13 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Download,
   Star,
   Trash2,
   ZoomIn,
   ZoomOut,
+  RotateCcw,
   FileCode,
+  Music,
+  Share2,
+  Volume2,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +26,7 @@ interface MediaViewerModalProps {
   onClose: () => void;
   onDelete: (item: Item) => void;
   onToggleFavourite: (item: Item) => void;
+  onShare?: (item: Item) => void;
 }
 
 export function MediaViewerModal({
@@ -28,14 +35,21 @@ export function MediaViewerModal({
   onClose,
   onDelete,
   onToggleFavourite,
+  onShare,
 }: MediaViewerModalProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   if (!item || !item.file) return null;
 
   const downloadUrl = item.file.downloadUrl || '#';
   const isImage = item.type === 'image';
   const isVideo = item.type === 'video';
+  const isAudio =
+    (item.file.mimeType && item.file.mimeType.startsWith('audio/')) ||
+    /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file.originalFilename);
+
+  const handleResetZoom = () => setZoomLevel(1);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={item.title} maxWidth="4xl">
@@ -59,9 +73,14 @@ export function MediaViewerModal({
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </Button>
-                <span className="text-[12px] font-mono text-[#6c6c70] dark:text-[#98989d] px-1 tabular-nums">
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="text-[12px] font-mono text-[#6c6c70] dark:text-[#98989d] px-1 tabular-nums hover:text-black dark:hover:text-white"
+                  title="Reset Zoom"
+                >
                   {Math.round(zoomLevel * 100)}%
-                </span>
+                </button>
                 <Button
                   type="button"
                   variant="outline"
@@ -86,6 +105,21 @@ export function MediaViewerModal({
                 className={`w-3.5 h-3.5 ${item.isFavourite ? 'fill-[#ffcc00] text-[#ffcc00]' : ''}`}
               />
             </Button>
+
+            {onShare && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onShare(item);
+                  onClose();
+                }}
+                title="Create Share Link"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
 
             <a
               href={downloadUrl}
@@ -132,10 +166,33 @@ export function MediaViewerModal({
               controls
               playsInline
               preload="metadata"
-              className="max-h-[58vh] max-w-full rounded-[10px] bg-black"
+              className="max-h-[58vh] max-w-full rounded-[10px] bg-black shadow-lg"
             >
               Your browser does not support HTML5 video playback.
             </video>
+          ) : isAudio ? (
+            <div className="w-full max-w-md p-8 flex flex-col items-center justify-center space-y-5 text-center">
+              <div className="w-20 h-20 rounded-full bg-[#CDFF5D]/10 border border-[#CDFF5D]/20 text-[#CDFF5D] flex items-center justify-center shadow-lg animate-pulse">
+                <Music className="w-10 h-10 stroke-[2.2]" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-neutral-900 dark:text-white truncate max-w-xs">
+                  {item.file.originalFilename}
+                </h4>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
+                  {formatBytes(item.file.fileSize)} • Audio Stream
+                </p>
+              </div>
+              <audio
+                ref={audioRef}
+                src={downloadUrl}
+                controls
+                preload="metadata"
+                className="w-full h-12 rounded-xl focus:outline-none"
+              >
+                Your browser does not support HTML5 audio playback.
+              </audio>
+            </div>
           ) : (
             <div className="text-center p-8 space-y-3.5">
               <div className="w-16 h-16 rounded-[16px] bg-[#007aff]/10 dark:bg-[#0a84ff]/18 text-[#007aff] dark:text-[#0a84ff] flex items-center justify-center mx-auto">
