@@ -13,7 +13,7 @@ import {
 
 export interface ChunkUploadOptions {
   file: File;
-  chunkSize?: number; // 16 MB default
+  chunkSize?: number; // 4 MB default (fully compatible with Vercel's 4.5 MB payload limit)
   sessionId?: string;
   itemId?: string;
   expirationSeconds?: number;
@@ -43,8 +43,9 @@ export class ResumableChunkUploader {
   private isAborted = false;
   private activeUploadSessionUrl?: string;
 
-  constructor(file: File, chunkSize = 16 * 1024 * 1024) {
+  constructor(file: File, chunkSize = 4 * 1024 * 1024) {
     this.file = file;
+    // Default to 4 MB to stay well below Vercel's 4.5 MB Serverless Function payload limit
     this.chunkSize = chunkSize;
   }
 
@@ -61,8 +62,11 @@ export class ResumableChunkUploader {
   }
 
   public async start(options: ChunkUploadOptions): Promise<ChunkUploadResult> {
+    if (options.chunkSize) {
+      this.chunkSize = options.chunkSize;
+    }
+
     const totalBytes = this.file.size;
-    const totalChunks = Math.max(1, Math.ceil(totalBytes / this.chunkSize));
 
     // 1. Generate per-file AES-GCM key and base IV
     const fileKey = await generateFileKey();
@@ -97,6 +101,13 @@ export class ResumableChunkUploader {
     const sessionData = await initRes.json();
     const sessionId = sessionData.sessionId;
     const itemId = sessionData.itemId;
+
+    if (sessionData.chunkSize && !options.chunkSize) {
+      // Adopt backend recommended chunk size if bounded
+      this.chunkSize = Math.min(this.chunkSize, sessionData.chunkSize);
+    }
+
+    const totalChunks = Math.max(1, Math.ceil(totalBytes / this.chunkSize));
 
     // 3. Upload chunks sequentially or with retry
     let bytesUploaded = 0;
