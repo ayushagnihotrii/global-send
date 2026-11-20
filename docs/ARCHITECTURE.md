@@ -1,0 +1,75 @@
+# Global Send Architecture Specification (v2 Storage & Vault)
+
+## 1. Overview & Vision
+Global Send (`gsend.in`) is an end-to-end encrypted file sharing and permanent private storage locker.
+It combines:
+1. **Send Mode (Zero-Account):** Frictionless transfer of massive files (up to 10 GB+) with client-side encryption and key in `#fragment`.
+2. **Vault Mode (Account-Backed):** Long-term private cloud locker with folders, media player, trash with 30-day restore, and configurable or permanent retention (`expires_at = null`).
+
+---
+
+## 2. Design System & Aesthetics
+Global Send adheres to Apple-inspired minimalist design principles:
+- **Typography:** SF Pro Display / SF Pro Text (`-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto`) with SF Mono for code/technical identifiers.
+- **Color Tokens:**
+  - Accent: `#0071e3` (System Apple Blue)
+  - Dark Surface: `#0a0a0c`, `#141416`, `#1c1c1e`
+  - Border System: `rgba(255, 255, 255, 0.08)` to `0.12`
+  - Subtle micro-interactions, 8pt spatial grid, rounded 16px/24px cards.
+- **Design Rule:** The current visual styling of the site is strictly preserved as the master template. New capabilities (Send/Vault switch, folders, storage meters, streaming players) integrate seamlessly into the existing layout without disrupting the clean UI.
+
+---
+
+## 3. Storage Architecture: Telegram MTProto Multi-Part Router
+To allow free, high-capacity, zero-egress storage for massive files without high cloud bills, Global Send uses a **Telegram MTProto Multi-Part Router** as a primary storage driver:
+- **Direct MTProto Protocol:** Connects to Telegram's binary network layer over TCP/WebSocket using GramJS (`telegram`), bypassing standard 50 MB HTTP Bot limits.
+- **Chunk Slicing (1.9 GB Threshold):** Files exceeding MTProto's 2,000,000,000-byte cap are sliced into 1.9 GB parts.
+- **Stateless Manifest Keys:** Storage keys self-contain all channel, part message IDs, and byte spans:
+  ```text
+  telegram://manifest?channel=-100xxx&parts=101:1992294400,102:150000000&total=2142294400&name=video.mp4&mime=video%2Fmp4
+  ```
+- **Virtual Concatenated Streaming:** When downloading, parts stream sequentially via Node.js `Readable` generator streams with backpressure. The browser receives a single contiguous file.
+- **Dynamic HTTP Range Scrubbing:** When seeking in a 4K video, the engine calculates the intersecting part and requests only the exact byte offset from Telegram.
+- **Atomic Deletion:** During TTL auto-disintegration or manual purge, all part messages are deleted from the Telegram channel in a single call.
+
+---
+
+## 4. Bypassing Vercel Serverless Limits
+Vercel serverless functions enforce a **4.5 MB request body limit** and a **60s timeout**. To prevent `FUNCTION_PAYLOAD_TOO_LARGE` errors:
+1. **Next.js on Vercel** serves UI, authentication, database transactions, access control, and generates signed upload session tokens.
+2. File chunks (16 MB – 32 MB) are encrypted directly in the client's browser using a Web Worker.
+3. Chunks stream directly to storage or via a lightweight streaming worker sidecar (`stream.gsend.in`), bypassing Vercel execution limits entirely.
+4. During local development, the Next.js API handles direct chunk streams seamlessly.
+
+---
+
+## 5. Client-Side Cryptography (Zero-Knowledge E2EE)
+- **Algorithm:** AES-256-GCM authenticated encryption using WebCrypto API.
+- **Key Generation:** A unique 256-bit symmetric key is generated per file (`crypto.subtle.generateKey`).
+- **Send Mode:** The decryption key is encoded into the URL hash fragment:
+  ```text
+  https://gsend.in/s/[shareId]#key=[base64urlKey]
+  ```
+  The hash fragment is never sent to the server in HTTP request headers.
+- **Vault Mode:** The per-file key is encrypted (wrapped) using the user's master vault key derived from their private login key via Argon2id / PBKDF2.
+
+---
+
+## 6. Database Schema Evolution
+The database maintains full backward compatibility while introducing:
+- `quotas`: User storage usage, tier tracking, and file size ceilings.
+- `spaces`: Organization spaces (Personal Vault, Project Spaces).
+- `files`: Unified file model with folder hierarchies, client encryption flags, and nullable `expires_at` (null = permanent).
+- `file_chunks`: Multi-part resumable upload session tracking.
+- `shares`: Public Send links with password protection, download limits, and expiry dates.
+- `access_logs`: Sender audit trail for link downloads.
+- `reports`: Trust & Safety abuse reporting mechanism.
+
+---
+
+## 7. Delivery Roadmap
+- **Phase 1:** StorageProvider abstraction, direct chunked resumable upload, streaming download, raised limits, and resume tests.
+- **Phase 2:** Account quotas, storage meter, Vault folders, and 30-day trash lifecycle.
+- **Phase 3:** Send link controls (password, download limits, revoke), access logs, and background expiry jobs.
+- **Phase 4:** Trust & safety reporting, rate limiting, legal pages, and updated messaging.
+- **Phase 5:** In-browser media previews/streaming and PWA share-target integration.

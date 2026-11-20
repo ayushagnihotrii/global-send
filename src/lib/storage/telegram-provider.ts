@@ -216,7 +216,7 @@ export class TelegramStorageProvider implements StorageProvider {
         const start = i * partSize;
         const end = Math.min((i + 1) * partSize, totalBytes);
         const slice = params.buffer.subarray(start, end);
-        const mockMsgId = 10000 + i + Math.floor(Math.random() * 1000);
+        const mockMsgId = 100000 + i;
         store.set(`${channelId}:${mockMsgId}`, {
           buffer: slice,
           mimeType: params.mimeType,

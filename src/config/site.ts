@@ -61,13 +61,13 @@ export const SITE_CONFIG = {
   tagline: 'Private temporary cloud vault & encrypted messenger.',
   description:
     'Save files, notes, questions, and links with automatic expiration, and share items privately with other Global Send users.',
-  maxUploadSizeBytes: Number(process.env.MAX_UPLOAD_SIZE_BYTES) || 250 * 1024 * 1024, // 250 MiB default per file
+  maxUploadSizeBytes: Number(process.env.MAX_UPLOAD_SIZE_BYTES) || 10 * 1024 * 1024 * 1024, // 10 GiB per file default
   maxAvatarSizeBytes: 100 * 1024, // Strict 100 KiB (102,400 bytes) maximum for profile pictures
   allowedAvatarMimeTypes: ['image/jpeg', 'image/png', 'image/webp'] as const,
   defaultUserStorageLimitBytes:
-    Number(process.env.USER_STORAGE_LIMIT_BYTES) || 2 * 1024 * 1024 * 1024, // 2 GiB per user default
+    Number(process.env.USER_STORAGE_LIMIT_BYTES) || 15 * 1024 * 1024 * 1024, // 15 GiB per user default
   globalStorageLimitBytes:
-    Number(process.env.GLOBAL_STORAGE_LIMIT_BYTES) || 15 * 1024 * 1024 * 1024, // 15 GiB shared Google Drive pool
+    Number(process.env.GLOBAL_STORAGE_LIMIT_BYTES) || 100 * 1024 * 1024 * 1024 * 1024, // 100 TiB Telegram/Cloud storage pool
   storageSafetyReserveBytes:
     Number(process.env.STORAGE_SAFETY_RESERVE_BYTES) || 256 * 1024 * 1024, // 256 MiB safety buffer
   defaultExpirationSeconds: 86400, // 24 hours default
