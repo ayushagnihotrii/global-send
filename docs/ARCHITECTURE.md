@@ -85,6 +85,20 @@ The database maintains full backward compatibility while introducing:
   - Storage Quota & Meter: Dynamic storage usage accounting (`/api/user/storage`), sleek Apple-style progress bar in `DesktopSidebar`, and quota checking on upload.
   - Verification Suite: 14 new automated tests covering all folder, trash, permanent retention, and quota requirements (`test_phase2_folders_trash.mjs`).
 
-- **Phase 3 [NEXT]:** Send link controls (password, download limits, revoke), access logs, and background expiry jobs.
-- **Phase 4:** Trust & safety reporting, rate limiting, legal pages, and updated messaging.
+- **Phase 3 [COMPLETED]:**
+  - Send Link Controls: Granular expiration presets (1h, 24h, 7d, 30d), password protection using salted PBKDF2 (10,000 rounds), and download limit controls (Unlimited, 1-read burn-after-reading, 5, 10).
+  - Public Share Endpoints:
+    - `POST /api/shares`: Create secure share link with custom expiration, password, and download limit.
+    - `GET /api/shares`: List active user shares.
+    - `GET /api/shares/[id]`: Retrieve public link metadata without exposing password hashes.
+    - `DELETE /api/shares/[id]`: Sender-authorized instantaneous revocation.
+    - `POST /api/shares/[id]/access`: Password challenge verification before granting download authorization.
+    - `GET /api/shares/[id]/download`: Chunked HTTP streaming download with range seeking, download counter decrementing, and automatic limit enforcement.
+    - `GET /api/shares/[id]/logs`: Access logs endpoint for sender audit trail.
+  - Access Logging & IP Masking: Automatic recording of downloads with privacy-preserving IP masking (`192.168.1.xxx` / `masked-ip`) and user agent strings.
+  - Share Modal Component (`ShareModal.tsx`): Neo-Editorial modal with link generator, copy link feedback, dynamic high-res SVG QR code generator, live usage counters, collapsible access logs, and revocation controls.
+  - Public Receiver Page (`src/app/s/[id]/page.tsx`): Zero-account recipient experience with URL hash key extraction (`#key=...`), password gate, real-time download streaming with speed indicator, and client-side WebCrypto AES-GCM decryption.
+  - Verification Suite: 8 automated tests verifying open links, password protection, burn-after-reading limits, revocation, expiration, and privacy-preserving access logs (`test_phase3_shares_access.mjs`).
+
+- **Phase 4 [NEXT]:** Trust & safety reporting, rate limiting, legal pages (Terms/Privacy), and honest landing page positioning.
 - **Phase 5:** In-browser media previews/streaming and PWA share-target integration.

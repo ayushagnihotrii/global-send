@@ -15,7 +15,8 @@
     "test:crypto": "npx tsx test_crypto.mjs",
     "test:phase1": "npx tsx test_phase1_resumable.mjs",
     "test:phase2": "npx tsx test_phase2_folders_trash.mjs",
-    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs && npx tsx test_phase2_folders_trash.mjs"
+    "test:phase3": "npx tsx test_phase3_shares_access.mjs",
+    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs && npx tsx test_phase2_folders_trash.mjs && npx tsx test_phase3_shares_access.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1155.0",
@@ -31,6 +32,7 @@
     "next": "16.4.2",
     "next-themes": "^0.4.6",
     "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwind-merge": "^3.7.0",
@@ -40,6 +42,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

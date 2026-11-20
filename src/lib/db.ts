@@ -13,6 +13,8 @@ import {
   ConversationSummary,
   ChatMessage,
   SharedAttachmentInfo,
+  ShareLink,
+  ShareAccessLog,
 } from './types';
 import { getStorageConfig } from './env-config';
 import { SITE_CONFIG } from '@/config/site';
@@ -304,6 +306,31 @@ export async function initDb(): Promise<void> {
         FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS shares (
+        id TEXT PRIMARY KEY,
+        user_id TEXT DEFAULT NULL,
+        item_id TEXT NOT NULL,
+        password_hash TEXT DEFAULT NULL,
+        max_downloads INTEGER DEFAULT NULL,
+        download_count INTEGER DEFAULT 0,
+        expires_at TEXT NOT NULL,
+        revoked_at TEXT DEFAULT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS share_access_logs (
+        id TEXT PRIMARY KEY,
+        share_id TEXT NOT NULL,
+        action TEXT NOT NULL DEFAULT 'download',
+        ip_masked TEXT DEFAULT NULL,
+        user_agent TEXT DEFAULT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (share_id) REFERENCES shares(id) ON DELETE CASCADE
+      );
     `);
 
     // Ensure columns exist if upgrading an older SQLite file
@@ -489,6 +516,34 @@ export async function initDb(): Promise<void> {
           data_base64 TEXT NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS shares (
+          id TEXT PRIMARY KEY,
+          user_id TEXT DEFAULT NULL REFERENCES users(id) ON DELETE CASCADE,
+          item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          password_hash TEXT DEFAULT NULL,
+          max_downloads INTEGER DEFAULT NULL,
+          download_count INTEGER DEFAULT 0,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          revoked_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_shares_item ON shares(item_id);
+        CREATE INDEX IF NOT EXISTS idx_shares_user ON shares(user_id);
+        CREATE INDEX IF NOT EXISTS idx_shares_expiry ON shares(expires_at, revoked_at);
+
+        CREATE TABLE IF NOT EXISTS share_access_logs (
+          id TEXT PRIMARY KEY,
+          share_id TEXT NOT NULL REFERENCES shares(id) ON DELETE CASCADE,
+          action TEXT NOT NULL DEFAULT 'download',
+          ip_masked TEXT DEFAULT NULL,
+          user_agent TEXT DEFAULT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_share_access_logs_share ON share_access_logs(share_id);
       `);
     } catch (e: any) {
       console.warn('[Global Send DB Schema Ensure]:', e.message);
@@ -1057,7 +1112,7 @@ function mapRowToItem(row: any, tags: string[] = []): Item {
 }
 
 export async function createItem(item: {
-  id: string;
+  id?: string;
   userId: string;
   type: string;
   title: string;
@@ -1070,7 +1125,8 @@ export async function createItem(item: {
   parentFolderId?: string | null;
   isFolder?: boolean;
   isPermanent?: boolean;
-}): Promise<void> {
+}): Promise<Item> {
+  const itemId = item.id || crypto.randomUUID();
   const isPermanent = Boolean(
     item.isPermanent ||
     item.expirationDurationSec === 0 ||
@@ -1094,7 +1150,7 @@ export async function createItem(item: {
       parent_folder_id, is_folder, is_permanent, created_at, updated_at
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', $11, $12, $13, $14, $14)`,
     [
-      item.id,
+      itemId,
       item.userId,
       item.type,
       item.title,
@@ -1110,13 +1166,23 @@ export async function createItem(item: {
       nowIso,
     ]
   );
+
+  const created = await getItemById(itemId, item.userId);
+  return created!;
 }
 
 export async function getItemById(
   id: string,
-  userId: string,
+  userId?: string,
   options?: { includeExpired?: boolean }
 ): Promise<Item | null> {
+  const whereClauses = ['i.id = $1'];
+  const params: any[] = [id];
+  if (userId) {
+    whereClauses.push('i.user_id = $2');
+    params.push(userId);
+  }
+
   const rows = await query(
     `SELECT i.*, 
             f.id as file_id, f.storage_key, f.original_filename, f.sanitized_filename,
@@ -1124,9 +1190,9 @@ export async function getItemById(
             f.deletion_status as file_deletion_status
      FROM items i
      LEFT JOIN files f ON f.item_id = i.id
-     WHERE i.id = $1 AND i.user_id = $2
+     WHERE ${whereClauses.join(' AND ')}
      LIMIT 1`,
-    [id, userId]
+    params
   );
 
   if (!rows[0]) return null;
@@ -1960,6 +2026,7 @@ export async function runExpirationCleanup(callbacks: {
       [nowIso, row.id]
     );
     await execute(`UPDATE item_shares SET revoked_at = $1 WHERE item_id = $2`, [nowIso, row.id]);
+    await execute(`UPDATE shares SET revoked_at = $1 WHERE item_id = $2 AND revoked_at IS NULL`, [nowIso, row.id]);
 
     if (row.storage_key) {
       await execute(
@@ -1975,6 +2042,9 @@ export async function runExpirationCleanup(callbacks: {
     }
     expiredItemsMarked++;
   }
+
+  // 1.25. Auto-revoke expired public shares
+  await execute(`UPDATE shares SET revoked_at = $1, updated_at = $1 WHERE revoked_at IS NULL AND expires_at <= $1`, [nowIso]);
 
   // 1.5. Clean up items in trash past their 30-day retention threshold
   const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
@@ -2755,4 +2825,260 @@ export async function getDatabaseBlob(storageKey: string): Promise<{
 export async function deleteDatabaseBlob(storageKey: string): Promise<boolean> {
   await execute(`DELETE FROM storage_blobs WHERE storage_key = $1`, [storageKey]);
   return true;
+}
+
+// ============================================================================
+// SEND MODE SHARES & ACCESS AUDIT REPOSITORY
+// ============================================================================
+
+export function hashSharePassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 10000, 32, 'sha256').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+export function verifySharePasswordHash(password: string, storedHash: string): boolean {
+  try {
+    const [salt, expectedHash] = storedHash.split(':');
+    if (!salt || !expectedHash) return false;
+    const computed = crypto.pbkdf2Sync(password, salt, 10000, 32, 'sha256').toString('hex');
+    return crypto.timingSafeEqual(Buffer.from(computed, 'hex'), Buffer.from(expectedHash, 'hex'));
+  } catch {
+    return false;
+  }
+}
+
+function mapRowToShare(row: any): ShareLink {
+  const nowMs = Date.now();
+  const expiresAtMs = new Date(row.expires_at).getTime();
+  const isExpired = expiresAtMs <= nowMs;
+  const isRevoked = Boolean(row.revoked_at);
+  const maxDownloads = row.max_downloads !== null && row.max_downloads !== undefined ? Number(row.max_downloads) : null;
+  const downloadCount = Number(row.download_count || 0);
+  const isExhausted = maxDownloads !== null && downloadCount >= maxDownloads;
+
+  let itemSummary: ShareLink['item'] = undefined;
+  if (row.item_title) {
+    itemSummary = {
+      id: row.item_id,
+      title: row.item_title,
+      type: row.item_type,
+      fileSize: row.file_size ? Number(row.file_size) : undefined,
+      mimeType: row.mime_type || undefined,
+      sanitizedFilename: row.sanitized_filename || row.original_filename || undefined,
+    };
+  }
+
+  return {
+    id: row.id,
+    userId: row.user_id || null,
+    itemId: row.item_id,
+    hasPassword: Boolean(row.password_hash),
+    maxDownloads,
+    downloadCount,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at || null,
+    isExpired,
+    isRevoked,
+    isExhausted,
+    createdAt: row.created_at,
+    item: itemSummary,
+  };
+}
+
+export async function createShare(params: {
+  id?: string;
+  userId?: string | null;
+  itemId: string;
+  password?: string | null;
+  maxDownloads?: number | null;
+  expirationDurationSec?: number;
+}): Promise<ShareLink> {
+  const id = params.id || crypto.randomBytes(6).toString('base64url'); // Short URL slug
+  const durationSec = params.expirationDurationSec || 86400;
+  const nowIso = new Date().toISOString();
+  const expiresAtIso = new Date(Date.now() + durationSec * 1000).toISOString();
+  const passwordHash = params.password?.trim() ? hashSharePassword(params.password.trim()) : null;
+  const maxDownloads = params.maxDownloads && params.maxDownloads > 0 ? params.maxDownloads : null;
+
+  await execute(
+    `INSERT INTO shares (
+      id, user_id, item_id, password_hash, max_downloads, download_count,
+      expires_at, revoked_at, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, 0, $6, NULL, $7, $7)`,
+    [
+      id,
+      params.userId || null,
+      params.itemId,
+      passwordHash,
+      maxDownloads,
+      expiresAtIso,
+      nowIso,
+    ]
+  );
+
+  const share = await getShareById(id);
+  if (!share) throw new Error('Failed to create share record');
+  return share;
+}
+
+export async function getShareById(id: string): Promise<ShareLink | null> {
+  const rows = await query(
+    `SELECT s.*,
+            i.title as item_title, i.type as item_type,
+            f.file_size, f.mime_type, f.original_filename, f.sanitized_filename
+     FROM shares s
+     JOIN items i ON s.item_id = i.id
+     LEFT JOIN files f ON f.item_id = i.id
+     WHERE s.id = $1
+     LIMIT 1`,
+    [id]
+  );
+  if (!rows[0]) return null;
+  return mapRowToShare(rows[0]);
+}
+
+export async function getShareByItemId(itemId: string, userId?: string): Promise<ShareLink | null> {
+  const conditions = ['s.item_id = $1', 's.revoked_at IS NULL'];
+  const values: any[] = [itemId];
+  if (userId) {
+    conditions.push('s.user_id = $2');
+    values.push(userId);
+  }
+
+  const rows = await query(
+    `SELECT s.*,
+            i.title as item_title, i.type as item_type,
+            f.file_size, f.mime_type, f.original_filename, f.sanitized_filename
+     FROM shares s
+     JOIN items i ON s.item_id = i.id
+     LEFT JOIN files f ON f.item_id = i.id
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY s.created_at DESC
+     LIMIT 1`,
+    values
+  );
+  if (!rows[0]) return null;
+  return mapRowToShare(rows[0]);
+}
+
+export async function listUserShares(userId: string): Promise<ShareLink[]> {
+  const rows = await query(
+    `SELECT s.*,
+            i.title as item_title, i.type as item_type,
+            f.file_size, f.mime_type, f.original_filename, f.sanitized_filename
+     FROM shares s
+     JOIN items i ON s.item_id = i.id
+     LEFT JOIN files f ON f.item_id = i.id
+     WHERE s.user_id = $1
+     ORDER BY s.created_at DESC
+     LIMIT 100`,
+    [userId]
+  );
+  return rows.map(mapRowToShare);
+}
+
+export async function verifySharePassword(shareId: string, passwordAttempt: string): Promise<boolean> {
+  const rows = await query(`SELECT password_hash FROM shares WHERE id = $1 LIMIT 1`, [shareId]);
+  if (!rows[0] || !rows[0].password_hash) return true; // not password protected
+  return verifySharePasswordHash(passwordAttempt, rows[0].password_hash);
+}
+
+export async function recordShareAccess(params: {
+  shareId: string;
+  action?: string;
+  ip?: string | null;
+  userAgent?: string | null;
+}): Promise<void> {
+  let ipMasked: string | null = null;
+  if (params.ip) {
+    const parts = params.ip.split('.');
+    if (parts.length === 4) {
+      ipMasked = `${parts[0]}.${parts[1]}.${parts[2]}.xxx`;
+    } else {
+      ipMasked = 'masked-ip';
+    }
+  }
+
+  const cleanUa = params.userAgent ? params.userAgent.slice(0, 255) : null;
+  const nowIso = new Date().toISOString();
+
+  await execute(
+    `INSERT INTO share_access_logs (id, share_id, action, ip_masked, user_agent, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [crypto.randomUUID(), params.shareId, params.action || 'download', ipMasked, cleanUa, nowIso]
+  );
+}
+
+export async function incrementShareDownload(shareId: string): Promise<{
+  allowed: boolean;
+  remainingDownloads?: number | null;
+  error?: string;
+}> {
+  const share = await getShareById(shareId);
+  if (!share) {
+    return { allowed: false, error: 'Share link not found' };
+  }
+  if (share.isRevoked) {
+    return { allowed: false, error: 'This share link has been revoked by the sender' };
+  }
+  if (share.isExpired) {
+    return { allowed: false, error: 'This share link has expired' };
+  }
+  if (share.isExhausted) {
+    return { allowed: false, error: 'Download limit has been reached for this file' };
+  }
+
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE shares SET download_count = download_count + 1, updated_at = $1 WHERE id = $2`,
+    [nowIso, shareId]
+  );
+
+  const updated = await getShareById(shareId);
+  const remaining = updated?.maxDownloads ? Math.max(0, updated.maxDownloads - updated.downloadCount) : null;
+  return { allowed: true, remainingDownloads: remaining };
+}
+
+export async function revokeShare(shareId: string, userId?: string): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  if (userId) {
+    await execute(
+      `UPDATE shares SET revoked_at = $1, updated_at = $1 WHERE id = $2 AND user_id = $3`,
+      [nowIso, shareId, userId]
+    );
+  } else {
+    await execute(
+      `UPDATE shares SET revoked_at = $1, updated_at = $1 WHERE id = $2`,
+      [nowIso, shareId]
+    );
+  }
+  return true;
+}
+
+export async function getShareAccessLogs(shareId: string, userId?: string): Promise<ShareAccessLog[]> {
+  if (userId) {
+    const share = await getShareById(shareId);
+    if (!share || share.userId !== userId) {
+      throw new Error('Unauthorized to view access logs');
+    }
+  }
+
+  const rows = await query(
+    `SELECT id, share_id, action, ip_masked, user_agent, created_at
+     FROM share_access_logs
+     WHERE share_id = $1
+     ORDER BY created_at DESC
+     LIMIT 200`,
+    [shareId]
+  );
+
+  return rows.map((r) => ({
+    id: r.id,
+    shareId: r.share_id,
+    action: r.action,
+    ipMasked: r.ip_masked,
+    userAgent: r.user_agent,
+    createdAt: r.created_at,
+  }));
 }

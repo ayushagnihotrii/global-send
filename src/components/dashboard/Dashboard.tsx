@@ -23,6 +23,7 @@ import { QuickComposer } from '@/components/composer/QuickComposer';
 import { ItemCard } from '@/components/items/ItemCard';
 import { TextDetailModal } from '@/components/items/TextDetailModal';
 import { MediaViewerModal } from '@/components/items/MediaViewerModal';
+import { ShareModal } from '@/components/items/ShareModal';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { ChatView } from '@/components/chats/ChatView';
 import { Button } from '@/components/ui/Button';
@@ -53,6 +54,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   // Selected item modals
   const [selectedTextItem, setSelectedTextItem] = useState<Item | null>(null);
   const [selectedMediaItem, setSelectedMediaItem] = useState<Item | null>(null);
+  const [sharingItem, setSharingItem] = useState<Item | null>(null);
 
   // Folder navigation & modal states
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -824,6 +826,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                           onDelete={handleDeleteItem}
                           onRestore={handleRestoreItem}
                           onShareInChat={handleShareInChat}
+                          onShareLink={(item) => setSharingItem(item)}
                           onMove={handleOpenMoveModal}
                           inTrash={currentSection === 'trash'}
                         />
@@ -870,6 +873,13 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         onClose={() => setSelectedMediaItem(null)}
         onDelete={(item) => handleDeleteItem(item, false)}
         onToggleFavourite={handleToggleFavourite}
+      />
+
+      {/* 5.5. SECURE SHARE MODAL */}
+      <ShareModal
+        item={sharingItem}
+        isOpen={Boolean(sharingItem)}
+        onClose={() => setSharingItem(null)}
       />
 
       {/* 6. NEW FOLDER MODAL */}

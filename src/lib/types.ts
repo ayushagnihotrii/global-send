@@ -70,6 +70,38 @@ export interface FolderItem {
   itemCount?: number;
 }
 
+export interface ShareLink {
+  id: string;
+  userId?: string | null;
+  itemId: string;
+  hasPassword: boolean;
+  maxDownloads?: number | null;
+  downloadCount: number;
+  expiresAt: string;
+  revokedAt?: string | null;
+  isExpired: boolean;
+  isRevoked: boolean;
+  isExhausted: boolean;
+  createdAt: string;
+  item?: {
+    id: string;
+    title: string;
+    type: ItemType;
+    fileSize?: number;
+    mimeType?: string;
+    sanitizedFilename?: string;
+  };
+}
+
+export interface ShareAccessLog {
+  id: string;
+  shareId: string;
+  action: string;
+  ipMasked: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
 export interface Tag {
   id: string;
   userId: string;

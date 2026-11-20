@@ -30,6 +30,7 @@ interface ItemCardProps {
   onDelete: (item: Item, permanent?: boolean) => void;
   onRestore?: (item: Item) => void;
   onShareInChat?: (item: Item) => void;
+  onShareLink?: (item: Item) => void;
   onMove?: (item: Item) => void;
   inTrash?: boolean;
 }
@@ -91,6 +92,7 @@ export function ItemCard({
   onDelete,
   onRestore,
   onShareInChat,
+  onShareLink,
   onMove,
   inTrash = false,
 }: ItemCardProps) {
@@ -317,6 +319,17 @@ export function ItemCard({
             </>
           ) : (
             <>
+              {onShareLink && !expInfo.isExpired && (
+                <button
+                  type="button"
+                  onClick={() => onShareLink(item)}
+                  className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-[#0071e3] cursor-pointer"
+                  title="Create Share Link"
+                >
+                  <Link2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+
               {onShareInChat && !expInfo.isExpired && (
                 <button
                   type="button"
