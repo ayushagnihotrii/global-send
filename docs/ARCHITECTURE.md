@@ -67,9 +67,24 @@ The database maintains full backward compatibility while introducing:
 
 ---
 
-## 7. Delivery Roadmap
-- **Phase 1:** StorageProvider abstraction, direct chunked resumable upload, streaming download, raised limits, and resume tests.
-- **Phase 2:** Account quotas, storage meter, Vault folders, and 30-day trash lifecycle.
-- **Phase 3:** Send link controls (password, download limits, revoke), access logs, and background expiry jobs.
+## 7. Delivery Roadmap & Implementation Status
+- **Phase 1 [COMPLETED]:**
+  - StorageProvider abstraction (`StorageProvider` interface).
+  - Telegram MTProto multi-part router (`telegram-provider.ts`) with 1.9 GB chunking, virtual concatenation, and dynamic HTTP Range seeking.
+  - Client-side zero-knowledge AES-256-GCM chunk encryption (`client-encryption.ts`).
+  - Resumable chunk uploader with exponential backoff (`chunk-uploader.ts`).
+  - File System Access API direct-to-disk streaming downloader (`stream-downloader.ts`).
+  - 10 GB file and 15 GB user quota limits configured.
+  - Phase 1 network drop recovery & SHA-256 verification tests (`test_phase1_resumable.mjs`).
+
+- **Phase 2 [COMPLETED]:**
+  - Vault Folders: Hierarchical folder creation (`parent_folder_id`), nested subfolder navigation, and interactive breadcrumbs.
+  - Item Folder Movement: Moving items and subfolders across directories or back to Root Vault with circular reference protection (`/api/items/[id]/move`).
+  - Permanent Vault Retention: Support for non-expiring vault archives (`is_permanent = true`, `expires_at = null`, `expiration_duration_sec = 0`).
+  - 30-Day Trash Lifecycle: Soft delete with automatic 30-day purge threshold (`purge_at = now + 30 days`), folder cascade deletion/restoration, and background auto-purge during `runExpirationCleanup`.
+  - Storage Quota & Meter: Dynamic storage usage accounting (`/api/user/storage`), sleek Apple-style progress bar in `DesktopSidebar`, and quota checking on upload.
+  - Verification Suite: 14 new automated tests covering all folder, trash, permanent retention, and quota requirements (`test_phase2_folders_trash.mjs`).
+
+- **Phase 3 [NEXT]:** Send link controls (password, download limits, revoke), access logs, and background expiry jobs.
 - **Phase 4:** Trust & safety reporting, rate limiting, legal pages, and updated messaging.
 - **Phase 5:** In-browser media previews/streaming and PWA share-target integration.

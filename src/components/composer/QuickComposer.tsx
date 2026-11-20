@@ -32,6 +32,7 @@ interface QuickComposerProps {
   isOpenDefault?: boolean;
   externalFiles?: File[] | null;
   onExternalFilesConsumed?: () => void;
+  parentFolderId?: string | null;
 }
 
 type ComposerMode = 'text' | 'upload' | 'link';
@@ -67,6 +68,7 @@ export function QuickComposer({
   isOpenDefault = false,
   externalFiles,
   onExternalFilesConsumed,
+  parentFolderId,
 }: QuickComposerProps) {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(isOpenDefault);
@@ -107,6 +109,7 @@ export function QuickComposer({
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
   const effectiveExpirationSec = useMemo(() => {
+    if (selectedPresetSec === 0) return 0;
     if (selectedPresetSec === 'custom') {
       const hrs = parseFloat(customHours);
       if (!Number.isFinite(hrs) || hrs <= 0) return SITE_CONFIG.defaultExpirationSeconds;
@@ -120,6 +123,9 @@ export function QuickComposer({
   }, [selectedPresetSec, customHours]);
 
   const previewExpirationLabel = useMemo(() => {
+    if (effectiveExpirationSec === 0) {
+      return 'Keep Forever in Vault';
+    }
     const targetDate = new Date(Date.now() + effectiveExpirationSec * 1000);
     return targetDate.toLocaleString(undefined, {
       month: 'short',
@@ -334,6 +340,8 @@ export function QuickComposer({
           title: title.trim(),
           textContent,
           tags,
+          parentFolderId: parentFolderId || null,
+          isPermanent: effectiveExpirationSec === 0,
           expirationSeconds: effectiveExpirationSec,
         }),
       });
@@ -377,6 +385,8 @@ export function QuickComposer({
           url: rawUrl,
           note: linkNote.trim() || null,
           tags,
+          parentFolderId: parentFolderId || null,
+          isPermanent: effectiveExpirationSec === 0,
           expirationSeconds: effectiveExpirationSec,
         }),
       });
@@ -448,6 +458,8 @@ export function QuickComposer({
           mimeType: file.type || 'application/octet-stream',
           fileSize: file.size,
           title: customItemTitle || file.name,
+          parentFolderId: parentFolderId || null,
+          isPermanent: effectiveExpirationSec === 0,
           expirationSeconds: effectiveExpirationSec,
         }),
         signal: abortCtrl.signal,
@@ -503,6 +515,8 @@ export function QuickComposer({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('expirationSeconds', String(effectiveExpirationSec));
+      if (effectiveExpirationSec === 0) formData.append('isPermanent', 'true');
+      if (parentFolderId) formData.append('parentFolderId', parentFolderId);
       if (customItemTitle) formData.append('title', customItemTitle);
       if (tags.length > 0) formData.append('tags', JSON.stringify(tags));
 
@@ -1124,6 +1138,18 @@ export function QuickComposer({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedPresetSec(0)}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-xs font-bold font-mono uppercase tracking-wider transition-all cursor-pointer',
+                  selectedPresetSec === 0
+                    ? 'bg-[#CDFF5D] text-black shadow-xs'
+                    : 'bg-white dark:bg-white/10 text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-neutral-300/60 dark:border-white/10'
+                )}
+              >
+                Permanent
+              </button>
               {EXPIRATION_PRESETS.map((preset) => {
                 const isSelected = selectedPresetSec === preset.seconds;
                 return (

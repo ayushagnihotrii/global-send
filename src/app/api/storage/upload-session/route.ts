@@ -223,8 +223,9 @@ export async function PUT(req: NextRequest) {
     }
 
     // Finalize vault item ONLY after complete transfer is verified
-    const durationSec = Number(uploadSess.expiration_duration_sec || 86400);
-    const expiresAtIso = new Date(Date.now() + durationSec * 1000).toISOString();
+    const durationSec = Number(uploadSess.expiration_duration_sec || 0);
+    const isPermanent = durationSec === 0;
+    const expiresAtIso = isPermanent ? null : new Date(Date.now() + durationSec * 1000).toISOString();
 
     let itemType: 'image' | 'video' | 'file' = 'file';
     if (uploadSess.mime_type.startsWith('image/')) itemType = 'image';
@@ -236,6 +237,7 @@ export async function PUT(req: NextRequest) {
       type: itemType,
       title: uploadSess.title || uploadSess.sanitized_filename,
       isFavourite: false,
+      isPermanent,
       expirationDurationSec: durationSec,
       expiresAt: expiresAtIso,
     });

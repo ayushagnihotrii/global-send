@@ -38,9 +38,11 @@ export async function POST(req: NextRequest) {
     }
 
     const customTitle = (formData.get('title') as string)?.trim();
+    const parentFolderId = (formData.get('parentFolderId') as string)?.trim() || null;
     const rawTags = formData.get('tags');
+    const isPermanentForm = formData.get('isPermanent') === 'true';
     const rawExpiration =
-      formData.get('expirationSeconds') ?? formData.get('expirationDurationSec');
+      isPermanentForm ? '0' : (formData.get('expirationSeconds') ?? formData.get('expirationDurationSec'));
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided in form-data' }, { status: 400 });
@@ -115,9 +117,10 @@ export async function POST(req: NextRequest) {
 
     // 5. Calculate expiration timestamp AFTER upload completes on the server
     const completedAtMs = Date.now();
-    const expiresAtIso = new Date(
-      completedAtMs + expValidation.durationSec * 1000
-    ).toISOString();
+    const isPermanent = expValidation.durationSec === 0 || isPermanentForm;
+    const expiresAtIso = isPermanent
+      ? null
+      : new Date(completedAtMs + expValidation.durationSec * 1000).toISOString();
 
     let itemType: 'image' | 'video' | 'file' = 'file';
     if (mimeType.startsWith('image/')) itemType = 'image';
@@ -135,6 +138,8 @@ export async function POST(req: NextRequest) {
         type: itemType,
         title: customTitle || sanitizedFilename,
         isFavourite: false,
+        parentFolderId: parentFolderId || null,
+        isPermanent,
         expirationDurationSec: expValidation.durationSec,
         expiresAt: expiresAtIso,
       });

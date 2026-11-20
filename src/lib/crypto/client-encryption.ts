@@ -96,7 +96,7 @@ export async function importKeyFromBase64Url(base64url: string): Promise<CryptoK
   const raw = base64UrlToBuffer(base64url);
   return subtle.importKey(
     'raw',
-    raw,
+    raw as any,
     {
       name: 'AES-GCM',
     },
@@ -124,10 +124,10 @@ export async function encryptChunk(
   return subtle.encrypt(
     {
       name: 'AES-GCM',
-      iv,
+      iv: iv as any,
     },
     key,
-    data
+    data as any
   );
 }
 
@@ -149,10 +149,10 @@ export async function decryptChunk(
   return subtle.decrypt(
     {
       name: 'AES-GCM',
-      iv,
+      iv: iv as any,
     },
     key,
-    data
+    data as any
   );
 }
 
@@ -164,7 +164,7 @@ export async function deriveMasterKey(loginKey: string, salt: Uint8Array): Promi
   const enc = new TextEncoder();
   const keyMaterial = await subtle.importKey(
     'raw',
-    enc.encode(loginKey),
+    enc.encode(loginKey) as any,
     { name: 'PBKDF2' },
     false,
     ['deriveKey']
@@ -173,7 +173,7 @@ export async function deriveMasterKey(loginKey: string, salt: Uint8Array): Promi
   return subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt,
+      salt: salt as any,
       iterations: 100000,
       hash: 'SHA-256',
     },
@@ -192,7 +192,7 @@ export async function wrapFileKey(fileKey: CryptoKey, masterKey: CryptoKey): Pro
   const iv = generateIvBase();
   const wrapped = await subtle.wrapKey('raw', fileKey, masterKey, {
     name: 'AES-GCM',
-    iv,
+    iv: iv as any,
   });
 
   // Pack IV + Wrapped Key together
@@ -213,11 +213,11 @@ export async function unwrapFileKey(wrappedKeyBase64: string, masterKey: CryptoK
 
   return subtle.unwrapKey(
     'raw',
-    wrappedData,
+    wrappedData as any,
     masterKey,
     {
       name: 'AES-GCM',
-      iv,
+      iv: iv as any,
     },
     {
       name: 'AES-GCM',

@@ -14,7 +14,8 @@
     "test:telegram": "npx tsx test_telegram_storage.mjs",
     "test:crypto": "npx tsx test_crypto.mjs",
     "test:phase1": "npx tsx test_phase1_resumable.mjs",
-    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs"
+    "test:phase2": "npx tsx test_phase2_folders_trash.mjs",
+    "test": "npx tsx test_config.mjs && npx tsx test_globalsend.mjs && npx tsx test_telegram_storage.mjs && npx tsx test_crypto.mjs && npx tsx test_phase1_resumable.mjs && npx tsx test_phase2_folders_trash.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1155.0",

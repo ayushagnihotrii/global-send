@@ -45,15 +45,29 @@ export interface Item {
   url?: string | null;
   note?: string | null;
   isFavourite: boolean;
-  expiresAt: string;
+  expiresAt: string | null;
   expirationDurationSec: number;
   isExpired?: boolean;
+  isPermanent?: boolean;
+  parentFolderId?: string | null;
+  isFolder?: boolean;
   deletionStatus?: string;
   deletedAt?: string | null;
+  purgeAt?: string | null;
   createdAt: string;
   updatedAt: string;
   tags?: string[];
   file?: FileMetadata | null;
+}
+
+export interface FolderItem {
+  id: string;
+  userId: string;
+  name: string;
+  parentFolderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  itemCount?: number;
 }
 
 export interface Tag {

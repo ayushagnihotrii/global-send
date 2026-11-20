@@ -9,6 +9,12 @@ import {
   ArrowUpDown,
   Tag,
   Upload,
+  FolderPlus,
+  ChevronRight,
+  CornerLeftUp,
+  FolderInput,
+  Folder as FolderIcon,
+  Trash2,
 } from 'lucide-react';
 import { User, Item, DateGroupedItems } from '@/lib/types';
 import { DesktopSidebar, NavSection } from '@/components/layout/DesktopSidebar';
@@ -20,8 +26,10 @@ import { MediaViewerModal } from '@/components/items/MediaViewerModal';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { ChatView } from '@/components/chats/ChatView';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
-import { groupItemsByDate } from '@/lib/utils';
+import { groupItemsByDate, cn } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
 import { Logo } from '@/components/ui/Logo';
 
@@ -45,6 +53,19 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   // Selected item modals
   const [selectedTextItem, setSelectedTextItem] = useState<Item | null>(null);
   const [selectedMediaItem, setSelectedMediaItem] = useState<Item | null>(null);
+
+  // Folder navigation & modal states
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [folders, setFolders] = useState<Item[]>([]);
+  const [folderPath, setFolderPath] = useState<Array<{ id: string; name: string }>>([]);
+  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
+  // Move item modal states
+  const [movingItem, setMovingItem] = useState<Item | null>(null);
+  const [allUserFolders, setAllUserFolders] = useState<Item[]>([]);
+  const [isMoving, setIsMoving] = useState(false);
 
   // Item queued to be shared in chat
   const [pendingShareItem, setPendingShareItem] = useState<Item | null>(null);
@@ -91,6 +112,21 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
     }
   }, [toast]);
 
+  // Fetch folders for current parent
+  const fetchFolders = useCallback(async () => {
+    try {
+      const parentParam = currentFolderId ? `?parentFolderId=${encodeURIComponent(currentFolderId)}` : '?parentFolderId=root';
+      const res = await fetch(`/api/items/folders${parentParam}`);
+      const data = await res.json();
+      if (res.ok && data.folders) {
+        setFolders(data.folders);
+        setFolderPath(data.path || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [currentFolderId]);
+
   // Fetch items based on active section and search
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
@@ -117,6 +153,16 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         params.set('tag', selectedTag);
       }
 
+      // Filter by folder when in normal vault browsing
+      if (
+        currentSection !== 'trash' &&
+        currentSection !== 'favourites' &&
+        !debouncedSearch.trim() &&
+        !selectedTag
+      ) {
+        params.set('parentFolderId', currentFolderId || 'root');
+      }
+
       params.set('sortBy', sortBy);
 
       const res = await fetch(`/api/items?${params.toString()}`);
@@ -139,13 +185,91 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [currentSection, debouncedSearch, selectedTag, sortBy, toast]);
+  }, [currentSection, currentFolderId, debouncedSearch, selectedTag, sortBy, toast]);
 
   useEffect(() => {
     if (currentSection !== 'settings') {
       fetchItems();
+      if (currentSection !== 'trash' && currentSection !== 'chats') {
+        fetchFolders();
+      }
     }
-  }, [fetchItems, currentSection]);
+  }, [fetchItems, fetchFolders, currentSection, currentFolderId]);
+
+  // Handle new folder creation
+  const handleCreateFolder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const name = newFolderName.trim();
+    if (!name) {
+      toast.error('Please enter a folder name');
+      return;
+    }
+    setIsCreatingFolder(true);
+    try {
+      const res = await fetch('/api/items/folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          parentFolderId: currentFolderId || null,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.folder) {
+        toast.success(`Created folder "${name}"`);
+        setNewFolderName('');
+        setIsNewFolderModalOpen(false);
+        fetchFolders();
+        fetchItems();
+      } else {
+        toast.error(data.error || 'Failed to create folder');
+      }
+    } catch {
+      toast.error('Network error creating folder');
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
+  // Open move modal
+  const handleOpenMoveModal = async (item: Item) => {
+    setMovingItem(item);
+    try {
+      const res = await fetch('/api/items/folders?parentFolderId=all');
+      const data = await res.json();
+      if (res.ok && data.folders) {
+        setAllUserFolders(data.folders.filter((f: Item) => f.id !== item.id));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // Move item to destination folder
+  const handleMoveItem = async (targetFolderId: string | null) => {
+    if (!movingItem) return;
+    setIsMoving(true);
+    try {
+      const res = await fetch(`/api/items/${movingItem.id}/move`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetFolderId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Moved "${movingItem.title}"`);
+        setMovingItem(null);
+        fetchItems();
+        fetchFolders();
+      } else {
+        toast.error(data.error || 'Failed to move item');
+      }
+    } catch {
+      toast.error('Network error moving item');
+    } finally {
+      setIsMoving(false);
+    }
+  };
 
   // Item counts for sidebar badges
   const itemCounts = useMemo(() => {
@@ -495,22 +619,133 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
 
             {/* RECENTLY DELETED BANNER */}
             {currentSection === 'trash' && (
-              <div className="mb-6 px-5 py-4 rounded-[22px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 flex items-center justify-between gap-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 shadow-xs">
-                <span>Items in Recently Deleted continue to expire on schedule.</span>
+              <div className="mb-6 px-5 py-4 rounded-[22px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 shadow-xs">
+                <div>
+                  <span className="font-bold text-[#111111] dark:text-white block sm:inline mr-2">30-Day Trash Retention:</span>
+                  <span>Items in Recently Deleted are automatically purged permanently after 30 days. You can restore them anytime.</span>
+                </div>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={async () => {
-                    if (window.confirm('Permanently delete all items in Recently Deleted?')) {
+                    if (window.confirm('Permanently delete all items in Recently Deleted? This cannot be undone.')) {
                       await fetch('/api/items/trash/empty', { method: 'POST' });
                       toast.success('Recently Deleted emptied');
                       fetchItems();
                     }
                   }}
-                  className="rounded-full text-red-600 hover:bg-red-500/10 font-bold shrink-0"
+                  className="rounded-full text-red-600 hover:bg-red-500/10 font-bold shrink-0 self-start sm:self-center"
                 >
-                  Delete All
+                  Empty Trash
                 </Button>
+              </div>
+            )}
+
+            {/* FOLDER NAVIGATION & BREADCRUMBS */}
+            {currentSection !== 'trash' && !debouncedSearch.trim() && !selectedTag && (
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 shadow-xs">
+                  {/* Breadcrumbs */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-mono font-bold scrollbar-none min-w-0 py-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentFolderId(null)}
+                      className={cn(
+                        'px-3 py-1 rounded-full transition-colors cursor-pointer shrink-0',
+                        currentFolderId === null
+                          ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-black'
+                          : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                      )}
+                    >
+                      Vault Root
+                    </button>
+                    {folderPath.map((crumb, idx) => {
+                      const isLast = idx === folderPath.length - 1;
+                      return (
+                        <React.Fragment key={crumb.id}>
+                          <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                          <button
+                            type="button"
+                            onClick={() => setCurrentFolderId(crumb.id)}
+                            className={cn(
+                              'px-3 py-1 rounded-full transition-colors cursor-pointer shrink-0 truncate max-w-[140px]',
+                              isLast
+                                ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-black'
+                                : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                            )}
+                          >
+                            {crumb.name}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+
+                  {/* Folder Actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {currentFolderId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (folderPath.length > 1) {
+                            setCurrentFolderId(folderPath[folderPath.length - 2].id);
+                          } else {
+                            setCurrentFolderId(null);
+                          }
+                        }}
+                        className="h-8 px-2.5 rounded-full border border-neutral-200 dark:border-white/10 text-xs font-mono font-bold flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 cursor-pointer"
+                        title="Go up one folder"
+                      >
+                        <CornerLeftUp className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Up</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsNewFolderModalOpen(true)}
+                      className="h-8 px-3 rounded-full bg-[#CDFF5D] text-black text-xs font-mono font-black uppercase tracking-wider flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                    >
+                      <FolderPlus className="w-3.5 h-3.5" />
+                      <span>New Folder</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-Folders Grid */}
+                {folders.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {folders.map((folder) => (
+                      <div
+                        key={folder.id}
+                        onClick={() => setCurrentFolderId(folder.id)}
+                        className="group relative p-3 rounded-[20px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 hover:border-neutral-900/40 dark:hover:border-white/40 shadow-xs cursor-pointer transition-all flex items-center gap-2.5 active:scale-98"
+                      >
+                        <div className="w-9 h-9 rounded-2xl bg-[#CDFF5D] text-black flex items-center justify-center shrink-0 font-bold shadow-xs">
+                          <FolderOpen className="w-4 h-4 stroke-[2.2]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-[#111111] dark:text-white truncate">
+                            {folder.title}
+                          </p>
+                          <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider mt-0.5">
+                            Folder
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteItem(folder, false);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-full text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                          title="Delete folder"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -518,6 +753,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
             {currentSection !== 'trash' && (
               <QuickComposer
                 onItemCreated={handleItemCreated}
+                parentFolderId={currentFolderId}
                 externalFiles={externalDroppedFiles}
                 onExternalFilesConsumed={() => setExternalDroppedFiles(null)}
               />
@@ -588,6 +824,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                           onDelete={handleDeleteItem}
                           onRestore={handleRestoreItem}
                           onShareInChat={handleShareInChat}
+                          onMove={handleOpenMoveModal}
                           inTrash={currentSection === 'trash'}
                         />
                       ))}
@@ -634,6 +871,117 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         onDelete={(item) => handleDeleteItem(item, false)}
         onToggleFavourite={handleToggleFavourite}
       />
+
+      {/* 6. NEW FOLDER MODAL */}
+      <Modal
+        isOpen={isNewFolderModalOpen}
+        onClose={() => {
+          setIsNewFolderModalOpen(false);
+          setNewFolderName('');
+        }}
+        title="Create New Folder"
+        subtitle={currentFolderId ? `Inside: ${folderPath[folderPath.length - 1]?.name || 'Current Folder'}` : 'In Vault Root'}
+        maxWidth="sm"
+      >
+        <form onSubmit={handleCreateFolder} className="p-5 space-y-4">
+          <Input
+            label="Folder Name"
+            placeholder="e.g. Video Projects, Receipts..."
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setIsNewFolderModalOpen(false);
+                setNewFolderName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isCreatingFolder || !newFolderName.trim()}
+              className="bg-[#111111] text-white dark:bg-white dark:text-black font-bold"
+            >
+              {isCreatingFolder ? 'Creating...' : 'Create Folder'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 7. MOVE ITEM MODAL */}
+      <Modal
+        isOpen={Boolean(movingItem)}
+        onClose={() => setMovingItem(null)}
+        title="Move to Folder"
+        subtitle={movingItem ? `Choose destination for "${movingItem.title}"` : undefined}
+        maxWidth="sm"
+      >
+        <div className="p-5 space-y-3">
+          <div className="max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
+            <button
+              type="button"
+              disabled={isMoving || movingItem?.parentFolderId === null}
+              onClick={() => handleMoveItem(null)}
+              className={cn(
+                'w-full flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left',
+                movingItem?.parentFolderId === null
+                  ? 'border-neutral-300 bg-neutral-100 dark:bg-white/5 opacity-50 cursor-not-allowed'
+                  : 'border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white hover:bg-neutral-50 dark:hover:bg-white/5'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <FolderIcon className="w-4 h-4 text-neutral-400" />
+                <span>Vault Root (Top Level)</span>
+              </div>
+              {movingItem?.parentFolderId === null && (
+                <span className="text-[10px] font-mono text-neutral-400">Current</span>
+              )}
+            </button>
+
+            {allUserFolders.map((f) => {
+              const isCurrent = movingItem?.parentFolderId === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  disabled={isMoving || isCurrent}
+                  onClick={() => handleMoveItem(f.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left',
+                    isCurrent
+                      ? 'border-neutral-300 bg-neutral-100 dark:bg-white/5 opacity-50 cursor-not-allowed'
+                      : 'border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white hover:bg-neutral-50 dark:hover:bg-white/5'
+                  )}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <FolderIcon className="w-4 h-4 text-[#FBBF24]" />
+                    <span className="truncate">{f.title}</span>
+                  </div>
+                  {isCurrent && (
+                    <span className="text-[10px] font-mono text-neutral-400 shrink-0">Current</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setMovingItem(null)}
+              disabled={isMoving}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

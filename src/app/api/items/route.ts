@@ -19,6 +19,8 @@ const createItemSchema = z.object({
   note: z.string().optional().nullable(),
   isFavourite: z.boolean().optional().default(false),
   tags: z.array(z.string()).optional().default([]),
+  parentFolderId: z.string().optional().nullable(),
+  isPermanent: z.boolean().optional(),
   expirationSeconds: z.number().optional().nullable(),
   expirationDurationSec: z.number().optional().nullable(),
 });
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
     const inTrash = searchParams.get('inTrash') === 'true';
     const tag = searchParams.get('tag') || undefined;
     const search = searchParams.get('search') || undefined;
+    const parentFolderId = searchParams.get('parentFolderId') || undefined;
     const sortBy = (searchParams.get('sortBy') as any) || 'created_desc';
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
@@ -50,6 +53,7 @@ export async function GET(req: NextRequest) {
       inTrash,
       tag,
       search,
+      parentFolderId: (parentFolderId as any),
       sortBy,
       limit,
       offset,
@@ -100,12 +104,14 @@ export async function POST(req: NextRequest) {
       note,
       isFavourite,
       tags,
+      parentFolderId,
+      isPermanent,
       expirationSeconds,
       expirationDurationSec,
     } = result.data;
 
     // Validate requested expiration duration on the server (default: 24 hours = 86400s)
-    const rawDuration = expirationSeconds ?? expirationDurationSec ?? undefined;
+    const rawDuration = isPermanent ? 0 : (expirationSeconds ?? expirationDurationSec ?? undefined);
     const expValidation = validateExpirationDuration(rawDuration);
     if (!expValidation.valid) {
       return NextResponse.json(
@@ -144,6 +150,8 @@ export async function POST(req: NextRequest) {
       url: url || null,
       note: note || null,
       isFavourite,
+      parentFolderId: parentFolderId || null,
+      isPermanent: Boolean(isPermanent || expValidation.durationSec === 0),
       expirationDurationSec: expValidation.durationSec,
       expiresAt: expValidation.expiresAtIso,
     });

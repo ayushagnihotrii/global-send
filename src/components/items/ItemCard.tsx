@@ -16,6 +16,7 @@ import {
   Download,
   Clock,
   Share2,
+  FolderInput,
 } from 'lucide-react';
 import { Item } from '@/lib/types';
 import { cn, formatBytes, formatDate } from '@/lib/utils';
@@ -29,16 +30,33 @@ interface ItemCardProps {
   onDelete: (item: Item, permanent?: boolean) => void;
   onRestore?: (item: Item) => void;
   onShareInChat?: (item: Item) => void;
+  onMove?: (item: Item) => void;
   inTrash?: boolean;
 }
 
-export function formatExpirationStatus(expiresAt?: string | null): {
+export function formatExpirationStatus(
+  expiresAt?: string | null,
+  purgeAt?: string | null,
+  inTrash = false
+): {
   label: string;
   isUrgent: boolean;
   isExpired: boolean;
+  isPermanent?: boolean;
 } {
+  if (inTrash) {
+    const purgeMs = purgeAt ? new Date(purgeAt).getTime() : Date.now() + 30 * 86400000;
+    const daysLeft = Math.max(1, Math.ceil((purgeMs - Date.now()) / 86400000));
+    return {
+      label: `Purges in ${daysLeft}d`,
+      isUrgent: daysLeft <= 3,
+      isExpired: false,
+      isPermanent: false,
+    };
+  }
+
   if (!expiresAt) {
-    return { label: '24h lifetime', isUrgent: false, isExpired: false };
+    return { label: 'Permanent', isUrgent: false, isExpired: false, isPermanent: true };
   }
   const expMs = new Date(expiresAt).getTime();
   const diffMs = expMs - Date.now();
@@ -73,12 +91,16 @@ export function ItemCard({
   onDelete,
   onRestore,
   onShareInChat,
+  onMove,
   inTrash = false,
 }: ItemCardProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
 
-  const expInfo = useMemo(() => formatExpirationStatus(item.expiresAt), [item.expiresAt]);
+  const expInfo = useMemo(
+    () => formatExpirationStatus(item.expiresAt, item.purgeAt, inTrash),
+    [item.expiresAt, item.purgeAt, inTrash]
+  );
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -159,14 +181,18 @@ export function ItemCard({
                 <span
                   className={cn(
                     'inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full tabular-nums',
-                    expInfo.isUrgent
+                    expInfo.isPermanent
+                      ? 'bg-[#CDFF5D] text-black font-black'
+                      : expInfo.isUrgent
                       ? 'bg-[#FC6742] text-white'
                       : 'bg-neutral-100 dark:bg-white/10 text-neutral-600 dark:text-neutral-400'
                   )}
                   title={
-                    item.expiresAt
+                    inTrash
+                      ? `Items in trash are automatically purged after 30 days`
+                      : item.expiresAt
                       ? `Expires ${new Date(item.expiresAt).toLocaleString()}`
-                      : undefined
+                      : 'Stored permanently in Vault'
                   }
                 >
                   <Clock className="w-2.5 h-2.5" />
@@ -311,6 +337,17 @@ export function ItemCard({
                 >
                   <Download className="w-3.5 h-3.5" />
                 </a>
+              )}
+
+              {onMove && (
+                <button
+                  type="button"
+                  onClick={() => onMove(item)}
+                  className="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-white/10 hover:text-black dark:hover:text-white cursor-pointer"
+                  title="Move to folder"
+                >
+                  <FolderInput className="w-3.5 h-3.5" />
+                </button>
               )}
 
               <button

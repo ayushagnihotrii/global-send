@@ -150,10 +150,15 @@ export async function initDb(): Promise<void> {
         expires_at TEXT,
         expiration_duration_sec INTEGER DEFAULT 86400,
         deletion_status TEXT DEFAULT 'active',
+        parent_folder_id TEXT DEFAULT NULL,
+        is_folder INTEGER DEFAULT 0,
+        is_permanent INTEGER DEFAULT 0,
         deleted_at TEXT DEFAULT NULL,
+        purge_at TEXT DEFAULT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (parent_folder_id) REFERENCES items(id) ON DELETE CASCADE
       );
 
       CREATE TABLE IF NOT EXISTS files (
@@ -315,6 +320,14 @@ export async function initDb(): Promise<void> {
       `ALTER TABLE items ADD COLUMN expires_at TEXT`,
       `ALTER TABLE items ADD COLUMN expiration_duration_sec INTEGER DEFAULT 86400`,
       `ALTER TABLE items ADD COLUMN deletion_status TEXT DEFAULT 'active'`,
+      `ALTER TABLE items ADD COLUMN parent_folder_id TEXT DEFAULT NULL`,
+      `ALTER TABLE items ADD COLUMN is_folder INTEGER DEFAULT 0`,
+      `ALTER TABLE items ADD COLUMN is_permanent INTEGER DEFAULT 0`,
+      `ALTER TABLE items ADD COLUMN purge_at TEXT DEFAULT NULL`,
+      `CREATE INDEX IF NOT EXISTS idx_items_parent_folder ON items(user_id, parent_folder_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_items_is_folder ON items(user_id, is_folder)`,
+      `CREATE INDEX IF NOT EXISTS idx_items_trash_purge ON items(deletion_status, purge_at)`,
+      `CREATE INDEX IF NOT EXISTS idx_items_permanent ON items(user_id, is_permanent)`,
       `ALTER TABLE files ADD COLUMN sanitized_filename TEXT`,
       `ALTER TABLE files ADD COLUMN storage_provider TEXT DEFAULT 'local'`,
       `ALTER TABLE files ADD COLUMN provider_file_id TEXT`,
@@ -373,6 +386,14 @@ export async function initDb(): Promise<void> {
         ALTER TABLE items ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;
         ALTER TABLE items ADD COLUMN IF NOT EXISTS expiration_duration_sec INTEGER DEFAULT 86400;
         ALTER TABLE items ADD COLUMN IF NOT EXISTS deletion_status VARCHAR(30) DEFAULT 'active';
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS parent_folder_id TEXT DEFAULT NULL;
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS is_folder BOOLEAN DEFAULT FALSE;
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS is_permanent BOOLEAN DEFAULT FALSE;
+        ALTER TABLE items ADD COLUMN IF NOT EXISTS purge_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+        CREATE INDEX IF NOT EXISTS idx_items_parent_folder ON items(user_id, parent_folder_id);
+        CREATE INDEX IF NOT EXISTS idx_items_is_folder ON items(user_id, is_folder);
+        CREATE INDEX IF NOT EXISTS idx_items_trash_purge ON items(deletion_status, purge_at);
+        CREATE INDEX IF NOT EXISTS idx_items_permanent ON items(user_id, is_permanent);
 
         ALTER TABLE files ADD COLUMN IF NOT EXISTS sanitized_filename TEXT;
         ALTER TABLE files ADD COLUMN IF NOT EXISTS storage_provider VARCHAR(30) DEFAULT 'google_drive';
@@ -508,7 +529,7 @@ export async function execute(sql: string, params: any[] = []): Promise<void> {
 export function validateExpirationDuration(requestedSeconds?: number | null): {
   valid: boolean;
   durationSec: number;
-  expiresAtIso: string;
+  expiresAtIso: string | null;
   error?: string;
 } {
   if (requestedSeconds === undefined || requestedSeconds === null) {
@@ -527,6 +548,15 @@ export function validateExpirationDuration(requestedSeconds?: number | null): {
       durationSec: SITE_CONFIG.defaultExpirationSeconds,
       expiresAtIso: '',
       error: 'Expiration duration must be a whole number of seconds',
+    };
+  }
+
+  // 0 means Permanent Vault Storage (no expiration)
+  if (num === 0) {
+    return {
+      valid: true,
+      durationSec: 0,
+      expiresAtIso: null,
     };
   }
 
@@ -963,12 +993,21 @@ export async function searchPublicUsers(
 
 function mapRowToItem(row: any, tags: string[] = []): Item {
   const nowMs = Date.now();
-  const expiresAtIso =
-    row.expires_at ||
-    new Date(
-      new Date(row.created_at || nowMs).getTime() + SITE_CONFIG.defaultExpirationSeconds * 1000
-    ).toISOString();
-  const isExpired = new Date(expiresAtIso).getTime() <= nowMs || row.deletion_status === 'expired';
+  const isPermanent = Boolean(
+    row.is_permanent ||
+    Number(row.expiration_duration_sec) === 0 ||
+    row.expires_at === null ||
+    row.is_folder
+  );
+  const expiresAtIso = isPermanent
+    ? null
+    : (row.expires_at ||
+      new Date(
+        new Date(row.created_at || nowMs).getTime() + SITE_CONFIG.defaultExpirationSeconds * 1000
+      ).toISOString());
+  const isExpired = isPermanent
+    ? false
+    : (expiresAtIso ? new Date(expiresAtIso).getTime() <= nowMs : false) || row.deletion_status === 'expired';
 
   let file: FileMetadata | null = null;
   if (row.file_id) {
@@ -1001,11 +1040,15 @@ function mapRowToItem(row: any, tags: string[] = []): Item {
     isFavourite: Boolean(row.is_favourite),
     expiresAt: expiresAtIso,
     expirationDurationSec: Number(
-      row.expiration_duration_sec || SITE_CONFIG.defaultExpirationSeconds
+      row.expiration_duration_sec || 0
     ),
     isExpired,
+    isPermanent,
+    parentFolderId: row.parent_folder_id || null,
+    isFolder: Boolean(row.is_folder),
     deletionStatus: row.deletion_status || 'active',
-    deletedAt: row.deleted_at,
+    deletedAt: row.deleted_at || null,
+    purgeAt: row.purge_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tags,
@@ -1023,18 +1066,33 @@ export async function createItem(item: {
   note?: string | null;
   isFavourite?: boolean;
   expirationDurationSec?: number;
-  expiresAt?: string;
+  expiresAt?: string | null;
+  parentFolderId?: string | null;
+  isFolder?: boolean;
+  isPermanent?: boolean;
 }): Promise<void> {
-  const durationSec = item.expirationDurationSec || SITE_CONFIG.defaultExpirationSeconds;
+  const isPermanent = Boolean(
+    item.isPermanent ||
+    item.expirationDurationSec === 0 ||
+    item.expiresAt === null ||
+    item.isFolder
+  );
+  const durationSec = isPermanent ? 0 : (item.expirationDurationSec || SITE_CONFIG.defaultExpirationSeconds);
   const nowIso = new Date().toISOString();
-  const expiresAtIso =
-    item.expiresAt || new Date(Date.now() + durationSec * 1000).toISOString();
+  const expiresAtIso = isPermanent
+    ? null
+    : (item.expiresAt !== undefined ? item.expiresAt : new Date(Date.now() + durationSec * 1000).toISOString());
+
+  const isFolderParam = isPostgres() ? (item.isFolder ? true : false) : (item.isFolder ? 1 : 0);
+  const isPermanentParam = isPostgres() ? (isPermanent ? true : false) : (isPermanent ? 1 : 0);
+  const isFavParam = item.isFavourite ? (isPostgres() ? true : 1) : (isPostgres() ? false : 0);
 
   await execute(
     `INSERT INTO items (
       id, user_id, type, title, text_content, url, note, is_favourite,
-      expires_at, expiration_duration_sec, deletion_status, created_at, updated_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', $11, $11)`,
+      expires_at, expiration_duration_sec, deletion_status,
+      parent_folder_id, is_folder, is_permanent, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'active', $11, $12, $13, $14, $14)`,
     [
       item.id,
       item.userId,
@@ -1043,9 +1101,12 @@ export async function createItem(item: {
       item.textContent || null,
       item.url || null,
       item.note || null,
-      item.isFavourite ? (isPostgres() ? true : 1) : isPostgres() ? false : 0,
+      isFavParam,
       expiresAtIso,
       durationSec,
+      item.parentFolderId || null,
+      isFolderParam,
+      isPermanentParam,
       nowIso,
     ]
   );
@@ -1099,6 +1160,7 @@ export async function getItems(params: {
   inTrash?: boolean;
   tag?: string;
   search?: string;
+  parentFolderId?: string | null | 'all';
   sortBy?: 'created_desc' | 'created_asc' | 'title_asc';
   limit?: number;
   offset?: number;
@@ -1112,6 +1174,16 @@ export async function getItems(params: {
   } else {
     conditions.push('i.deleted_at IS NULL');
     conditions.push(`(i.deletion_status IS NULL OR i.deletion_status = 'active')`);
+
+    // Folder filtering: when not searching, not in favorites, and not in tag filter
+    if (!params.search && !params.isFavourite && !params.tag) {
+      if (params.parentFolderId === undefined || params.parentFolderId === null || params.parentFolderId === 'root') {
+        conditions.push('i.parent_folder_id IS NULL');
+      } else if (params.parentFolderId !== 'all') {
+        conditions.push(`i.parent_folder_id = $${pIdx++}`);
+        values.push(params.parentFolderId);
+      }
+    }
   }
 
   if (params.type && params.type !== 'all') {
@@ -1180,6 +1252,84 @@ export async function getItems(params: {
   return mapped;
 }
 
+export async function createFolder(params: {
+  id?: string;
+  userId: string;
+  name: string;
+  parentFolderId?: string | null;
+}): Promise<Item> {
+  const id = params.id || crypto.randomUUID();
+  await createItem({
+    id,
+    userId: params.userId,
+    type: 'file',
+    title: params.name.trim(),
+    parentFolderId: params.parentFolderId || null,
+    isFolder: true,
+    isPermanent: true,
+    expirationDurationSec: 0,
+    expiresAt: null,
+  });
+  const item = await getItemById(id, params.userId, { includeExpired: true });
+  return item!;
+}
+
+export async function getFolders(userId: string, parentFolderId?: string | null): Promise<Item[]> {
+  const isPostgresVal = isPostgres();
+  const conditions = ['user_id = $1', 'is_folder = $2', 'deleted_at IS NULL'];
+  const values: any[] = [userId, isPostgresVal ? true : 1];
+  let pIdx = 3;
+
+  if (parentFolderId === undefined || parentFolderId === null || parentFolderId === 'root') {
+    conditions.push('parent_folder_id IS NULL');
+  } else if (parentFolderId !== 'all') {
+    conditions.push(`parent_folder_id = $${pIdx++}`);
+    values.push(parentFolderId);
+  }
+
+  const sql = `SELECT * FROM items WHERE ${conditions.join(' AND ')} ORDER BY title ASC`;
+  const rows = await query(sql, values);
+  return rows.map((r) => mapRowToItem(r));
+}
+
+export async function moveItemToFolder(
+  itemId: string,
+  userId: string,
+  targetFolderId: string | null
+): Promise<void> {
+  if (targetFolderId && itemId === targetFolderId) {
+    throw new Error('Cannot move a folder into itself');
+  }
+  if (targetFolderId) {
+    const folder = await getItemById(targetFolderId, userId, { includeExpired: true });
+    if (!folder || !folder.isFolder) {
+      throw new Error('Target folder not found');
+    }
+  }
+  const nowIso = new Date().toISOString();
+  await execute(
+    `UPDATE items SET parent_folder_id = $1, updated_at = $2 WHERE id = $3 AND user_id = $4`,
+    [targetFolderId || null, nowIso, itemId, userId]
+  );
+}
+
+export async function getFolderPath(
+  folderId: string,
+  userId: string
+): Promise<Array<{ id: string; name: string }>> {
+  const path: Array<{ id: string; name: string }> = [];
+  let currentId: string | null = folderId;
+  let depth = 0;
+  while (currentId && depth < 20) {
+    const item = await getItemById(currentId, userId, { includeExpired: true });
+    if (!item) break;
+    path.unshift({ id: item.id, name: item.title });
+    currentId = item.parentFolderId || null;
+    depth++;
+  }
+  return path;
+}
+
 export async function updateItem(
   id: string,
   userId: string,
@@ -1189,6 +1339,7 @@ export async function updateItem(
     url?: string;
     note?: string;
     isFavourite?: boolean;
+    parentFolderId?: string | null;
   }
 ): Promise<void> {
   const nowIso = new Date().toISOString();
@@ -1216,6 +1367,10 @@ export async function updateItem(
     fields.push(`is_favourite = $${pIdx++}`);
     values.push(data.isFavourite ? (isPostgres() ? true : 1) : isPostgres() ? false : 0);
   }
+  if (data.parentFolderId !== undefined) {
+    fields.push(`parent_folder_id = $${pIdx++}`);
+    values.push(data.parentFolderId);
+  }
 
   values.push(id, userId);
   const sql = `UPDATE items SET ${fields.join(', ')} WHERE id = $${pIdx++} AND user_id = $${pIdx}`;
@@ -1223,10 +1378,12 @@ export async function updateItem(
 }
 
 export async function softDeleteItem(id: string, userId: string): Promise<void> {
-  const nowIso = new Date().toISOString();
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const purgeAtIso = new Date(now + 30 * 24 * 3600 * 1000).toISOString(); // 30-day trash retention
   await execute(
-    `UPDATE items SET deleted_at = $1, deletion_status = 'deleted', updated_at = $1 WHERE id = $2 AND user_id = $3`,
-    [nowIso, id, userId]
+    `UPDATE items SET deleted_at = $1, purge_at = $2, deletion_status = 'deleted', updated_at = $1 WHERE (id = $3 OR parent_folder_id = $3) AND user_id = $4`,
+    [nowIso, purgeAtIso, id, userId]
   );
   // Revoke any active chat shares for this item
   await execute(`UPDATE item_shares SET revoked_at = $1 WHERE item_id = $2`, [nowIso, id]);
@@ -1235,27 +1392,31 @@ export async function softDeleteItem(id: string, userId: string): Promise<void> 
 export async function restoreItem(id: string, userId: string): Promise<void> {
   const nowIso = new Date().toISOString();
   await execute(
-    `UPDATE items SET deleted_at = NULL, deletion_status = 'active', updated_at = $1 WHERE id = $2 AND user_id = $3`,
+    `UPDATE items SET deleted_at = NULL, purge_at = NULL, deletion_status = 'active', updated_at = $1 WHERE (id = $2 OR parent_folder_id = $2) AND user_id = $3`,
     [nowIso, id, userId]
   );
 }
 
 export async function permanentDeleteItem(id: string, userId: string): Promise<string | null> {
   const fileRows = await query(
-    `SELECT storage_key, storage_provider FROM files WHERE item_id = $1 AND user_id = $2`,
+    `SELECT f.storage_key, f.storage_provider FROM files f
+     JOIN items i ON f.item_id = i.id
+     WHERE (i.id = $1 OR i.parent_folder_id = $1) AND i.user_id = $2`,
     [id, userId]
   );
-  const storageKey = fileRows[0]?.storage_key || null;
-  const provider =
-    fileRows[0]?.storage_provider ||
-    (storageKey?.startsWith('gdrive://') ? 'google_drive' : 'local');
 
-  if (storageKey) {
-    await enqueueStorageDeletion(storageKey, provider, 'user_deleted');
+  for (const r of fileRows) {
+    if (r.storage_key) {
+      await enqueueStorageDeletion(
+        r.storage_key,
+        r.storage_provider || (r.storage_key.startsWith('gdrive://') ? 'google_drive' : 'local'),
+        'user_deleted'
+      );
+    }
   }
 
-  await execute(`DELETE FROM items WHERE id = $1 AND user_id = $2`, [id, userId]);
-  return storageKey;
+  await execute(`DELETE FROM items WHERE (id = $1 OR parent_folder_id = $1) AND user_id = $2`, [id, userId]);
+  return fileRows[0]?.storage_key || null;
 }
 
 export async function emptyTrash(userId: string): Promise<string[]> {
@@ -1812,6 +1973,34 @@ export async function runExpirationCleanup(callbacks: {
         'expired'
       );
     }
+    expiredItemsMarked++;
+  }
+
+  // 1.5. Clean up items in trash past their 30-day retention threshold
+  const thirtyDaysAgoIso = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+  const trashPurgeRows = await query(
+    `SELECT i.id, f.storage_key, f.storage_provider
+     FROM items i
+     LEFT JOIN files f ON f.item_id = i.id
+     WHERE i.deleted_at IS NOT NULL
+       AND (
+         (i.purge_at IS NOT NULL AND i.purge_at <= $1)
+         OR
+         (i.purge_at IS NULL AND i.deleted_at <= $2)
+       )
+     LIMIT 100`,
+    [nowIso, thirtyDaysAgoIso]
+  );
+
+  for (const row of trashPurgeRows) {
+    if (row.storage_key) {
+      await enqueueStorageDeletion(
+        row.storage_key,
+        row.storage_provider || 'google_drive',
+        'trash_30day_purge'
+      );
+    }
+    await execute(`DELETE FROM items WHERE id = $1`, [row.id]);
     expiredItemsMarked++;
   }
 

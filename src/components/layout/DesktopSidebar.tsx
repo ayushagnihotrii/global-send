@@ -15,9 +15,9 @@ import {
   LogOut,
   MessageSquare,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
-import { User } from '@/lib/types';
+import { User, StorageUsage } from '@/lib/types';
 import { Logo } from '@/components/ui/Logo';
 
 export type NavSection =
@@ -37,6 +37,7 @@ interface DesktopSidebarProps {
   onSelectSection: (section: NavSection) => void;
   user: User;
   onLogout: () => void;
+  storageUsage?: StorageUsage | null;
   itemCounts?: {
     all: number;
     text: number;
@@ -54,8 +55,31 @@ export function DesktopSidebar({
   onSelectSection,
   user,
   onLogout,
+  storageUsage,
   itemCounts,
 }: DesktopSidebarProps) {
+  const [internalUsage, setInternalUsage] = React.useState<StorageUsage | null>(null);
+
+  React.useEffect(() => {
+    if (storageUsage) return;
+    let mounted = true;
+    fetch('/api/user/storage')
+      .then((r) => r.json())
+      .then((data) => {
+        if (mounted && data.success && data.usage) {
+          setInternalUsage(data.usage);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [storageUsage, itemCounts?.all]);
+
+  const activeUsage = storageUsage || internalUsage;
+  const usedBytes = activeUsage?.usedBytes ?? 0;
+  const limitBytes = activeUsage?.limitBytes ?? user.storageLimitBytes ?? 16106127360;
+  const usedPercent = Math.min(100, Math.round((usedBytes / limitBytes) * 100));
   const vaultItems: {
     id: NavSection;
     label: string;
@@ -285,6 +309,29 @@ export function DesktopSidebar({
                 <span>Settings</span>
               </div>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Vault Storage Meter */}
+      <div className="pt-2 px-1">
+        <div className="p-3 rounded-[20px] bg-white dark:bg-[#18181B] border border-neutral-900/10 dark:border-white/10 shadow-xs space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-mono">
+            <span className="font-bold text-neutral-500 uppercase tracking-wider text-[10px]">
+              Storage
+            </span>
+            <span className="font-bold text-[#111111] dark:text-white tabular-nums">
+              {formatBytes(usedBytes)} / {formatBytes(limitBytes)}
+            </span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-neutral-200 dark:bg-white/10 overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-300',
+                usedPercent > 90 ? 'bg-red-500' : 'bg-[#0071e3]'
+              )}
+              style={{ width: `${Math.min(100, Math.max(usedBytes > 0 ? 3 : 0, usedPercent))}%` }}
+            />
           </div>
         </div>
       </div>
