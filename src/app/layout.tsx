@@ -4,6 +4,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SITE_CONFIG } from "@/config/site";
 import { ServiceWorkerRegister } from "@/components/pwa/ServiceWorkerRegister";
+import { DesktopTitlebar } from "@/components/desktop/DesktopTitlebar";
 
 const productionDomain = `https://${SITE_CONFIG.customDomain}`;
 const configuredUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -64,6 +65,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-sans antialiased bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100">
+        <DesktopTitlebar />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <ToastProvider>
             <ServiceWorkerRegister />
