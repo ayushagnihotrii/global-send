@@ -29,6 +29,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1155.0",
     "@aws-sdk/s3-request-presigner": "^3.1155.0",
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@libsql/client": "^0.18.0",
     "@noble/hashes": "^2.4.0",
     "@types/bcryptjs": "^2.4.6",
@@ -48,6 +52,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
@@ -65,7 +70,7 @@
     "productName": "Global Send",
     "npmRebuild": false,
     "directories": {
-      "output": "release-desktop"
+      "output": "release-desktop-v2"
     },
     "files": [
       "desktop/**/*",

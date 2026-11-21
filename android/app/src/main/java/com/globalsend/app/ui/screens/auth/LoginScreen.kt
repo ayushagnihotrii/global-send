@@ -397,19 +397,73 @@ fun LoginScreen(
         if (showServerDialog) {
             AlertDialog(
                 onDismissRequest = { showServerDialog = false },
-                title = { Text("Backend Server URL", color = colors.textPrimary) },
+                title = { Text("Local / Network Server", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
                 text = {
                     Column {
                         Text(
-                            text = "Specify your Global Send server instance.",
+                            text = "Connect directly to your local PC or self-hosted Global Send instance without Vercel.",
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textSecondary
                         )
                         Spacer(modifier = Modifier.height(12.dp))
+
+                        // Quick Selection Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "http://10.5.78.14:3000" }
+                                    .background(BadgeLimeBg)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Wi-Fi PC",
+                                    color = BadgeLimeText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "http://10.0.2.2:3000" }
+                                    .background(colors.surfaceSecondary)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Emulator",
+                                    color = colors.textPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "http://127.0.0.1:3000" }
+                                    .background(colors.surfaceSecondary)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Localhost",
+                                    color = colors.textPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
                         GlobalSendTextField(
                             value = tempServerUrl,
                             onValueChange = { tempServerUrl = it },
-                            placeholder = "https://global-send-v2.vercel.app"
+                            placeholder = "http://10.5.78.14:3000"
                         )
                     }
                 },

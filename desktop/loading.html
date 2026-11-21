@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Send Desktop Vault</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #121215;
+      color: #F5F5F7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      -webkit-app-region: drag;
+    }
+    .container {
+      text-align: center;
+      max-width: 480px;
+      padding: 32px;
+      -webkit-app-region: no-drag;
+    }
+    .stickers-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .sticker {
+      width: 52px;
+      height: auto;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.4));
+      transition: transform 0.3s ease;
+    }
+    .sticker-peace {
+      transform: rotate(-10deg);
+    }
+    .sticker-eyes {
+      transform: rotate(10deg);
+    }
+    .logo-badge {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: #CDFF5D;
+      color: #111111;
+      font-weight: 900;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -1px;
+      box-shadow: 0 0 24px rgba(205, 255, 93, 0.35);
+    }
+    .eyebrow {
+      color: #CDFF5D;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+    p {
+      color: #A1A1AA;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #18181B;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #F5F5F7;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #CDFF5D;
+      box-shadow: 0 0 8px #CDFF5D;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.4; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.1); }
+      100% { opacity: 0.4; transform: scale(0.9); }
+    }
+    .btn-retry {
+      display: none;
+      margin-top: 16px;
+      background: #CDFF5D;
+      color: #111111;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 9999px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="stickers-row">
+      <img src="../public/stickers/sticker-peace.png" class="sticker sticker-peace" alt="Peace">
+      <div class="logo-badge">GS</div>
+      <img src="../public/stickers/sticker-eyes.png" class="sticker sticker-eyes" alt="Eyes">
+    </div>
+
+    <div class="eyebrow">Local Standalone Vault</div>
+    <h1>GLOBAL SEND</h1>
+    <p>Starting local encryption engine and connecting to Telegram cloud relay...</p>
+
+    <div class="status-pill">
+      <span class="pulse-dot"></span>
+      <span id="status-text">Booting Engine (http://127.0.0.1:3000)...</span>
+    </div>
+
+    <br>
+    <button id="retry-btn" class="btn-retry" onclick="window.desktopVault ? window.location.reload() : null">
+      Retry Connection
+    </button>
+  </div>
+</body>
+</html>
