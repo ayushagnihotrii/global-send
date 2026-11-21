@@ -12,6 +12,9 @@ const confirmSchema = z.object({
   fileSize: z.number().positive(),
   title: z.string().optional(),
   tags: z.array(z.string()).optional().default([]),
+  parentFolderId: z.string().nullable().optional(),
+  isPermanent: z.boolean().optional(),
+  expirationSeconds: z.number().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -65,11 +68,20 @@ export async function POST(req: NextRequest) {
     else if (mimeType.startsWith('video/')) itemType = 'video';
 
     // 1. Create item record
+    const durationSec = result.data.isPermanent ? 0 : (result.data.expirationSeconds || 86400);
+    const expiresAtIso = result.data.isPermanent
+      ? null
+      : new Date(Date.now() + durationSec * 1000).toISOString();
+
     await createItem({
       id: itemId,
       userId: session.userId,
       type: itemType,
       title,
+      parentFolderId: result.data.parentFolderId || null,
+      isPermanent: !!result.data.isPermanent,
+      expirationDurationSec: durationSec,
+      expiresAt: expiresAtIso,
     });
 
     // 2. Create file record

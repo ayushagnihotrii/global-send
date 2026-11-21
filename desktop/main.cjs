@@ -62,8 +62,13 @@ async function launchLocalApp(win, port = 3000) {
     }
   }
 
+  const remoteUrl =
+    process.env.ELECTRON_START_URL || 'https://global-send-v2.vercel.app';
+
   if (isReady && win && !win.isDestroyed()) {
     win.loadURL(localUrl);
+  } else if (win && !win.isDestroyed()) {
+    win.loadURL(remoteUrl);
   }
 }
 
@@ -261,7 +266,7 @@ ipcMain.handle(
         file: customFile,
         forceDocument: true,
         caption: `[Global Send Desktop Vault] ${filename} [Item: ${itemId || crypto.randomUUID()}]`,
-        workers: 8,
+        workers: 16,
         progressCallback: (progress) => {
           const now = Date.now();
           if (now - lastProgressTime > 50 || progress >= 1) {

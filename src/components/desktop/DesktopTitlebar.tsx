@@ -13,7 +13,9 @@ declare global {
       close: () => Promise<void>;
       isMaximized: () => Promise<boolean>;
       pickFiles: () => Promise<string[]>;
+      getPathForFile: (file: File) => string;
       directUpload: (params: any) => Promise<any>;
+      onUploadProgress: (callback: (data: { itemId: string; progress: number }) => void) => () => void;
     };
   }
 }

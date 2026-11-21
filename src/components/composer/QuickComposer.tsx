@@ -445,6 +445,87 @@ export function QuickComposer({
       );
     };
 
+    // 1. High-Speed Direct Desktop MTProto Upload
+    // If running inside the Electron Desktop app, stream directly to Telegram MTProto from local disk.
+    // Bypasses Vercel serverless body limits, timeouts, and RAM limitations completely.
+    if (typeof window !== 'undefined' && window.desktopVault?.isDesktop) {
+      let localPath = '';
+      try {
+        localPath =
+          window.desktopVault.getPathForFile?.(file) ||
+          (file as any).path ||
+          '';
+      } catch {}
+
+      if (localPath) {
+        try {
+          const configRes = await fetch('/api/storage/direct-config');
+          if (configRes.ok) {
+            const configData = await configRes.json();
+            if (configData.provider === 'telegram' && configData.telegram) {
+              const itemId = crypto.randomUUID();
+
+              // Subscribe to real-time hardware upload progress
+              const unsubscribe = window.desktopVault.onUploadProgress?.((data) => {
+                if (data.itemId === itemId) {
+                  updateEntryProgress(Math.max(1, Math.min(99, data.progress)));
+                }
+              });
+
+              updateEntryProgress(2);
+
+              const uploadRes = await window.desktopVault.directUpload({
+                filePath: localPath,
+                apiId: configData.telegram.apiId,
+                apiHash: configData.telegram.apiHash,
+                botToken: configData.telegram.botToken,
+                channelId: configData.telegram.channelId,
+                title: customItemTitle || file.name,
+                itemId,
+                mimeType: file.type || 'application/octet-stream',
+              });
+
+              if (unsubscribe) unsubscribe();
+
+              if (!uploadRes.success) {
+                throw new Error(uploadRes.error || 'Desktop direct upload failed');
+              }
+
+              // Confirm item registration in vault
+              const confirmRes = await fetch('/api/storage/confirm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  itemId,
+                  storageKey: uploadRes.storageKey,
+                  originalFilename: file.name,
+                  mimeType: file.type || 'application/octet-stream',
+                  fileSize: uploadRes.fileSize,
+                  title: customItemTitle || file.name,
+                  tags,
+                  parentFolderId: parentFolderId || null,
+                  isPermanent: effectiveExpirationSec === 0,
+                  expirationSeconds: effectiveExpirationSec,
+                }),
+              });
+
+              if (!confirmRes.ok) {
+                const confirmErr = await confirmRes.json().catch(() => ({}));
+                throw new Error(confirmErr.error || 'Failed to finalize vault record');
+              }
+
+              const confirmData = await confirmRes.json();
+              updateEntryProgress(100);
+              return confirmData.item;
+            }
+          }
+        } catch (desktopErr: any) {
+          console.warn('[Desktop Direct Upload failed, checking fallback]:', desktopErr?.message);
+          throw desktopErr;
+        }
+      }
+    }
+
     const CHUNK_THRESHOLD = 3.5 * 1024 * 1024;
     if (file.size > CHUNK_THRESHOLD) {
       const abortCtrl = new AbortController();
@@ -465,10 +546,12 @@ export function QuickComposer({
         signal: abortCtrl.signal,
       });
 
-      const initData = await initRes.json();
       if (!initRes.ok) {
-        throw new Error(initData.error || 'Failed to initiate resumable upload');
+        const initErr = await initRes.json().catch(() => ({}));
+        throw new Error(initErr.error || `Failed to initiate resumable upload (HTTP ${initRes.status})`);
       }
+
+      const initData = await initRes.json();
 
       const sessionId = initData.sessionId;
       activeUploadSessionIdRef.current = sessionId;
@@ -490,10 +573,18 @@ export function QuickComposer({
           }
         );
 
-        const putData = await putRes.json();
         if (!putRes.ok) {
-          throw new Error(putData.error || 'Chunk upload failed');
+          const contentType = putRes.headers.get('content-type') || '';
+          if (contentType.includes('text/html') || putRes.status === 504 || putRes.status === 502) {
+            throw new Error(
+              `Server timed out assembling ${Math.round(file.size / (1024 * 1024))} MB file (HTTP ${putRes.status}). For large files, use the desktop app direct uploader.`
+            );
+          }
+          const putErr = await putRes.json().catch(() => ({}));
+          throw new Error(putErr.error || `Chunk upload failed (HTTP ${putRes.status})`);
         }
+
+        const putData = await putRes.json();
 
         offset += slice.size;
         updateEntryProgress(Math.min(99, Math.round((offset / file.size) * 100)));
