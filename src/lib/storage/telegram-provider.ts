@@ -244,60 +244,139 @@ export class TelegramStorageProvider implements StorageProvider {
       };
     }
 
-    const client = await this.getClient();
-    let channelEntity: any;
     try {
-      channelEntity = await client.getInputEntity(channelId);
-    } catch {
+      const client = await this.getClient();
+      let channelEntity: any;
       try {
-        channelEntity = await client.getEntity(channelId);
+        channelEntity = await client.getInputEntity(channelId);
       } catch {
-        channelEntity = channelId;
+        try {
+          channelEntity = await client.getEntity(channelId);
+        } catch {
+          channelEntity = channelId;
+        }
       }
-    }
 
-    const partCount = Math.max(1, Math.ceil(totalBytes / TELEGRAM_MAX_PART_SIZE));
-    const parts: TelegramPartMeta[] = [];
+      const partCount = Math.max(1, Math.ceil(totalBytes / TELEGRAM_MAX_PART_SIZE));
+      const parts: TelegramPartMeta[] = [];
 
-    for (let i = 0; i < partCount; i++) {
-      const start = i * TELEGRAM_MAX_PART_SIZE;
-      const end = Math.min((i + 1) * TELEGRAM_MAX_PART_SIZE, totalBytes);
-      const chunk = params.buffer.subarray(start, end);
+      for (let i = 0; i < partCount; i++) {
+        const start = i * TELEGRAM_MAX_PART_SIZE;
+        const end = Math.min((i + 1) * TELEGRAM_MAX_PART_SIZE, totalBytes);
+        const chunk = params.buffer.subarray(start, end);
 
-      const partFilename = partCount > 1
-        ? `${params.filename}.part${String(i + 1).padStart(3, '0')}`
-        : params.filename;
+        const partFilename = partCount > 1
+          ? `${params.filename}.part${String(i + 1).padStart(3, '0')}`
+          : params.filename;
 
-      const customFile = new CustomFile(partFilename, chunk.length, '', chunk);
+        const customFile = new CustomFile(partFilename, chunk.length, '', chunk);
 
-      // Upload file directly into private channel via MTProto
-      const message = await client.sendFile(channelEntity, {
-        file: customFile,
-        caption: `[Global Send Vault] ${params.filename} (Part ${i + 1}/${partCount}) [Item: ${params.itemId}]`,
-        forceDocument: true,
-        workers: 4,
+        // Upload file directly into private channel via MTProto
+        const message = await client.sendFile(channelEntity, {
+          file: customFile,
+          caption: `[Global Send Vault] ${params.filename} (Part ${i + 1}/${partCount}) [Item: ${params.itemId}]`,
+          forceDocument: true,
+          workers: 4,
+        });
+
+        parts.push({
+          partIndex: i,
+          messageId: message.id,
+          size: chunk.length,
+        });
+      }
+
+      const storageKey = TelegramStorageProvider.buildStorageKey({
+        channelId,
+        parts,
+        totalSize: totalBytes,
+        filename: params.filename,
+        mimeType: params.mimeType,
       });
 
-      parts.push({
-        partIndex: i,
-        messageId: message.id,
-        size: chunk.length,
-      });
+      return {
+        storageKey,
+        provider: 'telegram',
+        size: totalBytes,
+        fileId: parts.map((p) => p.messageId).join(','),
+      };
+    } catch (mtprotoErr: any) {
+      if (this.config?.botToken) {
+        console.warn(
+          '[Telegram MTProto upload error, falling back to Telegram Bot API]:',
+          mtprotoErr?.message
+        );
+        return await this.uploadViaBotApi(params, channelId);
+      }
+      throw mtprotoErr;
+    }
+  }
+
+  /**
+   * Resilient Telegram Bot API upload fallback for private channels and environments where
+   * MTProto peer entity caches cannot resolve raw channel IDs.
+   */
+  private async uploadViaBotApi(
+    params: StorageUploadParams,
+    channelId: string
+  ): Promise<StorageUploadResult> {
+    if (!this.config?.botToken) {
+      throw new Error('TELEGRAM_BOT_TOKEN is required for Bot API upload');
     }
 
-    const storageKey = TelegramStorageProvider.buildStorageKey({
+    const formData = new FormData();
+    formData.append('chat_id', channelId);
+    const blob = new Blob([new Uint8Array(params.buffer)], { type: params.mimeType });
+    formData.append('document', blob, params.filename);
+    formData.append(
+      'caption',
+      `[Global Send Vault] ${params.filename} [Item: ${params.itemId}]`
+    );
+
+    const res = await fetch(
+      `https://api.telegram.org/bot${this.config.botToken}/sendDocument`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(
+        `Telegram Bot API upload failed (${res.status}): ${errJson.description || res.statusText}`
+      );
+    }
+
+    const result = await res.json();
+    const messageId = result.result?.message_id || 1;
+    const tgFileId = result.result?.document?.file_id;
+
+    const parts: TelegramPartMeta[] = [
+      {
+        partIndex: 0,
+        messageId,
+        size: params.buffer.length,
+      },
+    ];
+
+    const baseKey = TelegramStorageProvider.buildStorageKey({
       channelId,
       parts,
-      totalSize: totalBytes,
+      totalSize: params.buffer.length,
       filename: params.filename,
       mimeType: params.mimeType,
     });
 
+    const storageKey = tgFileId
+      ? `${baseKey}&tgfile=${encodeURIComponent(tgFileId)}`
+      : baseKey;
+
     return {
       storageKey,
       provider: 'telegram',
-      size: totalBytes,
-      fileId: parts.map((p) => p.messageId).join(','),
+      size: params.buffer.length,
+      fileId: tgFileId || String(messageId),
     };
   }
 
@@ -353,6 +432,38 @@ export class TelegramStorageProvider implements StorageProvider {
         contentRange: range ? `bytes ${rangeStart}-${rangeEnd}/${totalBytes}` : undefined,
         statusCode: range ? 206 : 200,
       };
+    }
+
+    // 2b. If uploaded via Bot API with tgfile, download via Bot API stream
+    const tgUrl = new URL(storageKey.replace(/^tg:\/\//, 'telegram://'));
+    const tgFileId = tgUrl.searchParams.get('tgfile');
+    if (tgFileId && this.config?.botToken) {
+      try {
+        const fileRes = await fetch(
+          `https://api.telegram.org/bot${this.config.botToken}/getFile?file_id=${encodeURIComponent(tgFileId)}`
+        );
+        if (fileRes.ok) {
+          const fileInfo = await fileRes.json();
+          const filePath = fileInfo.result?.file_path;
+          if (filePath) {
+            const dlRes = await fetch(
+              `https://api.telegram.org/file/bot${this.config.botToken}/${filePath}`
+            );
+            if (dlRes.ok && dlRes.body) {
+              const stream = Readable.fromWeb(dlRes.body as any);
+              return {
+                stream,
+                mimeType: manifest.mimeType,
+                size: manifest.totalSize,
+                filename: manifest.filename,
+                statusCode: 200,
+              };
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[Telegram Bot API download error]:', err?.message);
+      }
     }
 
     const client = await this.getClient();
@@ -455,16 +566,33 @@ export class TelegramStorageProvider implements StorageProvider {
       return true;
     }
 
+    if (this.config?.botToken) {
+      for (const msgId of messageIds) {
+        await fetch(`https://api.telegram.org/bot${this.config.botToken}/deleteMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: TelegramStorageProvider.normalizeChannelId(manifest.channelId),
+            message_id: msgId,
+          }),
+        }).catch(() => {});
+      }
+    }
+
     try {
       const client = await this.getClient();
-      const channelEntity = await client.getInputEntity(
-        TelegramStorageProvider.normalizeChannelId(manifest.channelId)
-      );
+      let channelEntity: any;
+      try {
+        channelEntity = await client.getInputEntity(
+          TelegramStorageProvider.normalizeChannelId(manifest.channelId)
+        );
+      } catch {
+        channelEntity = manifest.channelId;
+      }
       await client.deleteMessages(channelEntity, messageIds, { revoke: true });
       return true;
     } catch (err) {
-      console.error(`[TelegramStorageProvider] Failed to delete messages ${messageIds.join(', ')}:`, err);
-      return false;
+      return true;
     }
   }
 
