@@ -198,7 +198,8 @@ export async function POST(req: NextRequest) {
       {
         error: isDbUnreachable
           ? 'Database unreachable: your Supabase database appears to be paused or inactive. Please restore/unpause it in your Supabase dashboard.'
-          : 'Failed to create account. Please try again.',
+          : (errorMsg || 'Failed to create account. Please try again.'),
+        detail: errorMsg,
       },
       { status: 500 }
     );

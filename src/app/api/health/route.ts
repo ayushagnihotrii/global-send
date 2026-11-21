@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
   const payload = {
     status: health.ok ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
-    version: '2.0.0',
+    version: '2.0.1',
+    commit: '90fda9b',
     database: {
       status: health.ok ? 'ok' : 'degraded',
       ok: health.ok,
