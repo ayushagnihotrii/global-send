@@ -224,11 +224,13 @@ function createWindow() {
     },
   });
 
-  const loadingPath = path.join(__dirname, 'loading.html');
-  fileLog('Loading loadingPath:', loadingPath, 'exists:', fs.existsSync(loadingPath));
-  mainWindow.loadFile(loadingPath).catch((err) => fileLog('loadFile error:', err));
+  const remoteUrl =
+    process.env.ELECTRON_START_URL || 'https://global-send-v2.vercel.app';
 
-  launchLocalApp(mainWindow, 3000);
+  fileLog('createWindow loading URL:', remoteUrl);
+  mainWindow.loadURL(remoteUrl).catch((err) => {
+    fileLog('loadURL error:', err);
+  });
 
   mainWindow.on('close', () => {
     isQuitting = true;
