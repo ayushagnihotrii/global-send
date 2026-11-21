@@ -15,12 +15,26 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
+const logFile = path.join(app.getPath('userData'), 'desktop_startup.log');
+try {
+  fs.writeFileSync(logFile, `[Startup] ${new Date().toISOString()} - Single instance lock acquired\n`);
+} catch {}
+
+function fileLog(...args) {
+  try {
+    fs.appendFileSync(
+      logFile,
+      args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\n'
+    );
+  } catch {}
+}
+
 // Global crash protection for unhandled rejections / exceptions
 process.on('uncaughtException', (err) => {
-  console.error('[Electron Uncaught Exception]:', err);
+  fileLog('[Electron Uncaught Exception]:', err?.stack || err);
 });
 process.on('unhandledRejection', (reason) => {
-  console.error('[Electron Unhandled Rejection]:', reason);
+  fileLog('[Electron Unhandled Rejection]:', reason?.stack || reason);
 });
 
 let mainWindow = null;
@@ -66,8 +80,10 @@ function startLocalServer(port = 3000) {
 
 async function launchLocalApp(win, port = 3000) {
   const localUrl = `http://127.0.0.1:${port}`;
+  fileLog('launchLocalApp starting, checking port:', port);
 
   let isReady = await checkLocalServer(port);
+  fileLog('checkLocalServer initial isReady:', isReady);
   if (!isReady) {
     serverProcess = startLocalServer(port);
     for (let i = 0; i < 30; i++) {
@@ -75,14 +91,17 @@ async function launchLocalApp(win, port = 3000) {
       isReady = await checkLocalServer(port);
       if (isReady) break;
     }
+    fileLog('after startLocalServer loop isReady:', isReady);
   }
 
   const remoteUrl =
     process.env.ELECTRON_START_URL || 'https://global-send-v2.vercel.app';
 
   if (isReady && win && !win.isDestroyed()) {
+    fileLog('loading localUrl:', localUrl);
     win.loadURL(localUrl);
   } else if (win && !win.isDestroyed()) {
+    fileLog('loading remoteUrl:', remoteUrl);
     win.loadURL(remoteUrl);
   }
 }
@@ -212,12 +231,23 @@ function createWindow() {
   });
 
   const loadingPath = path.join(__dirname, 'loading.html');
-  mainWindow.loadFile(loadingPath);
+  fileLog('Loading loadingPath:', loadingPath, 'exists:', fs.existsSync(loadingPath));
+  mainWindow.loadFile(loadingPath).catch((err) => fileLog('loadFile error:', err));
 
   mainWindow.once('ready-to-show', () => {
+    fileLog('ready-to-show event fired');
     mainWindow.show();
     launchLocalApp(mainWindow, 3000);
   });
+
+  // Safety fallback: Ensure window is shown even if ready-to-show is delayed
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      fileLog('ready-to-show fallback timeout - showing window');
+      mainWindow.show();
+      launchLocalApp(mainWindow, 3000);
+    }
+  }, 800);
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
@@ -249,42 +279,56 @@ function createWindow() {
 }
 
 function createTray() {
-  // Simple fallback SVG icon representation if asset not generated yet
-  const iconPath = path.join(__dirname, '../public/favicon.ico');
-  const trayIcon = fs.existsSync(iconPath)
-    ? nativeImage.createFromPath(iconPath)
-    : nativeImage.createEmpty();
-
-  tray = new Tray(trayIcon);
-  tray.setToolTip('Global Send — Client-Sealed Vault');
-
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Open Global Send Vault',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Quit',
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      },
-    },
-  ]);
-
-  tray.setContextMenu(contextMenu);
-  tray.on('double-click', () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
+  try {
+    const iconCandidates = [
+      path.join(__dirname, '../public/favicon.ico'),
+      path.join(__dirname, '../public/icon-512.png'),
+      path.join(__dirname, 'favicon.ico'),
+    ];
+    const validPath = iconCandidates.find((p) => fs.existsSync(p));
+    if (!validPath) {
+      fileLog('createTray: No icon found, skipping tray');
+      return;
     }
-  });
+    const trayIcon = nativeImage.createFromPath(validPath);
+    if (trayIcon.isEmpty()) {
+      fileLog('createTray: Icon empty, skipping tray');
+      return;
+    }
+
+    tray = new Tray(trayIcon);
+    tray.setToolTip('Global Send — Client-Sealed Vault');
+
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Open Global Send Vault',
+        click: () => {
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]);
+
+    tray.setContextMenu(contextMenu);
+    tray.on('double-click', () => {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
+  } catch (err) {
+    fileLog('createTray error:', err?.message || err);
+  }
 }
 
 // Window control IPC handlers

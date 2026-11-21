@@ -68,7 +68,7 @@ export function DesktopTitlebar() {
             GLOBAL SEND
           </span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#CDFF5D] text-black font-mono font-bold tracking-tight">
-            DESKTOP v2.4
+            DESKTOP v3.0
           </span>
         </div>
         <div className="flex items-center gap-1 text-[11px] text-white/40 font-mono">
