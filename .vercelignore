@@ -6,7 +6,7 @@ node_modules
 .agents
 target
 release-desktop*
-dist
+dist-desktop*
 android
 .data
 *.log
