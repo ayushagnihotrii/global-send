@@ -293,14 +293,52 @@ export function ItemCard({
         )}
 
         {item.type === 'image' && !expInfo.isExpired && (
-          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center">
-            {(thumbnailSrc || item.file?.downloadUrl) && !imgError ? (
+          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center select-none">
+            {thumbnailSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={thumbnailSrc || item.file?.downloadUrl}
-                alt={item.title}
+                src={thumbnailSrc}
+                alt=""
+                loading="lazy"
+                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+              />
+            ) : item.file?.downloadUrl && !imgError ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.file.downloadUrl}
+                alt=""
                 loading="lazy"
                 onError={() => setImgError(true)}
+                onLoad={(e) => {
+                  try {
+                    const img = e.currentTarget;
+                    const maxDim = 320;
+                    let w = img.naturalWidth || 320;
+                    let h = img.naturalHeight || 200;
+                    if (w > maxDim || h > maxDim) {
+                      if (w > h) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                      } else {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                      }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(img, 0, 0, w, h);
+                      const dataUrl = canvas.toDataURL('image/webp', 0.8);
+                      fetch('/api/items/thumbnail', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ itemId: item.id, thumbnailData: dataUrl }),
+                      }).catch(() => {});
+                    }
+                  } catch {}
+                }}
                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
               />
             ) : (
@@ -320,28 +358,25 @@ export function ItemCard({
         {item.type === 'video' && item.file && (
           <div
             onClick={() => onOpenDetail(item)}
-            className="group/video relative w-full h-32 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center cursor-pointer shadow-xs"
+            className="group/video relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center cursor-pointer shadow-xs select-none"
           >
             {thumbnailSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={thumbnailSrc}
                 alt=""
-                className="w-full h-full object-cover opacity-80 group-hover/video:opacity-95 transition-opacity"
-              />
-            ) : item.file.downloadUrl && !expInfo.isExpired ? (
-              <video
-                src={`${item.file.downloadUrl}#t=0.5`}
-                preload="metadata"
-                muted
-                playsInline
-                className="w-full h-full object-cover opacity-80 group-hover/video:opacity-95 transition-opacity"
+                className="w-full h-full object-cover opacity-85 group-hover/video:opacity-100 transition-opacity"
               />
             ) : (
-              <Film className="w-8 h-8 text-neutral-500" />
+              <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-950 flex flex-col items-center justify-center gap-1.5 p-3">
+                <Film className="w-7 h-7 text-neutral-400 group-hover/video:text-white transition-colors" />
+                <span className="text-[11px] font-mono font-medium text-neutral-300 truncate max-w-[85%]">
+                  {item.file.originalFilename || item.title}
+                </span>
+              </div>
             )}
-            <div className="absolute inset-0 bg-black/25 group-hover/video:bg-black/10 transition-colors flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full bg-white/90 text-black flex items-center justify-center shadow-md group-hover/video:scale-110 transition-transform">
+            <div className="absolute inset-0 bg-black/20 group-hover/video:bg-black/10 transition-colors flex items-center justify-center pointer-events-none">
+              <div className="w-11 h-11 rounded-full bg-white/90 dark:bg-[#1C1C1E]/90 text-black dark:text-white flex items-center justify-center shadow-lg group-hover/video:scale-110 transition-transform backdrop-blur-md border border-white/20">
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>

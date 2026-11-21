@@ -1022,7 +1022,19 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
               </div>
             )}
 
-            {/* FOLDER NAVIGATION & BREADCRUMBS */}
+            {/* QUICK COMPOSER (ABOVE FOLDER NAVIGATION) */}
+            {currentSection !== 'trash' && (
+              <div className="mb-6">
+                <QuickComposer
+                  onItemCreated={handleItemCreated}
+                  parentFolderId={currentFolderId}
+                  externalFiles={externalDroppedFiles}
+                  onExternalFilesConsumed={() => setExternalDroppedFiles(null)}
+                />
+              </div>
+            )}
+
+            {/* FOLDER NAVIGATION & BREADCRUMBS (BELOW COMPOSER) */}
             {currentSection !== 'trash' && !debouncedSearch.trim() && !selectedTag && (
               <div className="mb-6 space-y-3">
                 <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.08] dark:border-white/[0.08] shadow-xs">
@@ -1167,16 +1179,6 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                   </div>
                 )}
               </div>
-            )}
-
-            {/* QUICK COMPOSER */}
-            {currentSection !== 'trash' && (
-              <QuickComposer
-                onItemCreated={handleItemCreated}
-                parentFolderId={currentFolderId}
-                externalFiles={externalDroppedFiles}
-                onExternalFilesConsumed={() => setExternalDroppedFiles(null)}
-              />
             )}
 
             {/* ITEMS LIST */}

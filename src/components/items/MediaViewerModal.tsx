@@ -155,8 +155,34 @@ export function MediaViewerModal({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={downloadUrl}
-                alt={item.title}
+                alt=""
                 style={{ transform: `scale(${zoomLevel})` }}
+                onLoad={(e) => {
+                  if (!item.file?.thumbnailData && item.id) {
+                    try {
+                      const img = e.currentTarget;
+                      const maxDim = 320;
+                      let w = img.naturalWidth || 320;
+                      let h = img.naturalHeight || 200;
+                      if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                      }
+                      const canvas = document.createElement('canvas');
+                      canvas.width = w; canvas.height = h;
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.drawImage(img, 0, 0, w, h);
+                        const thumb = canvas.toDataURL('image/webp', 0.8);
+                        fetch('/api/items/thumbnail', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ itemId: item.id, thumbnailData: thumb }),
+                        }).catch(() => {});
+                      }
+                    } catch {}
+                  }
+                }}
                 className="max-h-[58vh] max-w-full object-contain transition-transform duration-150 rounded-[10px] select-none"
               />
             </div>
@@ -166,6 +192,34 @@ export function MediaViewerModal({
               controls
               playsInline
               preload="metadata"
+              onLoadedData={(e: React.SyntheticEvent<HTMLVideoElement>) => {
+                if (!item.file?.thumbnailData && item.id) {
+                  try {
+                    const video = e.currentTarget;
+                    if (video.videoWidth > 0) {
+                      const maxDim = 320;
+                      let w = video.videoWidth;
+                      let h = video.videoHeight;
+                      if (w > maxDim || h > maxDim) {
+                        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+                        else { w = Math.round((w * maxDim) / h); h = maxDim; }
+                      }
+                      const canvas = document.createElement('canvas');
+                      canvas.width = w; canvas.height = h;
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.drawImage(video, 0, 0, w, h);
+                        const thumb = canvas.toDataURL('image/webp', 0.8);
+                        fetch('/api/items/thumbnail', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ itemId: item.id, thumbnailData: thumb }),
+                        }).catch(() => {});
+                      }
+                    }
+                  } catch {}
+                }
+              }}
               className="max-h-[58vh] max-w-full rounded-[10px] bg-black shadow-lg"
             >
               Your browser does not support HTML5 video playback.

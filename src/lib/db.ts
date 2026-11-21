@@ -1707,6 +1707,16 @@ export async function updateFileStatus(
   ]);
 }
 
+export async function updateFileThumbnail(
+  itemId: string,
+  thumbnailData: string
+): Promise<void> {
+  await execute(
+    `UPDATE files SET thumbnail_data = $1 WHERE item_id = $2 AND (thumbnail_data IS NULL OR thumbnail_data = '')`,
+    [thumbnailData, itemId]
+  );
+}
+
 /**
  * Authorizes a file download or preview request.
  * Enforces:

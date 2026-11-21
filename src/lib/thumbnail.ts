@@ -94,68 +94,108 @@ export async function generateVideoThumbnail(
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     const objectUrl = URL.createObjectURL(file);
+    let isSettled = false;
+    let timeoutId: any = null;
 
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'metadata';
+    video.preload = 'auto';
 
     const cleanUp = () => {
+      if (timeoutId) clearTimeout(timeoutId);
       URL.revokeObjectURL(objectUrl);
       video.removeAttribute('src');
       video.load();
     };
 
+    const captureFrame = () => {
+      if (isSettled) return;
+      isSettled = true;
+
+      try {
+        let width = video.videoWidth || 320;
+        let height = video.videoHeight || 180;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          cleanUp();
+          reject(new Error('Canvas 2D context unavailable'));
+          return;
+        }
+
+        ctx.drawImage(video, 0, 0, width, height);
+
+        let dataUrl = '';
+        try {
+          dataUrl = canvas.toDataURL('image/webp', quality);
+        } catch {
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        cleanUp();
+        resolve({
+          dataUrl,
+          width,
+          height,
+          mimeType: 'image/webp',
+        });
+      } catch (err) {
+        cleanUp();
+        reject(err);
+      }
+    };
+
+    // 3.5s safety timeout to prevent hanging uploads if codec cannot be decoded
+    timeoutId = setTimeout(() => {
+      if (!isSettled) {
+        if (video.videoWidth > 0) {
+          captureFrame();
+        } else {
+          cleanUp();
+          reject(new Error('Video thumbnail extraction timed out'));
+        }
+      }
+    }, 3500);
+
     video.onloadedmetadata = () => {
-      const targetTime = Math.min(seekTimeSec, Math.max(0.1, video.duration / 2));
-      video.currentTime = targetTime;
+      const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 2;
+      const targetTime = Math.min(seekTimeSec, Math.max(0.1, dur / 2));
+      try {
+        video.currentTime = targetTime;
+      } catch {
+        captureFrame();
+      }
     };
 
     video.onseeked = () => {
-      let width = video.videoWidth || 320;
-      let height = video.videoHeight || 180;
+      captureFrame();
+    };
 
-      if (width > maxDimension || height > maxDimension) {
-        if (width > height) {
-          height = Math.round((height * maxDimension) / width);
-          width = maxDimension;
-        } else {
-          width = Math.round((width * maxDimension) / height);
-          height = maxDimension;
-        }
+    video.oncanplay = () => {
+      if (!isSettled && video.videoWidth > 0 && video.currentTime > 0) {
+        captureFrame();
       }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, width);
-      canvas.height = Math.max(1, height);
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        cleanUp();
-        reject(new Error('Canvas 2D context unavailable'));
-        return;
-      }
-
-      ctx.drawImage(video, 0, 0, width, height);
-
-      let dataUrl = '';
-      try {
-        dataUrl = canvas.toDataURL('image/webp', quality);
-      } catch {
-        dataUrl = canvas.toDataURL('image/jpeg', quality);
-      }
-
-      cleanUp();
-      resolve({
-        dataUrl,
-        width,
-        height,
-        mimeType: 'image/webp',
-      });
     };
 
     video.onerror = () => {
-      cleanUp();
-      reject(new Error('Failed to load video for thumbnail extraction'));
+      if (!isSettled) {
+        cleanUp();
+        reject(new Error('Failed to load video for thumbnail extraction'));
+      }
     };
 
     video.src = objectUrl;
@@ -164,14 +204,23 @@ export async function generateVideoThumbnail(
 
 /**
  * High-level helper: Extracts a preview thumbnail from any supported media File.
+ * Resilient against missing Windows MIME associations by inspecting extension.
  */
 export async function extractMediaThumbnail(file: File): Promise<string | null> {
   try {
-    if (file.type.startsWith('image/')) {
+    const filename = file.name || '';
+    const isImage =
+      (file.type && file.type.startsWith('image/')) ||
+      /\.(jpe?g|png|webp|gif|svg|bmp|ico|heic|avif)$/i.test(filename);
+    const isVideo =
+      (file.type && file.type.startsWith('video/')) ||
+      /\.(mp4|webm|mov|mkv|avi|m4v|3gp|wmv|flv)$/i.test(filename);
+
+    if (isImage) {
       const result = await generateImageThumbnail(file);
       return result.dataUrl;
     }
-    if (file.type.startsWith('video/')) {
+    if (isVideo) {
       const result = await generateVideoThumbnail(file);
       return result.dataUrl;
     }
