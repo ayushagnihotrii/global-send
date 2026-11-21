@@ -125,12 +125,15 @@ export async function POST(req: NextRequest) {
       errorMsg.includes('tenant') ||
       errorMsg.includes('connection') ||
       errorMsg.includes('database') ||
-      errorMsg.includes('ECONNREFUSED');
+      errorMsg.includes('ECONNREFUSED') ||
+      errorMsg.includes('EMAXCONNSESSION') ||
+      errorMsg.includes('max clients') ||
+      errorMsg.includes('pool_size');
 
     return NextResponse.json(
       {
         error: isDbUnreachable
-          ? 'Database unreachable: your Supabase database appears to be paused or inactive. Please restore/unpause it in your Supabase dashboard.'
+          ? 'Database connection limit reached or database unreachable. Please wait 10 seconds and try again.'
           : 'Failed to sign in. Please check your credentials and try again.',
       },
       { status: 500 }

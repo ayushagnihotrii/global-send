@@ -47,14 +47,25 @@ function getDatabase() {
 
   if (config.database.driver === 'postgres') {
     if (!globalThis.__quickvault_pg_pool) {
+      let connString = config.database.connectionString || '';
+
+      // If connecting to Supabase pooler on port 5432 (session mode),
+      // switch to port 6543 (transaction mode) to avoid (EMAXCONNSESSION) max clients reached
+      if (connString.includes('pooler.supabase.com:5432')) {
+        connString = connString.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+        if (!connString.includes('pgbouncer=true')) {
+          connString += (connString.includes('?') ? '&' : '?') + 'pgbouncer=true';
+        }
+      }
+
       globalThis.__quickvault_pg_pool = new Pool({
-        connectionString: config.database.connectionString,
+        connectionString: connString,
         ssl: config.database.ssl,
         max: process.env.DATABASE_MAX_CONNECTIONS
           ? parseInt(process.env.DATABASE_MAX_CONNECTIONS, 10)
-          : 10,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
+          : 1, // On serverless Vercel, max 1 connection per lambda prevents connection pool exhaustion
+        idleTimeoutMillis: 1000,
+        connectionTimeoutMillis: 5000,
       });
 
       globalThis.__quickvault_pg_pool.on('error', (err) => {
