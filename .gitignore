@@ -40,6 +40,8 @@ yarn-error.log*
 # local vault data
 .data
 .storage
+dist-desktop/
+release-desktop/
 
 # vercel
 .vercel
