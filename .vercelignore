@@ -5,3 +5,8 @@ node_modules
 .next
 .agents
 target
+release-desktop*
+dist
+android
+.data
+*.log
