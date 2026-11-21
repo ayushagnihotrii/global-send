@@ -65,7 +65,7 @@
     "productName": "Global Send",
     "npmRebuild": false,
     "directories": {
-      "output": "dist-desktop"
+      "output": "release-desktop"
     },
     "files": [
       "desktop/**/*",

@@ -33,12 +33,20 @@ function createWindow() {
     show: false,
   });
 
-  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
-  const startUrl = isDev
-    ? (process.env.ELECTRON_START_URL || 'http://localhost:3000')
-    : `file://${path.join(__dirname, '../out/index.html')}`;
+  const startUrl =
+    process.env.ELECTRON_START_URL ||
+    (process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000'
+      : 'https://global-send-v2.vercel.app');
 
   mainWindow.loadURL(startUrl);
+
+  mainWindow.webContents.on('did-fail-load', () => {
+    // Graceful fallback if offline on startup
+    setTimeout(() => {
+      mainWindow?.loadURL(startUrl).catch(() => {});
+    }, 2000);
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
