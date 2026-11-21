@@ -8,6 +8,21 @@ const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const { CustomFile } = require('telegram/client/uploads');
 
+// Prevent multiple instances from crashing over LevelDB/GPUCache file locks
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+// Global crash protection for unhandled rejections / exceptions
+process.on('uncaughtException', (err) => {
+  console.error('[Electron Uncaught Exception]:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Electron Unhandled Rejection]:', reason);
+});
+
 let mainWindow = null;
 let tray = null;
 let isQuitting = false;
@@ -168,8 +183,10 @@ async function getTelegramClient(apiId, apiHash, botToken, sessionStringParam = 
   return client;
 }
 
-// Disable hardware acceleration issues on specific VMs/GPUs if needed
-app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+// Platform-specific video decode features
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -212,6 +229,13 @@ function createWindow() {
           content: 'Running in the background. Uploads will continue.',
         });
       }
+    }
+  });
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    console.error('[Render process gone]:', details?.reason);
+    if (details?.reason !== 'clean-exit') {
+      mainWindow?.reload();
     }
   });
 
@@ -509,6 +533,14 @@ ipcMain.handle(
 app.whenReady().then(() => {
   createWindow();
   createTray();
+
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
