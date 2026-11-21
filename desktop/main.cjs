@@ -15,6 +15,14 @@ if (!gotTheLock) {
   process.exit(0);
 }
 
+app.on('second-instance', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
+
 const logFile = path.join(app.getPath('userData'), 'desktop_startup.log');
 try {
   fs.writeFileSync(logFile, `[Startup] ${new Date().toISOString()} - Single instance lock acquired\n`);
@@ -46,11 +54,11 @@ let serverProcess = null;
 
 function checkLocalServer(port = 3000) {
   return new Promise((resolve) => {
-    const req = http.get(`http://127.0.0.1:${port}/`, (res) => {
+    const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
       resolve(res.statusCode < 500);
     });
     req.on('error', () => resolve(false));
-    req.setTimeout(800, () => {
+    req.setTimeout(500, () => {
       req.destroy();
       resolve(false);
     });
@@ -84,9 +92,9 @@ async function launchLocalApp(win, port = 3000) {
 
   let isReady = await checkLocalServer(port);
   fileLog('checkLocalServer initial isReady:', isReady);
-  if (!isReady) {
+  if (!isReady && !app.isPackaged) {
     serverProcess = startLocalServer(port);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 10; i++) {
       await new Promise((r) => setTimeout(r, 400));
       isReady = await checkLocalServer(port);
       if (isReady) break;
@@ -215,51 +223,24 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#121215',
     frame: false, // Frameless for exact custom dark Apple Notes / Neo-Editorial titlebar
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#121215',
-      symbolColor: '#CDFF5D',
-      height: 38,
-    },
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
     },
-    show: false,
   });
 
   const loadingPath = path.join(__dirname, 'loading.html');
   fileLog('Loading loadingPath:', loadingPath, 'exists:', fs.existsSync(loadingPath));
   mainWindow.loadFile(loadingPath).catch((err) => fileLog('loadFile error:', err));
 
-  mainWindow.once('ready-to-show', () => {
-    fileLog('ready-to-show event fired');
-    mainWindow.show();
-    launchLocalApp(mainWindow, 3000);
-  });
+  launchLocalApp(mainWindow, 3000);
 
-  // Safety fallback: Ensure window is shown even if ready-to-show is delayed
-  setTimeout(() => {
-    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
-      fileLog('ready-to-show fallback timeout - showing window');
-      mainWindow.show();
-      launchLocalApp(mainWindow, 3000);
-    }
-  }, 800);
-
-  mainWindow.on('close', (event) => {
-    if (!isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-      if (tray) {
-        tray.displayBalloon?.({
-          title: 'Global Send Vault',
-          content: 'Running in the background. Uploads will continue.',
-        });
-      }
-    }
+  mainWindow.on('close', () => {
+    isQuitting = true;
+    app.quit();
   });
 
   mainWindow.webContents.on('render-process-gone', (event, details) => {
@@ -577,14 +558,6 @@ ipcMain.handle(
 app.whenReady().then(() => {
   createWindow();
   createTray();
-
-  app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      if (!mainWindow.isVisible()) mainWindow.show();
-      mainWindow.focus();
-    }
-  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
