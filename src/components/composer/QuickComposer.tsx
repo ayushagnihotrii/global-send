@@ -570,6 +570,7 @@ export function QuickComposer({
                 apiId: configData.telegram.apiId,
                 apiHash: configData.telegram.apiHash,
                 botToken: configData.telegram.botToken,
+                sessionString: configData.telegram.sessionString || '',
                 channelId: configData.telegram.channelId,
                 title: customItemTitle || file.name,
                 itemId,

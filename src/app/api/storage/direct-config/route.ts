@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
   if (config.storage.driver === 'telegram' && config.storage.telegram) {
     const rawChannelId =
       config.storage.telegram.channelId || process.env.TELEGRAM_STORAGE_CHANNEL_ID || '';
+    const sessionStr =
+      config.storage.telegram.sessionString || process.env.TELEGRAM_SESSION_STRING || '';
 
     return NextResponse.json({
       success: true,
@@ -28,6 +30,7 @@ export async function GET(req: NextRequest) {
         apiHash: config.storage.telegram.apiHash,
         channelId: rawChannelId,
         botToken: config.storage.telegram.botToken,
+        sessionString: sessionStr,
       },
     });
   }

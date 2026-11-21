@@ -90,12 +90,22 @@ function getSessionFilePath(botToken) {
   const tokenHash = crypto.createHash('sha256').update(botToken).digest('hex').slice(0, 16);
   const userDir = app?.getPath ? app.getPath('userData') : path.join(__dirname, '..');
   const projectRoot = path.resolve(__dirname, '..');
+  const appData = process.env.APPDATA || '';
 
   const candidates = [
     path.join(userDir, `tg_session_${tokenHash}.dat`),
+    path.join(userDir, `tg_session_046140ef80eb2587.dat`),
+    path.join(userDir, `tg_session_8246614873.dat`),
+    path.join(appData, 'quickvault', `tg_session_${tokenHash}.dat`),
+    path.join(appData, 'quickvault', `tg_session_046140ef80eb2587.dat`),
+    path.join(appData, 'quickvault', `tg_session_8246614873.dat`),
+    path.join(appData, 'global-send', `tg_session_${tokenHash}.dat`),
+    path.join(appData, 'global-send', `tg_session_046140ef80eb2587.dat`),
     path.join(projectRoot, `tg_session_${tokenHash}.dat`),
+    path.join(projectRoot, `tg_session_046140ef80eb2587.dat`),
     path.join(projectRoot, `tg_session_8246614873.dat`),
     path.join(__dirname, `tg_session_${tokenHash}.dat`),
+    path.join(__dirname, `tg_session_046140ef80eb2587.dat`),
     path.join(__dirname, `tg_session_8246614873.dat`),
   ];
   for (const c of candidates) {
@@ -104,7 +114,10 @@ function getSessionFilePath(botToken) {
   return path.join(userDir, `tg_session_${tokenHash}.dat`);
 }
 
-async function getTelegramClient(apiId, apiHash, botToken) {
+const DEFAULT_AUTH_SESSION_STRING =
+  '1BQANOTEuMTA4LjU2LjEzMQG7BIeEYWfyyb9Q4ZBYVI2Yt0hAdol59StAxDzUjzJlI7A9xEDfcfkMa0iMN74TlA9+cFdpt9xH5jc3HC8jCblciBhqs7TV78mJ/sViRPLfZb7VGoG+Va7pA5tSnmhMIlsgF1L7mHQsnclQLX2uKzoBnzWlVUJ3BLGE2HZ3kvXUgYLgeJpHy2racz6uhkxSxNdwPsf+T3k7eU2CytKnf5g1QVzkZpH6uzew9PoKkghdNwRAnEaqewZah2L/83aL5YS2hNoEQzo58d1ePPImdMmfxAdCMV0Zw3FNKi6+MsHgUAqnOCxZih+4Sx36jGWRX0fZFSYqqDbCeQEL0b7NQMAYIA==';
+
+async function getTelegramClient(apiId, apiHash, botToken, sessionStringParam = '') {
   if (cachedTgClient && cachedTgClient.connected && cachedTgClientToken === botToken) {
     return cachedTgClient;
   }
@@ -117,11 +130,14 @@ async function getTelegramClient(apiId, apiHash, botToken) {
   }
 
   const sessionFile = getSessionFilePath(botToken);
-  let sessionStr = process.env.TELEGRAM_SESSION_STRING || '';
+  let sessionStr = sessionStringParam || process.env.TELEGRAM_SESSION_STRING || '';
   if (!sessionStr && fs.existsSync(sessionFile)) {
     try {
       sessionStr = fs.readFileSync(sessionFile, 'utf8').trim();
     } catch {}
+  }
+  if (!sessionStr) {
+    sessionStr = DEFAULT_AUTH_SESSION_STRING;
   }
 
   const session = new StringSession(sessionStr);
@@ -432,7 +448,7 @@ ipcMain.handle(
   'telegram-direct-upload',
   async (
     event,
-    { filePath, apiId, apiHash, botToken, channelId, title, itemId, mimeType }
+    { filePath, apiId, apiHash, botToken, sessionString, channelId, title, itemId, mimeType }
   ) => {
     try {
       if (!fs.existsSync(filePath)) {
@@ -443,7 +459,7 @@ ipcMain.handle(
       const filename = path.basename(filePath);
       const normalizedChannel = normalizeChannelId(channelId);
 
-      const client = await getTelegramClient(apiId, apiHash, botToken);
+      const client = await getTelegramClient(apiId, apiHash, botToken, sessionString);
 
       const partsMeta = await uploadFileDirectPipelined({
         client,
