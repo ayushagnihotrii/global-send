@@ -15,6 +15,7 @@ const confirmSchema = z.object({
   parentFolderId: z.string().nullable().optional(),
   isPermanent: z.boolean().optional(),
   expirationSeconds: z.number().optional(),
+  thumbnailData: z.string().nullable().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
       mimeType,
       fileSize,
       uploadStatus: 'completed',
+      thumbnailData: result.data.thumbnailData || null,
     });
 
     // 3. Sync tags

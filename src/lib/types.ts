@@ -33,6 +33,8 @@ export interface FileMetadata {
   uploadStatus: 'pending' | 'completed' | 'failed';
   deletionStatus?: 'active' | 'pending_deletion' | 'deleted' | 'deletion_failed';
   downloadUrl?: string;
+  thumbnailData?: string | null;
+  thumbnailUrl?: string | null;
   createdAt: string;
 }
 

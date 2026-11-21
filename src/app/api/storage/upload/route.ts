@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     const customTitle = (formData.get('title') as string)?.trim();
     const parentFolderId = (formData.get('parentFolderId') as string)?.trim() || null;
     const rawTags = formData.get('tags');
+    const thumbnailData = (formData.get('thumbnailData') as string)?.trim() || null;
     const isPermanentForm = formData.get('isPermanent') === 'true';
     const rawExpiration =
       isPermanentForm ? '0' : (formData.get('expirationSeconds') ?? formData.get('expirationDurationSec'));
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
         storageProvider: uploadResult.provider,
         providerFileId: uploadResult.fileId,
         uploadStatus: 'completed',
+        thumbnailData,
       });
     }
 

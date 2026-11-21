@@ -35,6 +35,10 @@ interface ItemCardProps {
   onShareLink?: (item: Item) => void;
   onMove?: (item: Item) => void;
   inTrash?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (item: Item, e: React.MouseEvent) => void;
+  onDragStart?: (e: React.DragEvent, item: Item) => void;
+  onDragEnd?: (e: React.DragEvent, item: Item) => void;
 }
 
 export function formatExpirationStatus(
@@ -97,9 +101,19 @@ export function ItemCard({
   onShareLink,
   onMove,
   inTrash = false,
+  isSelected = false,
+  onToggleSelect,
+  onDragStart,
+  onDragEnd,
 }: ItemCardProps) {
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  const thumbnailSrc = item.file?.thumbnailData || item.file?.thumbnailUrl;
+  const isPdf =
+    item.file?.mimeType === 'application/pdf' ||
+    /\.(pdf)$/i.test(item.file?.originalFilename || item.title || '');
 
   const expInfo = useMemo(
     () => formatExpirationStatus(item.expiresAt, item.purgeAt, inTrash),
@@ -167,15 +181,46 @@ export function ItemCard({
 
   return (
     <div
+      draggable={!inTrash}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ itemId: item.id }));
+        e.dataTransfer.setData('application/x-quickvault-item', item.id);
+        e.dataTransfer.effectAllowed = 'move';
+        onDragStart?.(e, item);
+      }}
+      onDragEnd={(e) => {
+        onDragEnd?.(e, item);
+      }}
       onClick={() => !expInfo.isExpired && onOpenDetail(item)}
       className={cn(
-        'group relative rounded-[24px] border-2 border-neutral-900/10 dark:border-white/10 bg-white dark:bg-[#18181B] hover:border-neutral-900/30 dark:hover:border-white/30 transition-all duration-150 p-4 sm:p-5 flex flex-col justify-between cursor-pointer active:scale-[0.99] shadow-xs hover:shadow-md',
+        'group relative rounded-[24px] border-2 bg-white dark:bg-[#18181B] transition-all duration-150 p-4 sm:p-5 flex flex-col justify-between cursor-pointer active:scale-[0.99] shadow-xs hover:shadow-md select-none',
+        isSelected
+          ? 'border-[#007aff] ring-2 ring-[#007aff]/30 bg-[#007aff]/5 dark:bg-[#007aff]/10'
+          : 'border-neutral-900/10 dark:border-white/10 hover:border-neutral-900/30 dark:hover:border-white/30',
         expInfo.isExpired && 'opacity-50 pointer-events-none'
       )}
     >
       <div>
         <div className="flex items-start justify-between gap-2.5 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
+            {onToggleSelect && !inTrash ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect(item, e);
+                }}
+                className={cn(
+                  'w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer shrink-0 mr-0.5',
+                  isSelected
+                    ? 'bg-[#007aff] border-[#007aff] text-white shadow-xs'
+                    : 'border-neutral-300 dark:border-white/20 hover:border-[#007aff] opacity-0 group-hover:opacity-100'
+                )}
+                aria-label="Select item"
+              >
+                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </button>
+            ) : null}
             {getTypeIcon()}
             <div className="min-w-0">
               <h4 className="text-[15px] font-bold tracking-tight text-[#111111] dark:text-white truncate leading-snug">
@@ -247,16 +292,28 @@ export function ItemCard({
           </p>
         )}
 
-        {item.type === 'image' && item.file?.downloadUrl && !expInfo.isExpired && (
-          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 mb-3.5">
-            <Image
-              src={item.file.downloadUrl}
-              alt={item.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 300px"
-              unoptimized
-            />
+        {item.type === 'image' && !expInfo.isExpired && (
+          <div className="relative w-full h-36 rounded-2xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center">
+            {(thumbnailSrc || item.file?.downloadUrl) && !imgError ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbnailSrc || item.file?.downloadUrl}
+                alt={item.title}
+                loading="lazy"
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-1.5 text-neutral-400 p-4 text-center">
+                <ImageIcon className="w-8 h-8 text-[#38BDF8]" />
+                <span className="text-[11px] font-mono font-bold text-neutral-600 dark:text-neutral-300 truncate max-w-full">
+                  {item.file?.sanitizedFilename || item.file?.originalFilename || item.title}
+                </span>
+                <span className="text-[9px] font-mono uppercase text-neutral-400">
+                  {item.file?.fileSize ? formatBytes(item.file.fileSize) : 'Photo'}
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -265,7 +322,14 @@ export function ItemCard({
             onClick={() => onOpenDetail(item)}
             className="group/video relative w-full h-32 rounded-2xl overflow-hidden bg-neutral-900 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center justify-center cursor-pointer shadow-xs"
           >
-            {item.file.downloadUrl && !expInfo.isExpired ? (
+            {thumbnailSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={thumbnailSrc}
+                alt=""
+                className="w-full h-full object-cover opacity-80 group-hover/video:opacity-95 transition-opacity"
+              />
+            ) : item.file.downloadUrl && !expInfo.isExpired ? (
               <video
                 src={`${item.file.downloadUrl}#t=0.5`}
                 preload="metadata"
@@ -287,7 +351,25 @@ export function ItemCard({
           </div>
         )}
 
-        {item.type === 'file' && item.file && (item.file.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file.originalFilename)) && (
+        {/* macOS PDF Preview Stage */}
+        {item.type === 'file' && isPdf && item.file && (
+          <div
+            onClick={() => onOpenDetail(item)}
+            className="group/pdf relative w-full h-32 rounded-2xl bg-gradient-to-br from-red-500/10 via-red-500/5 to-transparent dark:from-red-950/30 dark:via-red-900/15 border border-red-500/20 hover:border-red-500/40 mb-3.5 flex flex-col items-center justify-center cursor-pointer transition-all p-3 shadow-xs"
+          >
+            <div className="w-11 h-11 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-sm mb-1.5 group-hover/pdf:scale-105 transition-transform">
+              <FileText className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <span className="text-[11px] font-black font-mono tracking-wider text-red-600 dark:text-red-400 uppercase">
+              PDF Document
+            </span>
+            <span className="text-[10px] font-mono text-neutral-400 mt-0.5">
+              {formatBytes(item.file.fileSize)}
+            </span>
+          </div>
+        )}
+
+        {item.type === 'file' && !isPdf && item.file && (item.file.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file.originalFilename)) && (
           <div
             onClick={() => onOpenDetail(item)}
             className="group/audio relative w-full p-3.5 rounded-2xl bg-neutral-900/60 dark:bg-white/5 border border-neutral-200 dark:border-white/10 mb-3.5 flex items-center gap-3 cursor-pointer hover:border-[#CDFF5D]/40 transition-colors"
@@ -323,7 +405,7 @@ export function ItemCard({
           </div>
         )}
 
-        {item.type === 'file' && item.file && (
+        {item.type === 'file' && !isPdf && !(item.file && (item.file.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file.originalFilename))) && item.file && (
           <div className="mb-3.5 p-3 rounded-2xl bg-neutral-100 dark:bg-white/5 border border-neutral-200 dark:border-white/10 flex items-center justify-between gap-2 text-xs">
             <span className="text-[#111111] dark:text-white font-bold truncate">
               {item.file.sanitizedFilename || item.file.originalFilename}

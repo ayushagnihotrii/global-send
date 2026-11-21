@@ -26,6 +26,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Item } from '@/lib/types';
 import { cn, formatBytes } from '@/lib/utils';
 import { SITE_CONFIG, EXPIRATION_PRESETS } from '@/config/site';
+import { extractMediaThumbnail } from '@/lib/thumbnail';
 
 interface QuickComposerProps {
   onItemCreated: (item: Item) => void;
@@ -509,6 +510,15 @@ export function QuickComposer({
     customItemTitle: string
   ): Promise<Item> => {
     const file = entry.file;
+
+    // Extract ultra-compact lightweight micro-thumbnail (8 KB - 20 KB WebP) directly on client
+    let thumbnailData: string | null = null;
+    try {
+      thumbnailData = await extractMediaThumbnail(file);
+    } catch {
+      thumbnailData = null;
+    }
+
     const updateEntryProgress = (
       progress: number,
       metrics?: { uploadedBytes?: number; speed?: string; eta?: string }
@@ -598,6 +608,7 @@ export function QuickComposer({
                   parentFolderId: parentFolderId || null,
                   isPermanent: effectiveExpirationSec === 0,
                   expirationSeconds: effectiveExpirationSec,
+                  thumbnailData,
                 }),
               });
 
@@ -638,6 +649,7 @@ export function QuickComposer({
           parentFolderId: parentFolderId || null,
           isPermanent: effectiveExpirationSec === 0,
           expirationSeconds: effectiveExpirationSec,
+          thumbnailData,
         }),
         signal: abortCtrl.signal,
       });
@@ -716,6 +728,7 @@ export function QuickComposer({
       if (parentFolderId) formData.append('parentFolderId', parentFolderId);
       if (customItemTitle) formData.append('title', customItemTitle);
       if (tags.length > 0) formData.append('tags', JSON.stringify(tags));
+      if (thumbnailData) formData.append('thumbnailData', thumbnailData);
 
       return await new Promise<Item>((resolve, reject) => {
         const xhr = new XMLHttpRequest();

@@ -15,6 +15,7 @@ import { getStorageProvider, deleteStorageFile } from '@/lib/storage';
 
 // In-memory staging buffer map for local/test chunked resumable sessions
 const localChunkBuffers = new Map<string, Buffer[]>();
+const sessionThumbnails = new Map<string, string>();
 
 export const maxDuration = 60;
 
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
         { error: reservation.error || 'Storage quota exceeded' },
         { status: reservation.statusCode || 403 }
       );
+    }
+
+    if (body.thumbnailData && typeof body.thumbnailData === 'string') {
+      sessionThumbnails.set(reservation.sessionId, body.thumbnailData);
     }
 
     // If Google Drive provider, initiate a real Drive resumable upload session server-side
@@ -196,6 +201,7 @@ export async function PUT(req: NextRequest) {
       if (accumulatedBytes >= totalBytes) {
         const fullBuffer = Buffer.concat(chunks);
         localChunkBuffers.delete(sessionId);
+  sessionThumbnails.delete(sessionId);
 
         const safeKeyName = uploadSess.sanitized_filename.replace(/[^a-zA-Z0-9._-]/g, '_');
         const storageKey = `users/${session.userId}/${uploadSess.item_id}/${crypto.randomUUID()}-${safeKeyName}`;
@@ -242,6 +248,9 @@ export async function PUT(req: NextRequest) {
       expiresAt: expiresAtIso,
     });
 
+    const thumbData = sessionThumbnails.get(sessionId) || null;
+    sessionThumbnails.delete(sessionId);
+
     await createFileRecord({
       id: crypto.randomUUID(),
       itemId: uploadSess.item_id,
@@ -254,6 +263,7 @@ export async function PUT(req: NextRequest) {
       storageProvider: provider.name,
       providerFileId: finalFileId,
       uploadStatus: 'completed',
+      thumbnailData: thumbData,
     });
 
     await updateUploadSession(sessionId, session.userId, {
@@ -274,6 +284,7 @@ export async function PUT(req: NextRequest) {
     });
   } catch (err: any) {
     localChunkBuffers.delete(sessionId);
+  sessionThumbnails.delete(sessionId);
     await updateUploadSession(sessionId, session.userId, { status: 'failed' }).catch(() => {});
     return NextResponse.json(
       { error: err?.message || 'Chunk upload failed' },
@@ -305,6 +316,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   localChunkBuffers.delete(sessionId);
+  sessionThumbnails.delete(sessionId);
 
   const provider = getStorageProvider();
   if (uploadSess.provider_upload_url && provider.abortResumableUpload) {

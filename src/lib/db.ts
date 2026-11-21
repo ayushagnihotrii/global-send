@@ -180,6 +180,7 @@ export async function initDb(): Promise<void> {
         deletion_attempts INTEGER DEFAULT 0,
         last_deletion_error TEXT DEFAULT NULL,
         deleted_from_storage_at TEXT DEFAULT NULL,
+        thumbnail_data TEXT DEFAULT NULL,
         created_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -376,6 +377,7 @@ export async function initDb(): Promise<void> {
       `ALTER TABLE files ADD COLUMN deletion_attempts INTEGER DEFAULT 0`,
       `ALTER TABLE files ADD COLUMN last_deletion_error TEXT DEFAULT NULL`,
       `ALTER TABLE files ADD COLUMN deleted_from_storage_at TEXT DEFAULT NULL`,
+      `ALTER TABLE files ADD COLUMN thumbnail_data TEXT DEFAULT NULL`,
       `DROP INDEX IF EXISTS idx_users_key_fp_sqlite`,
       `ALTER TABLE users ADD COLUMN security_question TEXT DEFAULT NULL`,
       `ALTER TABLE users ADD COLUMN security_answer_hash TEXT DEFAULT NULL`,
@@ -509,6 +511,7 @@ export async function initDb(): Promise<void> {
         ALTER TABLE files ADD COLUMN IF NOT EXISTS deletion_attempts INTEGER DEFAULT 0;
         ALTER TABLE files ADD COLUMN IF NOT EXISTS last_deletion_error TEXT DEFAULT NULL;
         ALTER TABLE files ADD COLUMN IF NOT EXISTS deleted_from_storage_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+        ALTER TABLE files ADD COLUMN IF NOT EXISTS thumbnail_data TEXT DEFAULT NULL;
 
         CREATE TABLE IF NOT EXISTS upload_sessions (
           id TEXT PRIMARY KEY,
@@ -1177,6 +1180,8 @@ function mapRowToItem(row: any, tags: string[] = []): Item {
         row.storage_provider || (row.storage_key?.startsWith('gdrive://') ? 'google_drive' : 'local'),
       uploadStatus: row.upload_status,
       deletionStatus: row.file_deletion_status || 'active',
+      thumbnailData: row.thumbnail_data || null,
+      thumbnailUrl: row.thumbnail_data || (row.file_id ? `/api/storage/file/${row.id}` : null),
       createdAt: row.created_at,
     };
   }
@@ -1284,7 +1289,7 @@ export async function getItemById(
     `SELECT i.*, 
             f.id as file_id, f.storage_key, f.original_filename, f.sanitized_filename,
             f.mime_type, f.file_size, f.storage_provider, f.upload_status,
-            f.deletion_status as file_deletion_status
+            f.deletion_status as file_deletion_status, f.thumbnail_data
      FROM items i
      LEFT JOIN files f ON f.item_id = i.id
      WHERE ${whereClauses.join(' AND ')}
@@ -1379,7 +1384,7 @@ export async function getItems(params: {
     SELECT i.*, 
            f.id as file_id, f.storage_key, f.original_filename, f.sanitized_filename,
            f.mime_type, f.file_size, f.storage_provider, f.upload_status,
-           f.deletion_status as file_deletion_status
+           f.deletion_status as file_deletion_status, f.thumbnail_data
     FROM items i
     LEFT JOIN files f ON f.item_id = i.id
     WHERE ${conditions.join(' AND ')}
@@ -1474,6 +1479,33 @@ export async function moveItemToFolder(
     `UPDATE items SET parent_folder_id = $1, updated_at = $2 WHERE id = $3 AND user_id = $4`,
     [targetFolderId || null, nowIso, itemId, userId]
   );
+}
+
+export async function moveMultipleItemsToFolder(
+  itemIds: string[],
+  userId: string,
+  targetFolderId: string | null
+): Promise<number> {
+  if (!itemIds.length) return 0;
+  if (targetFolderId) {
+    const folder = await getItemById(targetFolderId, userId, { includeExpired: true });
+    if (!folder || !folder.isFolder) {
+      throw new Error('Target folder not found');
+    }
+  }
+  const validIds = targetFolderId ? itemIds.filter((id) => id !== targetFolderId) : itemIds;
+  if (!validIds.length) return 0;
+
+  const nowIso = new Date().toISOString();
+  let updatedCount = 0;
+  for (const id of validIds) {
+    await execute(
+      `UPDATE items SET parent_folder_id = $1, updated_at = $2 WHERE id = $3 AND user_id = $4`,
+      [targetFolderId || null, nowIso, id, userId]
+    );
+    updatedCount++;
+  }
+  return updatedCount;
 }
 
 export async function getFolderPath(
@@ -1633,6 +1665,7 @@ export async function createFileRecord(file: {
   storageProvider?: string;
   providerFileId?: string;
   uploadStatus?: 'pending' | 'completed' | 'failed';
+  thumbnailData?: string | null;
 }): Promise<void> {
   const sanitized =
     file.sanitizedFilename || sanitizeFilenameForDisplay(file.originalFilename);
@@ -1644,8 +1677,8 @@ export async function createFileRecord(file: {
   await execute(
     `INSERT INTO files (
       id, item_id, user_id, storage_key, original_filename, sanitized_filename,
-      mime_type, file_size, storage_provider, provider_file_id, upload_status, deletion_status, created_at
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12)`,
+      mime_type, file_size, storage_provider, provider_file_id, upload_status, deletion_status, thumbnail_data, created_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12, $13)`,
     [
       file.id,
       file.itemId,
@@ -1658,6 +1691,7 @@ export async function createFileRecord(file: {
       provider,
       file.providerFileId || null,
       file.uploadStatus || 'completed',
+      file.thumbnailData || null,
       nowIso,
     ]
   );

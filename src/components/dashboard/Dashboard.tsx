@@ -15,12 +15,22 @@ import {
   FolderInput,
   Folder as FolderIcon,
   Trash2,
+  LayoutGrid,
+  List,
+  CheckSquare,
+  Image as ImageIcon,
+  Film,
+  FileText,
+  Music,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 import { User, Item, DateGroupedItems } from '@/lib/types';
 import { DesktopSidebar, NavSection } from '@/components/layout/DesktopSidebar';
 import { MobileNavBar } from '@/components/layout/MobileNavBar';
 import { QuickComposer } from '@/components/composer/QuickComposer';
 import { ItemCard } from '@/components/items/ItemCard';
+import { ItemRow } from '@/components/items/ItemRow';
 import { TextDetailModal } from '@/components/items/TextDetailModal';
 import { MediaViewerModal } from '@/components/items/MediaViewerModal';
 import { ShareModal } from '@/components/items/ShareModal';
@@ -33,6 +43,39 @@ import { useToast } from '@/components/ui/Toast';
 import { groupItemsByDate, cn } from '@/lib/utils';
 import { SITE_CONFIG } from '@/config/site';
 import { Logo } from '@/components/ui/Logo';
+
+// Authentic macOS Finder Folder Graphic with gradient depth
+function MacFolderGraphic({ isHovered }: { isHovered?: boolean }) {
+  return (
+    <div className={cn('relative w-10 h-10 shrink-0 transition-transform duration-200', isHovered && 'scale-110')}>
+      <svg viewBox="0 0 40 40" fill="none" className="w-full h-full drop-shadow-xs">
+        <defs>
+          <linearGradient id="macFolderBackGrad" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#0077F5" />
+            <stop offset="1" stopColor="#0058C6" />
+          </linearGradient>
+          <linearGradient id="macFolderFrontGrad" x1="0" y1="12" x2="0" y2="38" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#5AC8FA" />
+            <stop offset="0.25" stopColor="#30B0F4" />
+            <stop offset="1" stopColor="#0071E3" />
+          </linearGradient>
+          <linearGradient id="macFolderTabGrad" x1="0" y1="6" x2="0" y2="16" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#64D2FF" />
+            <stop offset="1" stopColor="#0A84FF" />
+          </linearGradient>
+        </defs>
+        {/* Back Plate */}
+        <rect x="3" y="10" width="34" height="24" rx="4" fill="url(#macFolderBackGrad)" />
+        {/* Folder Tab */}
+        <path d="M4 11C4 8.79086 5.79086 7 8 7H16.2C17.3 7 18.3 7.5 19 8.3L20.8 10.4C21.3 11 22 11.3 22.8 11.3H32C34.2091 11.3 36 13.0909 36 15.3V16H4V11Z" fill="url(#macFolderTabGrad)" />
+        {/* Front Flap */}
+        <rect x="2" y="13.5" width="36" height="22.5" rx="4.5" fill="url(#macFolderFrontGrad)" />
+        {/* Top Edge Highlight Sheen */}
+        <rect x="3" y="14" width="34" height="1.2" rx="0.6" fill="white" fillOpacity="0.4" />
+      </svg>
+    </div>
+  );
+}
 
 interface DashboardProps {
   user: User;
@@ -56,6 +99,19 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   const [selectedMediaItem, setSelectedMediaItem] = useState<Item | null>(null);
   const [sharingItem, setSharingItem] = useState<Item | null>(null);
 
+  // macOS View Mode & Category Filters
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'image' | 'video' | 'pdf' | 'audio' | 'text'>('all');
+
+  // Multi-selection & Batch Actions
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isBatchMoveModalOpen, setIsBatchMoveModalOpen] = useState(false);
+  const [isBatchMoving, setIsBatchMoving] = useState(false);
+
+  // Folder drag target highlight state
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
+  const [isDraggingInternalItem, setIsDraggingInternalItem] = useState(false);
+
   // Folder navigation & modal states
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folders, setFolders] = useState<Item[]>([]);
@@ -76,6 +132,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   const [externalDroppedFiles, setExternalDroppedFiles] = useState<File[] | null>(null);
   const [isWorkspaceDragging, setIsWorkspaceDragging] = useState(false);
   const dragDepthRef = React.useRef(0);
+  const isDraggingInternalRef = React.useRef(false);
 
   // Debounce search input
   useEffect(() => {
@@ -93,8 +150,17 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         document.getElementById('search-input')?.focus();
       }
     };
+    const handleDragEnd = () => {
+      isDraggingInternalRef.current = false;
+      setIsDraggingInternalItem(false);
+      setDragOverFolderId(null);
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('dragend', handleDragEnd);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('dragend', handleDragEnd);
+    };
   }, []);
 
   // Handle Google Drive OAuth callback redirect notifications
@@ -296,6 +362,172 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
     }
   };
 
+  // Toggle selection for an item
+  const handleToggleSelect = (item: Item, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+      } else {
+        next.add(item.id);
+      }
+      return next;
+    });
+  };
+
+  // Select all or clear selection
+  const handleSelectAll = () => {
+    if (selectedItemIds.size === items.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(items.map((i) => i.id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItemIds(new Set());
+  };
+
+  // Open batch move modal
+  const handleOpenBatchMoveModal = async () => {
+    if (selectedItemIds.size === 0) return;
+    try {
+      const res = await fetch('/api/items/folders?parentFolderId=all');
+      const data = await res.json();
+      if (res.ok && data.folders) {
+        setAllUserFolders(data.folders.filter((f: Item) => !selectedItemIds.has(f.id)));
+      }
+    } catch {
+      // ignore
+    }
+    setIsBatchMoveModalOpen(true);
+  };
+
+  // Execute batch move
+  const handleBatchMove = async (targetFolderId: string | null) => {
+    if (selectedItemIds.size === 0) return;
+    setIsBatchMoving(true);
+    try {
+      const res = await fetch('/api/items/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'move',
+          itemIds: Array.from(selectedItemIds),
+          targetFolderId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Items moved successfully');
+        setIsBatchMoveModalOpen(false);
+        setSelectedItemIds(new Set());
+        fetchItems();
+        fetchFolders();
+      } else {
+        toast.error(data.error || 'Failed to move items');
+      }
+    } catch {
+      toast.error('Network error executing batch move');
+    } finally {
+      setIsBatchMoving(false);
+    }
+  };
+
+  // Execute batch delete
+  const handleBatchDelete = async () => {
+    if (selectedItemIds.size === 0) return;
+    if (!window.confirm(`Move ${selectedItemIds.size} selected item(s) to Recently Deleted?`)) return;
+
+    try {
+      const res = await fetch('/api/items/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: currentSection === 'trash' ? 'permanent_delete' : 'delete',
+          itemIds: Array.from(selectedItemIds),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Items deleted');
+        setSelectedItemIds(new Set());
+        fetchItems();
+      } else {
+        toast.error(data.error || 'Failed to delete items');
+      }
+    } catch {
+      toast.error('Network error deleting items');
+    }
+  };
+
+  // Drag and Drop directly onto Folder card or Breadcrumb
+  const handleDropOnFolder = async (targetFolderId: string | null, e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverFolderId(null);
+
+    // 1. Check if external desktop files were dropped onto this folder
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      if (currentFolderId !== targetFolderId) {
+        setCurrentFolderId(targetFolderId);
+      }
+      setExternalDroppedFiles(Array.from(e.dataTransfer.files));
+      toast.info(`Uploading dropped file(s) into folder...`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Internal item move
+    let idsToMove: string[] = [];
+    try {
+      const raw = e.dataTransfer.getData('application/json');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.itemIds)) {
+          idsToMove = parsed.itemIds;
+        } else if (parsed.itemId) {
+          idsToMove = [parsed.itemId];
+        }
+      }
+    } catch {}
+
+    const internalId = e.dataTransfer.getData('application/x-quickvault-item');
+    if (!idsToMove.length && internalId) {
+      idsToMove = [internalId];
+    }
+
+    if (!idsToMove.length && selectedItemIds.size > 0) {
+      idsToMove = Array.from(selectedItemIds);
+    }
+
+    if (!idsToMove.length) return;
+
+    try {
+      const res = await fetch('/api/items/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'move',
+          itemIds: idsToMove,
+          targetFolderId,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || `Moved ${idsToMove.length} item(s)`);
+        setSelectedItemIds(new Set());
+        fetchItems();
+        fetchFolders();
+      } else {
+        toast.error(data.error || 'Failed to move items');
+      }
+    } catch {
+      toast.error('Network error moving items');
+    }
+  };
+
   // Item counts for sidebar badges
   const itemCounts = useMemo(() => {
     const counts = {
@@ -402,10 +634,62 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
     }
   };
 
+  // Category counts for macOS clubbing tabs
+  const categoryCounts = useMemo(() => {
+    let images = 0;
+    let videos = 0;
+    let pdfs = 0;
+    let audio = 0;
+    let text = 0;
+    items.forEach((item) => {
+      if (item.type === 'image') images++;
+      else if (item.type === 'video') videos++;
+      else if (
+        item.file?.mimeType === 'application/pdf' ||
+        /\.(pdf)$/i.test(item.file?.originalFilename || item.title || '')
+      ) {
+        pdfs++;
+      } else if (
+        (item.file?.mimeType && item.file.mimeType.startsWith('audio/')) ||
+        /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file?.originalFilename || '')
+      ) {
+        audio++;
+      } else if (item.type === 'text' || item.type === 'link') {
+        text++;
+      }
+    });
+    return { all: items.length, images, videos, pdfs, audio, text };
+  }, [items]);
+
+  // Filter items by active category
+  const filteredItems = useMemo(() => {
+    if (categoryFilter === 'all') return items;
+    return items.filter((item) => {
+      if (categoryFilter === 'image') return item.type === 'image';
+      if (categoryFilter === 'video') return item.type === 'video';
+      if (categoryFilter === 'pdf') {
+        return (
+          item.file?.mimeType === 'application/pdf' ||
+          /\.(pdf)$/i.test(item.file?.originalFilename || item.title || '')
+        );
+      }
+      if (categoryFilter === 'audio') {
+        return (
+          (item.file?.mimeType && item.file.mimeType.startsWith('audio/')) ||
+          /\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(item.file?.originalFilename || '')
+        );
+      }
+      if (categoryFilter === 'text') {
+        return item.type === 'text' || item.type === 'link';
+      }
+      return true;
+    });
+  }, [items, categoryFilter]);
+
   // Group items by relative date
   const dateGroups: DateGroupedItems[] = useMemo(() => {
-    return groupItemsByDate(items);
-  }, [items]);
+    return groupItemsByDate(filteredItems);
+  }, [filteredItems]);
 
   // Section titles
   const getSectionTitle = () => {
@@ -434,6 +718,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
   return (
     <div
       onDragEnter={(e) => {
+        if (isDraggingInternalRef.current || e.dataTransfer?.types?.includes('application/x-quickvault-item')) return;
         if (e.dataTransfer?.types?.includes('Files')) {
           e.preventDefault();
           dragDepthRef.current += 1;
@@ -441,11 +726,13 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
         }
       }}
       onDragOver={(e) => {
+        if (isDraggingInternalRef.current || e.dataTransfer?.types?.includes('application/x-quickvault-item')) return;
         if (e.dataTransfer?.types?.includes('Files')) {
           e.preventDefault();
         }
       }}
       onDragLeave={(e) => {
+        if (isDraggingInternalRef.current || e.dataTransfer?.types?.includes('application/x-quickvault-item')) return;
         if (e.dataTransfer?.types?.includes('Files')) {
           e.preventDefault();
           dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
@@ -457,6 +744,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
       onDrop={(e) => {
         dragDepthRef.current = 0;
         setIsWorkspaceDragging(false);
+        if (isDraggingInternalRef.current || e.dataTransfer?.types?.includes('application/x-quickvault-item')) return;
         if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
           e.preventDefault();
           if (currentSection === 'trash' || currentSection === 'settings' || currentSection === 'chats') {
@@ -466,21 +754,14 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }}
-      className="relative min-h-screen flex bg-[#F0F0F0] dark:bg-[#0E0E10] text-[#111111] dark:text-neutral-100 selection:bg-[#CCFF00] selection:text-neutral-950"
+      className="relative min-h-screen flex bg-[#F6F6F6] dark:bg-[#000000] text-[#111111] dark:text-neutral-100 selection:bg-[#007aff]/30 selection:text-neutral-950 font-sans"
     >
-      {/* Full-Screen Drag & Drop Overlay */}
-      {isWorkspaceDragging && (
-        <div className="fixed inset-0 z-50 pointer-events-none bg-neutral-900/30 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-150">
-          <div className="rounded-[28px] border-3 border-dashed border-[#111111] dark:border-white bg-white dark:bg-[#18181B] px-10 py-9 shadow-2xl text-center max-w-sm">
-            <div className="w-14 h-14 rounded-2xl bg-[#CDFF5D] text-black flex items-center justify-center mx-auto mb-3 shadow-sm">
-              <Upload className="w-7 h-7 stroke-[2.5]" />
-            </div>
-            <p className="font-headline text-xl font-extrabold text-[#111111] dark:text-white uppercase tracking-tight">
-              DROP FILES ANYWHERE
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 font-medium">
-              Queue one or multiple files directly into your encrypted vault
-            </p>
+      {/* Non-intrusive macOS Window Drop Accent & Floating Banner (ZERO BLUR, all folders 100% visible) */}
+      {isWorkspaceDragging && !isDraggingInternalItem && (
+        <div className="fixed inset-0 z-40 pointer-events-none ring-4 ring-inset ring-[#007aff]/60 bg-[#007aff]/[0.02] animate-in fade-in duration-150 flex items-start justify-center pt-5">
+          <div className="pointer-events-none bg-neutral-900/90 dark:bg-[#1C1C1E]/95 backdrop-blur-xl text-white px-5 py-2.5 rounded-full shadow-2xl border border-white/20 flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-top-3 duration-150">
+            <Upload className="w-4 h-4 text-[#38BDF8] animate-bounce" />
+            <span>Drop files anywhere to upload to {currentFolderId ? (folderPath[folderPath.length - 1]?.name || 'current folder') : 'Vault Root'}</span>
           </div>
         </div>
       )}
@@ -596,6 +877,38 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                   </select>
                 </div>
 
+                {/* macOS Finder View Mode Switcher */}
+                <div className="inline-flex items-center p-1 h-11 rounded-full bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 shrink-0 shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={cn(
+                      'h-8 px-2.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                      viewMode === 'grid'
+                        ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                        : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                    )}
+                    title="Icons / Grid View"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">Icons</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('list')}
+                    className={cn(
+                      'h-8 px-2.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer',
+                      viewMode === 'list'
+                        ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 shadow-xs'
+                        : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                    )}
+                    title="List / Table View"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span className="hidden md:inline">List</span>
+                  </button>
+                </div>
+
                 {/* Refresh Pill */}
                 <button
                   type="button"
@@ -607,6 +920,49 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                 </button>
               </div>
             </div>
+
+            {/* macOS FINDER CATEGORY SEGMENTED TABS (CLUBBING) */}
+            {currentSection !== 'trash' && (
+              <div className="flex items-center gap-1 p-1 rounded-2xl bg-neutral-200/50 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] backdrop-blur-md mb-5 overflow-x-auto scrollbar-none shadow-xs">
+                {[
+                  { id: 'all', label: 'All Files', icon: LayoutGrid, count: categoryCounts.all, color: 'text-neutral-500' },
+                  { id: 'image', label: 'Photos', icon: ImageIcon, count: categoryCounts.images, color: 'text-[#0284c7] dark:text-[#38bdf8]' },
+                  { id: 'video', label: 'Videos', icon: Film, count: categoryCounts.videos, color: 'text-[#9333ea] dark:text-[#c084fc]' },
+                  { id: 'pdf', label: 'PDFs & Docs', icon: FileText, count: categoryCounts.pdfs, color: 'text-red-500' },
+                  { id: 'audio', label: 'Audio', icon: Music, count: categoryCounts.audio, color: 'text-emerald-600 dark:text-emerald-400' },
+                  { id: 'text', label: 'Notes & Links', icon: Sparkles, count: categoryCounts.text, color: 'text-amber-500' },
+                ].map((cat) => {
+                  const Icon = cat.icon;
+                  const isActive = categoryFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat.id as any)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 shrink-0 cursor-pointer select-none',
+                        isActive
+                          ? 'bg-white dark:bg-[#1C1C1E] text-neutral-900 dark:text-white shadow-xs ring-1 ring-black/[0.04] dark:ring-white/[0.08]'
+                          : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/5'
+                      )}
+                    >
+                      <Icon className={cn('w-3.5 h-3.5', isActive ? cat.color : 'text-neutral-400')} />
+                      <span>{cat.label}</span>
+                      <span
+                        className={cn(
+                          'text-[10px] font-mono px-1.5 py-0.5 rounded-full tabular-nums',
+                          isActive
+                            ? 'bg-neutral-100 dark:bg-white/10 text-neutral-800 dark:text-neutral-200 font-bold'
+                            : 'text-neutral-400'
+                        )}
+                      >
+                        {cat.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* TAG FILTER CHIPS */}
             {availableTags.length > 0 && (
@@ -669,34 +1025,54 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
             {/* FOLDER NAVIGATION & BREADCRUMBS */}
             {currentSection !== 'trash' && !debouncedSearch.trim() && !selectedTag && (
               <div className="mb-6 space-y-3">
-                <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-[20px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 shadow-xs">
+                <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-black/[0.08] dark:border-white/[0.08] shadow-xs">
                   {/* Breadcrumbs */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-mono font-bold scrollbar-none min-w-0 py-0.5">
+                  <div className="flex items-center gap-1 overflow-x-auto text-xs font-semibold scrollbar-none min-w-0 py-0.5">
                     <button
                       type="button"
                       onClick={() => setCurrentFolderId(null)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragOverFolderId('root');
+                      }}
+                      onDragLeave={() => setDragOverFolderId(null)}
+                      onDrop={(e) => handleDropOnFolder(null, e)}
                       className={cn(
-                        'px-3 py-1 rounded-full transition-colors cursor-pointer shrink-0',
-                        currentFolderId === null
-                          ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-black'
-                          : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                        'px-2.5 py-1 rounded-xl transition-all cursor-pointer shrink-0 flex items-center gap-1.5',
+                        dragOverFolderId === 'root'
+                          ? 'bg-[#007aff] text-white scale-105 shadow-md ring-2 ring-[#007aff]/40'
+                          : currentFolderId === null
+                          ? 'bg-neutral-100 dark:bg-white/10 text-neutral-950 dark:text-white font-bold'
+                          : 'text-neutral-500 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
                       )}
                     >
-                      Vault Root
+                      <FolderIcon className="w-3.5 h-3.5 text-[#007aff]" />
+                      <span>Vault Root</span>
                     </button>
                     {folderPath.map((crumb, idx) => {
                       const isLast = idx === folderPath.length - 1;
+                      const isCrumbTarget = dragOverFolderId === crumb.id;
                       return (
                         <React.Fragment key={crumb.id}>
-                          <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                          <ChevronRight className="w-3 h-3 text-neutral-400 shrink-0" />
                           <button
                             type="button"
                             onClick={() => setCurrentFolderId(crumb.id)}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDragOverFolderId(crumb.id);
+                            }}
+                            onDragLeave={() => setDragOverFolderId(null)}
+                            onDrop={(e) => handleDropOnFolder(crumb.id, e)}
                             className={cn(
-                              'px-3 py-1 rounded-full transition-colors cursor-pointer shrink-0 truncate max-w-[140px]',
-                              isLast
-                                ? 'bg-[#111111] text-white dark:bg-white dark:text-neutral-950 font-black'
-                                : 'text-neutral-500 hover:text-black dark:hover:text-white'
+                              'px-2.5 py-1 rounded-xl transition-all cursor-pointer shrink-0 truncate max-w-[150px]',
+                              isCrumbTarget
+                                ? 'bg-[#007aff] text-white scale-105 shadow-md ring-2 ring-[#007aff]/40'
+                                : isLast
+                                ? 'bg-neutral-100 dark:bg-white/10 text-neutral-950 dark:text-white font-bold'
+                                : 'text-neutral-500 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
                             )}
                           >
                             {crumb.name}
@@ -718,7 +1094,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                             setCurrentFolderId(null);
                           }
                         }}
-                        className="h-8 px-2.5 rounded-full border border-neutral-200 dark:border-white/10 text-xs font-mono font-bold flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 cursor-pointer"
+                        className="h-7 px-2.5 rounded-lg border border-neutral-200 dark:border-white/10 text-xs font-medium flex items-center gap-1 hover:bg-neutral-100 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300 cursor-pointer"
                         title="Go up one folder"
                       >
                         <CornerLeftUp className="w-3.5 h-3.5" />
@@ -728,7 +1104,7 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                     <button
                       type="button"
                       onClick={() => setIsNewFolderModalOpen(true)}
-                      className="h-8 px-3 rounded-full bg-[#CDFF5D] text-black text-xs font-mono font-black uppercase tracking-wider flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-xs cursor-pointer"
+                      className="h-7 px-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                     >
                       <FolderPlus className="w-3.5 h-3.5" />
                       <span>New Folder</span>
@@ -736,39 +1112,58 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
                   </div>
                 </div>
 
-                {/* Sub-Folders Grid */}
+                {/* Sub-Folders Grid (macOS Finder Style with Drag-and-Drop) */}
                 {folders.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {folders.map((folder) => (
-                      <div
-                        key={folder.id}
-                        onClick={() => setCurrentFolderId(folder.id)}
-                        className="group relative p-3 rounded-[20px] bg-white dark:bg-[#18181B] border-2 border-neutral-900/10 dark:border-white/10 hover:border-neutral-900/40 dark:hover:border-white/40 shadow-xs cursor-pointer transition-all flex items-center gap-2.5 active:scale-98"
-                      >
-                        <div className="w-9 h-9 rounded-2xl bg-[#CDFF5D] text-black flex items-center justify-center shrink-0 font-bold shadow-xs">
-                          <FolderOpen className="w-4 h-4 stroke-[2.2]" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#111111] dark:text-white truncate">
-                            {folder.title}
-                          </p>
-                          <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-wider mt-0.5">
-                            Folder
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
+                    {folders.map((folder) => {
+                      const isHoveredTarget = dragOverFolderId === folder.id;
+                      return (
+                        <div
+                          key={folder.id}
+                          onClick={() => setCurrentFolderId(folder.id)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
-                            handleDeleteItem(folder, false);
+                            setDragOverFolderId(folder.id);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-full text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
-                          title="Delete folder"
+                          onDragLeave={() => {
+                            if (dragOverFolderId === folder.id) setDragOverFolderId(null);
+                          }}
+                          onDrop={(e) => handleDropOnFolder(folder.id, e)}
+                          className={cn(
+                            'group relative p-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 active:scale-[0.98] cursor-pointer select-none',
+                            isHoveredTarget
+                              ? 'border-[#007aff] ring-2 ring-[#007aff] bg-[#007aff]/10 dark:bg-[#007aff]/20 scale-[1.02] shadow-md'
+                              : 'bg-white dark:bg-[#1C1C1E] border-black/[0.07] dark:border-white/[0.08] hover:border-black/20 dark:hover:border-white/20 hover:shadow-sm'
+                          )}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          <MacFolderGraphic isHovered={isHoveredTarget} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                              {folder.title}
+                            </p>
+                            <p className="text-[10px] font-mono text-neutral-400 mt-0.5">
+                              {isHoveredTarget ? (
+                                <span className="text-[#007aff] font-bold">Drop to move here</span>
+                              ) : (
+                                'Folder'
+                              )}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteItem(folder, false);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded-full text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer"
+                            title="Delete folder"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -828,36 +1223,120 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
               </div>
             ) : (
               /* TIMELINE DATE GROUPS */
-              <div className="space-y-7">
-                {dateGroups.map((group) => (
-                  <section key={group.key} className="space-y-2.5">
-                    <div className="flex items-center justify-between px-1 mb-1">
-                      <h3 className="font-mono text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                        {group.title}
-                      </h3>
-                      <span className="font-mono text-[11px] font-bold text-neutral-400 bg-neutral-200/60 dark:bg-neutral-800/60 px-2 py-0.5 rounded-full tabular-nums">
-                        {group.items.length}
-                      </span>
+              viewMode === 'list' ? (
+                <div className="space-y-6">
+                  {/* Select All Toolbar Header */}
+                  <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-mono font-bold text-neutral-400 border-b border-black/5 dark:border-white/5 uppercase tracking-wider">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleSelectAll}
+                        className="hover:text-black dark:hover:text-white flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        <span>{selectedItemIds.size === items.length && items.length > 0 ? 'Deselect All' : 'Select All'}</span>
+                      </button>
+                      <span className="hidden sm:inline">Name</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                      {group.items.map((item) => (
-                        <ItemCard
-                          key={item.id}
-                          item={item}
-                          onOpenDetail={handleOpenDetail}
-                          onToggleFavourite={handleToggleFavourite}
-                          onDelete={handleDeleteItem}
-                          onRestore={handleRestoreItem}
-                          onShareInChat={handleShareInChat}
-                          onShareLink={(item) => setSharingItem(item)}
-                          onMove={handleOpenMoveModal}
-                          inTrash={currentSection === 'trash'}
-                        />
-                      ))}
+                    <div className="flex items-center gap-8">
+                      <span className="hidden sm:inline w-28">Kind</span>
+                      <span className="hidden md:inline w-20 text-right">Size</span>
+                      <span className="hidden lg:inline w-28 text-right">Date Added</span>
+                      <span className="w-24 text-right">Status</span>
+                      <span className="w-24 text-right">Actions</span>
                     </div>
-                  </section>
-                ))}
-              </div>
+                  </div>
+
+                  {dateGroups.map((group) => (
+                    <section key={group.key} className="space-y-1">
+                      <div className="flex items-center justify-between px-3 py-1">
+                        <h3 className="font-mono text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                          {group.title}
+                        </h3>
+                        <span className="font-mono text-[10px] font-bold text-neutral-400 bg-neutral-200/50 dark:bg-neutral-800/50 px-2 py-0.5 rounded-full tabular-nums">
+                          {group.items.length}
+                        </span>
+                      </div>
+                      <div className="bg-white/80 dark:bg-[#18181B]/80 rounded-2xl border border-neutral-200/80 dark:border-white/10 p-1 divide-y divide-black/5 dark:divide-white/5 shadow-xs">
+                        {group.items.map((item) => (
+                          <ItemRow
+                            key={item.id}
+                            item={item}
+                            isSelected={selectedItemIds.has(item.id)}
+                            onToggleSelect={handleToggleSelect}
+                            onOpenDetail={handleOpenDetail}
+                            onToggleFavourite={handleToggleFavourite}
+                            onDelete={handleDeleteItem}
+                            onRestore={handleRestoreItem}
+                            onShareInChat={handleShareInChat}
+                            onShareLink={(item) => setSharingItem(item)}
+                            onMove={handleOpenMoveModal}
+                            inTrash={currentSection === 'trash'}
+                            onDragStart={(e, item) => {
+                              isDraggingInternalRef.current = true;
+                              setIsDraggingInternalItem(true);
+                              if (!selectedItemIds.has(item.id)) {
+                                setSelectedItemIds(new Set([item.id]));
+                              }
+                            }}
+                            onDragEnd={() => {
+                              isDraggingInternalRef.current = false;
+                              setIsDraggingInternalItem(false);
+                              setDragOverFolderId(null);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                /* Icons / Grid View */
+                <div className="space-y-7">
+                  {dateGroups.map((group) => (
+                    <section key={group.key} className="space-y-2.5">
+                      <div className="flex items-center justify-between px-1 mb-1">
+                        <h3 className="font-mono text-xs font-black uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                          {group.title}
+                        </h3>
+                        <span className="font-mono text-[11px] font-bold text-neutral-400 bg-neutral-200/60 dark:bg-neutral-800/60 px-2 py-0.5 rounded-full tabular-nums">
+                          {group.items.length}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        {group.items.map((item) => (
+                          <ItemCard
+                            key={item.id}
+                            item={item}
+                            isSelected={selectedItemIds.has(item.id)}
+                            onToggleSelect={handleToggleSelect}
+                            onOpenDetail={handleOpenDetail}
+                            onToggleFavourite={handleToggleFavourite}
+                            onDelete={handleDeleteItem}
+                            onRestore={handleRestoreItem}
+                            onShareInChat={handleShareInChat}
+                            onShareLink={(item) => setSharingItem(item)}
+                            onMove={handleOpenMoveModal}
+                            inTrash={currentSection === 'trash'}
+                            onDragStart={(e, item) => {
+                              isDraggingInternalRef.current = true;
+                              setIsDraggingInternalItem(true);
+                              if (!selectedItemIds.has(item.id)) {
+                                setSelectedItemIds(new Set([item.id]));
+                              }
+                            }}
+                            onDragEnd={() => {
+                              isDraggingInternalRef.current = false;
+                              setIsDraggingInternalItem(false);
+                              setDragOverFolderId(null);
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )
             )}
           </>
         )}
@@ -1010,6 +1489,115 @@ export function Dashboard({ user, onLogout, onUserUpdated }: DashboardProps) {
               variant="ghost"
               onClick={() => setMovingItem(null)}
               disabled={isMoving}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 8. macOS FLOATING BATCH ACTION DOCK */}
+      {selectedItemIds.size > 0 && currentSection !== 'trash' && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-2 rounded-full bg-neutral-950/90 dark:bg-[#1C1C1E]/95 backdrop-blur-2xl text-white shadow-2xl border border-white/15 animate-in fade-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-2 pl-1 pr-2.5 border-r border-white/15 text-xs font-semibold">
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#007aff] text-[11px] font-bold text-white tabular-nums">
+              {selectedItemIds.size}
+            </span>
+            <span className="hidden sm:inline">selected</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleOpenBatchMoveModal}
+            className="h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <FolderInput className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <span>Move to Folder</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBatchDelete}
+            className="h-8 px-3 rounded-full bg-red-500/15 hover:bg-red-500/25 text-red-400 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleClearSelection}
+            className="h-7 w-7 rounded-full bg-white/10 hover:bg-white/20 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5"
+            title="Deselect All"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 9. BATCH MOVE MODAL */}
+      <Modal
+        isOpen={isBatchMoveModalOpen}
+        onClose={() => setIsBatchMoveModalOpen(false)}
+        title="Move Selected Items"
+        subtitle={`Club ${selectedItemIds.size} item(s) into a folder`}
+        maxWidth="sm"
+      >
+        <div className="p-5 space-y-3">
+          <div className="max-h-60 overflow-y-auto space-y-1.5 scrollbar-thin">
+            <button
+              type="button"
+              disabled={isBatchMoving || currentFolderId === null}
+              onClick={() => handleBatchMove(null)}
+              className={cn(
+                'w-full flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left',
+                currentFolderId === null
+                  ? 'border-neutral-300 bg-neutral-100 dark:bg-white/5 opacity-50 cursor-not-allowed'
+                  : 'border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white hover:bg-neutral-50 dark:hover:bg-white/5'
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <FolderIcon className="w-4 h-4 text-neutral-400" />
+                <span>Vault Root (Top Level)</span>
+              </div>
+              {currentFolderId === null && (
+                <span className="text-[10px] font-mono text-neutral-400">Current</span>
+              )}
+            </button>
+
+            {allUserFolders.map((f) => {
+              const isCurrent = currentFolderId === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  disabled={isBatchMoving || isCurrent}
+                  onClick={() => handleBatchMove(f.id)}
+                  className={cn(
+                    'w-full flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left',
+                    isCurrent
+                      ? 'border-neutral-300 bg-neutral-100 dark:bg-white/5 opacity-50 cursor-not-allowed'
+                      : 'border-neutral-200 dark:border-white/10 hover:border-black dark:hover:border-white hover:bg-neutral-50 dark:hover:bg-white/5'
+                  )}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <FolderIcon className="w-4 h-4 text-[#FBBF24]" />
+                    <span className="truncate">{f.title}</span>
+                  </div>
+                  {isCurrent && (
+                    <span className="text-[10px] font-mono text-neutral-400 shrink-0">Current</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setIsBatchMoveModalOpen(false)}
+              disabled={isBatchMoving}
             >
               Cancel
             </Button>
