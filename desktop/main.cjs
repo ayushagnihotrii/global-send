@@ -418,6 +418,8 @@ async function uploadFileDirectPipelined({
         file: inputFile,
         caption: captionText,
         forceDocument: true,
+        parseMode: false,
+        formattingEntities: [],
       });
 
       const messageId = Array.isArray(msg) ? msg[0]?.id : msg?.id;

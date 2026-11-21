@@ -288,6 +288,8 @@ export class TelegramStorageProvider implements StorageProvider {
           file: customFile,
           caption: `[Global Send Vault] ${params.filename} (Part ${i + 1}/${partCount}) [Item: ${params.itemId}]`,
           forceDocument: true,
+          parseMode: false,
+          formattingEntities: [],
           workers: 4,
         });
 
