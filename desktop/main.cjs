@@ -262,16 +262,17 @@ function createWindow() {
 function createTray() {
   try {
     const iconCandidates = [
+      path.join(__dirname, 'favicon.ico'),
       path.join(__dirname, '../public/favicon.ico'),
       path.join(__dirname, '../public/icon-512.png'),
-      path.join(__dirname, 'favicon.ico'),
     ];
     const validPath = iconCandidates.find((p) => fs.existsSync(p));
     if (!validPath) {
       fileLog('createTray: No icon found, skipping tray');
       return;
     }
-    const trayIcon = nativeImage.createFromPath(validPath);
+    const iconBuf = fs.readFileSync(validPath);
+    const trayIcon = nativeImage.createFromBuffer(iconBuf);
     if (trayIcon.isEmpty()) {
       fileLog('createTray: Icon empty, skipping tray');
       return;
