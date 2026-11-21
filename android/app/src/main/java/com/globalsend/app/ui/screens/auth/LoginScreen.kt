@@ -415,15 +415,30 @@ fun LoginScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .clickable { tempServerUrl = "http://10.5.78.14:3000" }
+                                    .clickable { tempServerUrl = "https://global-send-v2.vercel.app" }
                                     .background(BadgeLimeBg)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "Wi-Fi PC",
+                                    text = "Cloud (Vercel)",
                                     color = BadgeLimeText,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "http://10.5.78.14:3000" }
+                                    .background(colors.surfaceSecondary)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Local PC",
+                                    color = colors.textPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
 
@@ -441,21 +456,6 @@ fun LoginScreen(
                                     fontWeight = FontWeight.Medium
                                 )
                             }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .clickable { tempServerUrl = "http://127.0.0.1:3000" }
-                                    .background(colors.surfaceSecondary)
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = "Localhost",
-                                    color = colors.textPrimary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
@@ -463,7 +463,7 @@ fun LoginScreen(
                         GlobalSendTextField(
                             value = tempServerUrl,
                             onValueChange = { tempServerUrl = it },
-                            placeholder = "http://10.5.78.14:3000"
+                            placeholder = "https://global-send-v2.vercel.app"
                         )
                     }
                 },

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QuestionMark
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +31,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.globalsend.app.ui.components.FloatingPillToast
 import com.globalsend.app.ui.components.GlobalSendButton
 import com.globalsend.app.ui.components.GlobalSendTextField
+import com.globalsend.app.ui.theme.BadgeLimeBg
+import com.globalsend.app.ui.theme.BadgeLimeText
 import com.globalsend.app.ui.theme.GlobalSendThemeTokens
 
 val PRESET_QUESTIONS = listOf(
@@ -51,12 +54,15 @@ fun RegisterScreen(
     viewModel: AuthViewModel = viewModel()
 ) {
     val authState by viewModel.authState.collectAsState()
+    val serverUrl by viewModel.serverUrl.collectAsState()
 
     var username by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
     var selectedQuestion by remember { mutableStateOf(PRESET_QUESTIONS[0]) }
     var securityAnswer by remember { mutableStateOf("") }
     var expandedQuestionDropdown by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
+    var tempServerUrl by remember { mutableStateOf(serverUrl) }
 
     val focusManager = LocalFocusManager.current
     val colors = GlobalSendThemeTokens.colors
@@ -80,25 +86,41 @@ fun RegisterScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp)
         ) {
-            // Header with Back button
+            // Header with Back button and Server URL setting
             Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 20.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = colors.textPrimary
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = colors.textPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Create Locker",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.textPrimary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Create Locker",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = colors.textPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+
+                IconButton(onClick = {
+                    tempServerUrl = serverUrl
+                    showServerDialog = true
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Server Settings",
+                        tint = colors.textSecondary
+                    )
+                }
             }
 
             Text(
@@ -242,5 +264,80 @@ fun RegisterScreen(
             isSuccess = false,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        // Server URL Dialog
+        if (showServerDialog) {
+            AlertDialog(
+                onDismissRequest = { showServerDialog = false },
+                title = { Text("Server Endpoint", color = colors.textPrimary, fontWeight = FontWeight.Bold) },
+                text = {
+                    Column {
+                        Text(
+                            text = "Connect to Global Send Cloud or a custom self-hosted server.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Quick Selection Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "https://global-send-v2.vercel.app" }
+                                    .background(BadgeLimeBg)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Cloud (Vercel)",
+                                    color = BadgeLimeText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .clickable { tempServerUrl = "http://10.5.78.14:3000" }
+                                    .background(colors.surfaceSecondary)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Local PC",
+                                    color = colors.textPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        GlobalSendTextField(
+                            value = tempServerUrl,
+                            onValueChange = { tempServerUrl = it },
+                            placeholder = "https://global-send-v2.vercel.app"
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.updateServerUrl(tempServerUrl)
+                        showServerDialog = false
+                    }) {
+                        Text("Save", color = colors.accent)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showServerDialog = false }) {
+                        Text("Cancel", color = colors.textSecondary)
+                    }
+                }
+            )
+        }
     }
 }

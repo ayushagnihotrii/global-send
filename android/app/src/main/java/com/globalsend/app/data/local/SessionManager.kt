@@ -39,7 +39,7 @@ class SessionManager(context: Context) {
         private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
         private const val KEY_THEME_MODE = "theme_mode"
 
-        const val DEFAULT_SERVER_URL = "http://10.5.78.14:3000"
+        const val DEFAULT_SERVER_URL = "https://global-send-v2.vercel.app"
     }
 
     fun saveAuth(token: String, user: UserDto) {
@@ -73,13 +73,17 @@ class SessionManager(context: Context) {
     fun getAvatarUrl(): String? = prefs.getString(KEY_AVATAR_URL, null)
 
     fun getServerUrl(): String {
-        return prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        val saved = prefs.getString(KEY_SERVER_URL, null)
+        if (saved.isNullOrBlank() || saved.contains("10.5.78.14")) {
+            return DEFAULT_SERVER_URL
+        }
+        return saved
     }
 
     fun setServerUrl(url: String) {
         var cleanUrl = url.trim()
         if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-            cleanUrl = "http://$cleanUrl"
+            cleanUrl = if (cleanUrl.contains(".vercel.app") || cleanUrl.contains(".")) "https://$cleanUrl" else "http://$cleanUrl"
         }
         if (cleanUrl.endsWith("/")) {
             cleanUrl = cleanUrl.substring(0, cleanUrl.length - 1)
