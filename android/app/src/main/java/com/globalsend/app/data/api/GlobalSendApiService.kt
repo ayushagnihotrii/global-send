@@ -66,6 +66,12 @@ interface GlobalSendApiService {
     suspend fun emptyTrash(): Response<GenericResponse>
 
     // --- FILE UPLOADS & STORAGE ---
+    @GET("api/storage/direct-config")
+    suspend fun getDirectConfig(): Response<DirectConfigResponse>
+
+    @POST("api/storage/confirm")
+    suspend fun confirmUpload(@Body request: ConfirmUploadRequest): Response<SingleItemResponse>
+
     @Multipart
     @POST("api/storage/upload")
     suspend fun uploadFile(

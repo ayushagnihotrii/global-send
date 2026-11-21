@@ -90,3 +90,30 @@ data class StorageUsageResponse(
     @SerializedName("storage") val storage: StorageUsageDto? = null,
     @SerializedName("error") val error: String? = null
 )
+
+data class TelegramDirectConfig(
+    @SerializedName("apiId") val apiId: Long? = null,
+    @SerializedName("apiHash") val apiHash: String? = null,
+    @SerializedName("channelId") val channelId: String,
+    @SerializedName("botToken") val botToken: String
+)
+
+data class DirectConfigResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("provider") val provider: String? = null,
+    @SerializedName("telegram") val telegram: TelegramDirectConfig? = null,
+    @SerializedName("error") val error: String? = null
+)
+
+data class ConfirmUploadRequest(
+    @SerializedName("itemId") val itemId: String,
+    @SerializedName("storageKey") val storageKey: String,
+    @SerializedName("originalFilename") val originalFilename: String,
+    @SerializedName("mimeType") val mimeType: String,
+    @SerializedName("fileSize") val fileSize: Long,
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("tags") val tags: List<String> = emptyList(),
+    @SerializedName("parentFolderId") val parentFolderId: String? = null,
+    @SerializedName("isPermanent") val isPermanent: Boolean = false,
+    @SerializedName("expirationSeconds") val expirationSeconds: Long = 86400L
+)

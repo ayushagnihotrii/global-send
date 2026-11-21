@@ -123,6 +123,84 @@ class VaultRepository(
         expirationSeconds: Long = 86400L
     ): Result<ItemDto> = withContext(Dispatchers.IO) {
         try {
+            // 1. High-Speed Direct Telegram Bot API Upload
+            // Bypasses Vercel serverless payload limits & timeouts completely.
+            if (file.length() <= 50 * 1024 * 1024) {
+                try {
+                    val directConfigRes = apiClient.getService().getDirectConfig()
+                    if (directConfigRes.isSuccessful && directConfigRes.body()?.success == true) {
+                        val config = directConfigRes.body()!!
+                        if (config.provider == "telegram" && config.telegram != null) {
+                            val tg = config.telegram
+                            val itemId = java.util.UUID.randomUUID().toString()
+                            val filename = file.name
+
+                            val directClient = okhttp3.OkHttpClient.Builder()
+                                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                                .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+                                .writeTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+                                .build()
+
+                            val requestBody = MultipartBody.Builder()
+                                .setType(MultipartBody.FORM)
+                                .addFormDataPart("chat_id", tg.channelId)
+                                .addFormDataPart(
+                                    "document",
+                                    filename,
+                                    file.asRequestBody(mimeType.toMediaTypeOrNull())
+                                )
+                                .addFormDataPart(
+                                    "caption",
+                                    "[Global Send Mobile Vault] $filename [Item: $itemId]"
+                                )
+                                .build()
+
+                            val request = okhttp3.Request.Builder()
+                                .url("https://api.telegram.org/bot${tg.botToken}/sendDocument")
+                                .post(requestBody)
+                                .build()
+
+                            val tgResponse = directClient.newCall(request).execute()
+                            val responseBodyString = tgResponse.body?.string().orEmpty()
+                            if (tgResponse.isSuccessful) {
+                                val json = com.google.gson.JsonParser.parseString(responseBodyString).asJsonObject
+                                val resultObj = json.getAsJsonObject("result")
+                                val messageId = resultObj?.get("message_id")?.asLong ?: 1L
+                                val fileSize = file.length()
+
+                                val encodedName = java.net.URLEncoder.encode(filename, "UTF-8")
+                                val encodedMime = java.net.URLEncoder.encode(mimeType, "UTF-8")
+                                val partsParam = "$messageId:$fileSize"
+                                val storageKey = "telegram://manifest?channel=${java.net.URLEncoder.encode(tg.channelId, "UTF-8")}&parts=$partsParam&total=$fileSize&name=$encodedName&mime=$encodedMime"
+
+                                val confirmRes = apiClient.getService().confirmUpload(
+                                    ConfirmUploadRequest(
+                                        itemId = itemId,
+                                        storageKey = storageKey,
+                                        originalFilename = filename,
+                                        mimeType = mimeType,
+                                        fileSize = fileSize,
+                                        title = title ?: filename,
+                                        tags = tags,
+                                        isPermanent = expirationSeconds == 0L,
+                                        expirationSeconds = expirationSeconds
+                                    )
+                                )
+
+                                if (confirmRes.isSuccessful && confirmRes.body()?.item != null) {
+                                    val item = confirmRes.body()!!.item!!
+                                    itemDao.insertItem(ItemEntity.fromDto(item))
+                                    return@withContext Result.success(item)
+                                }
+                            }
+                        }
+                    }
+                } catch (directErr: Exception) {
+                    // Fall back to server endpoint if direct telegram call fails
+                }
+            }
+
+            // 2. Standard server multipart upload fallback
             val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
             val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
             val titlePart = (title ?: file.name).toRequestBody("text/plain".toMediaTypeOrNull())
