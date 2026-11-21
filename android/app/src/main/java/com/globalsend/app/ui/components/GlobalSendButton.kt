@@ -49,7 +49,7 @@ fun GlobalSendButton(
     }
 
     val contentColor = when (variant) {
-        ButtonVariant.Primary -> Color.White
+        ButtonVariant.Primary -> if (colors.isDark) Color(0xFF111111) else Color.White
         ButtonVariant.Secondary -> colors.textPrimary
         ButtonVariant.Destructive -> Color.White
         ButtonVariant.Ghost -> colors.accent

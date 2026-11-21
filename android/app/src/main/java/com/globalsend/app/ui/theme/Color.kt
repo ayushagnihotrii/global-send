@@ -2,8 +2,8 @@ package com.globalsend.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Global Send Dark Palette (Website Primary)
-val BgMainDark = Color(0xFF0E0E10)
+// Global Send Dark Palette (Website Exact Match)
+val BgMainDark = Color(0xFF121215)
 val SurfaceDark = Color(0xFF18181B)
 val SurfaceSecondaryDark = Color(0xFF27272A)
 val SurfaceElevatedDark = Color(0xFF27272A)
@@ -12,9 +12,9 @@ val BorderHoverDark = Color(0x40FFFFFF)  // rgba(255, 255, 255, 0.25)
 val TextPrimaryDark = Color(0xFFF5F5F7)
 val TextSecondaryDark = Color(0xFFA1A1AA)
 val TextTertiaryDark = Color(0xFF71717A)
-val AccentDark = Color(0xFF0A84FF)
-val AccentHoverDark = Color(0xFF409CFF)
-val AccentSubtleDark = Color(0x290A84FF)
+val AccentDark = Color(0xFFCDFF5D)
+val AccentHoverDark = Color(0xFFB8E645)
+val AccentSubtleDark = Color(0x33CDFF5D)
 val DestructiveDark = Color(0xFFFF453A)
 val SuccessDark = Color(0xFF30D158)
 val WarningDark = Color(0xFFFF9F0A)

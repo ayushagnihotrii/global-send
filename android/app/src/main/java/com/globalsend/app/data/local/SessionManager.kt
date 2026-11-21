@@ -39,7 +39,7 @@ class SessionManager(context: Context) {
         private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
         private const val KEY_THEME_MODE = "theme_mode"
 
-        const val DEFAULT_SERVER_URL = "http://10.0.2.2:3000"
+        const val DEFAULT_SERVER_URL = "https://global-send-v2.vercel.app"
     }
 
     fun saveAuth(token: String, user: UserDto) {

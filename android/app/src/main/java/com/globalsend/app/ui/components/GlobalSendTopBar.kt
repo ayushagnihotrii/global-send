@@ -55,7 +55,7 @@ fun GlobalSendTopBar(
                 ) {
                     Text(
                         text = "GS",
-                        color = Color.White,
+                        color = Color(0xFF111111),
                         fontWeight = FontWeight.Black,
                         fontSize = 13.sp
                     )

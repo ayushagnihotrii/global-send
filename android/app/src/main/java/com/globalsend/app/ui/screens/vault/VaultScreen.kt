@@ -1,5 +1,6 @@
 package com.globalsend.app.ui.screens.vault
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,17 +10,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.globalsend.app.R
 import com.globalsend.app.ui.components.FloatingPillToast
 import com.globalsend.app.ui.components.GlobalSendTextField
 import com.globalsend.app.ui.components.GlobalSendTopBar
@@ -115,7 +118,7 @@ fun VaultScreen(
                 items(VAULT_CATEGORIES) { (catId, catLabel) ->
                     val isSelected = selectedCategory == catId
                     val bg = if (isSelected) colors.accent else colors.surfaceSecondary
-                    val textColor = if (isSelected) androidx.compose.ui.graphics.Color.White else colors.textPrimary
+                    val textColor = if (isSelected) (if (colors.isDark) Color(0xFF111111) else Color.White) else colors.textPrimary
 
                     Box(
                         modifier = Modifier
@@ -144,13 +147,12 @@ fun VaultScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Inbox,
-                            contentDescription = null,
-                            tint = colors.textTertiary,
-                            modifier = Modifier.size(56.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.sticker_eyes),
+                            contentDescription = "Empty Vault",
+                            modifier = Modifier.size(64.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "Your Locker is Empty",
                             style = MaterialTheme.typography.titleMedium,
@@ -169,7 +171,11 @@ fun VaultScreen(
                             shape = PillShape,
                             colors = ButtonDefaults.buttonColors(containerColor = colors.accent)
                         ) {
-                            Text("Quick Save Something", color = androidx.compose.ui.graphics.Color.White)
+                            Text(
+                                "Quick Save Something",
+                                color = if (colors.isDark) Color(0xFF111111) else Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -208,7 +214,7 @@ fun VaultScreen(
         FloatingActionButton(
             onClick = { showComposer = true },
             containerColor = colors.accent,
-            contentColor = androidx.compose.ui.graphics.Color.White,
+            contentColor = if (colors.isDark) Color(0xFF111111) else Color.White,
             shape = PillShape,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
