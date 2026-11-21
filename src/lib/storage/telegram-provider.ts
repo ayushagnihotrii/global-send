@@ -245,6 +245,17 @@ export class TelegramStorageProvider implements StorageProvider {
     }
 
     const client = await this.getClient();
+    let channelEntity: any;
+    try {
+      channelEntity = await client.getInputEntity(channelId);
+    } catch {
+      try {
+        channelEntity = await client.getEntity(channelId);
+      } catch {
+        channelEntity = channelId;
+      }
+    }
+
     const partCount = Math.max(1, Math.ceil(totalBytes / TELEGRAM_MAX_PART_SIZE));
     const parts: TelegramPartMeta[] = [];
 
@@ -260,7 +271,7 @@ export class TelegramStorageProvider implements StorageProvider {
       const customFile = new CustomFile(partFilename, chunk.length, '', chunk);
 
       // Upload file directly into private channel via MTProto
-      const message = await client.sendFile(channelId, {
+      const message = await client.sendFile(channelEntity, {
         file: customFile,
         caption: `[Global Send Vault] ${params.filename} (Part ${i + 1}/${partCount}) [Item: ${params.itemId}]`,
         forceDocument: true,
