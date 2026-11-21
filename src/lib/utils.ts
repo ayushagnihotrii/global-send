@@ -123,3 +123,18 @@ export function groupItemsByDate(items: Item[]): DateGroupedItems[] {
 
   return result;
 }
+
+/**
+ * Format remaining seconds into a user-friendly ETA string
+ * (e.g., "45s remaining", "2m 15s remaining", "1h 10m remaining")
+ */
+export function formatEta(seconds: number): string {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return '';
+  if (seconds < 60) return `${Math.round(seconds)}s remaining`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins < 60) return `${mins}m ${secs}s remaining`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hours}h ${remMins}m remaining`;
+}

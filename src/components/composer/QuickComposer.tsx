@@ -43,7 +43,21 @@ interface QueuedFileEntry {
   previewUrl: string | null;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   progress: number;
+  uploadedBytes?: number;
+  speed?: string;
+  eta?: string;
   error?: string;
+}
+
+function formatEta(seconds: number): string {
+  if (!seconds || seconds <= 0 || !isFinite(seconds)) return '';
+  if (seconds < 60) return `${Math.round(seconds)}s remaining`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins < 60) return `${mins}m ${secs}s remaining`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hours}h ${remMins}m remaining`;
 }
 
 function getFileIcon(mimeType: string) {
@@ -439,9 +453,22 @@ export function QuickComposer({
     customItemTitle: string
   ): Promise<Item> => {
     const file = entry.file;
-    const updateEntryProgress = (progress: number) => {
+    const updateEntryProgress = (
+      progress: number,
+      metrics?: { uploadedBytes?: number; speed?: string; eta?: string }
+    ) => {
       setQueuedFiles((prev) =>
-        prev.map((item) => (item.id === entry.id ? { ...item, progress } : item))
+        prev.map((item) =>
+          item.id === entry.id
+            ? {
+                ...item,
+                progress,
+                uploadedBytes: metrics?.uploadedBytes ?? item.uploadedBytes,
+                speed: metrics?.speed ?? item.speed,
+                eta: metrics?.eta ?? item.eta,
+              }
+            : item
+        )
       );
     };
 
@@ -465,10 +492,16 @@ export function QuickComposer({
             if (configData.provider === 'telegram' && configData.telegram) {
               const itemId = crypto.randomUUID();
 
-              // Subscribe to real-time hardware upload progress
+              // Subscribe to real-time hardware upload progress with speed & ETA
               const unsubscribe = window.desktopVault.onUploadProgress?.((data) => {
                 if (data.itemId === itemId) {
-                  updateEntryProgress(Math.max(1, Math.min(99, data.progress)));
+                  const speedStr = data.speedBps ? `${formatBytes(data.speedBps)}/s` : '';
+                  const etaStr = data.etaSec ? formatEta(data.etaSec) : '';
+                  updateEntryProgress(Math.max(1, Math.min(99, data.progress)), {
+                    uploadedBytes: data.uploadedBytes,
+                    speed: speedStr,
+                    eta: etaStr,
+                  });
                 }
               });
 
@@ -523,6 +556,10 @@ export function QuickComposer({
           console.warn('[Desktop Direct Upload failed, checking fallback]:', desktopErr?.message);
           throw desktopErr;
         }
+      } else if (file.size > 50 * 1024 * 1024) {
+        throw new Error(
+          `Could not read local file path for "${file.name}". Please pick files using the Desktop Vault file picker or drag and drop directly from File Explorer so direct MTProto transfer can run.`
+        );
       }
     }
 
@@ -558,6 +595,7 @@ export function QuickComposer({
       const chunkSize = initData.chunkSize || 2 * 1024 * 1024;
       let offset = 0;
       let finalItem: Item | null = null;
+      const chunkStartTime = Date.now();
 
       while (offset < file.size) {
         const slice = file.slice(offset, Math.min(offset + chunkSize, file.size));
@@ -587,7 +625,16 @@ export function QuickComposer({
         const putData = await putRes.json();
 
         offset += slice.size;
-        updateEntryProgress(Math.min(99, Math.round((offset / file.size) * 100)));
+        const elapsedSec = Math.max(0.1, (Date.now() - chunkStartTime) / 1000);
+        const speedBps = offset / elapsedSec;
+        const remBytes = Math.max(0, file.size - offset);
+        const etaSec = speedBps > 0 ? Math.round(remBytes / speedBps) : 0;
+
+        updateEntryProgress(Math.min(99, Math.round((offset / file.size) * 100)), {
+          uploadedBytes: offset,
+          speed: `${formatBytes(speedBps)}/s`,
+          eta: formatEta(etaSec),
+        });
 
         if (putData.completed && putData.item) {
           finalItem = putData.item;
@@ -616,10 +663,19 @@ export function QuickComposer({
         xhrRef.current = xhr;
         xhr.open('POST', '/api/storage/upload', true);
 
+        const xhrStartTime = Date.now();
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const pct = Math.round((event.loaded / event.total) * 95);
-            updateEntryProgress(Math.max(5, pct));
+            const elapsedSec = Math.max(0.1, (Date.now() - xhrStartTime) / 1000);
+            const speedBps = event.loaded / elapsedSec;
+            const remBytes = Math.max(0, event.total - event.loaded);
+            const etaSec = speedBps > 0 ? Math.round(remBytes / speedBps) : 0;
+            updateEntryProgress(Math.max(5, pct), {
+              uploadedBytes: event.loaded,
+              speed: `${formatBytes(speedBps)}/s`,
+              eta: formatEta(etaSec),
+            });
           }
         };
 
@@ -735,8 +791,10 @@ export function QuickComposer({
       );
       toast.error(`${failCount} ${failCount === 1 ? 'file' : 'files'} failed to upload`);
     } else if (failCount > 0) {
-      setUploadError('Could not upload selected files. Please check your connection or storage quota.');
-      toast.error('Upload failed');
+      const firstFailed = queuedFilesRef.current.find((f) => f.error);
+      const specificError = firstFailed?.error || 'Could not upload selected files. Please check your connection or storage quota.';
+      setUploadError(specificError);
+      toast.error(specificError);
     }
   };
 
@@ -1086,13 +1144,28 @@ export function QuickComposer({
                                 </p>
                               </div>
 
-                              <div className="flex items-center gap-2 mt-0.5 text-[11.5px] text-[#8e8e93] tabular-nums">
+                              <div className="flex items-center gap-1.5 mt-0.5 text-[11.5px] text-[#8e8e93] tabular-nums flex-wrap">
                                 <span>{formatBytes(entry.file.size)}</span>
                                 {entry.status === 'pending' && <span>· Ready</span>}
                                 {entry.status === 'uploading' && (
-                                  <span className="text-[#007aff] dark:text-[#409cff] font-medium">
-                                    · Uploading {entry.progress}%
-                                  </span>
+                                  <>
+                                    <span className="text-[#007aff] dark:text-[#409cff] font-semibold">
+                                      · Uploading {entry.progress}%
+                                    </span>
+                                    <span>
+                                      ({formatBytes(entry.uploadedBytes || Math.round((entry.progress / 100) * entry.file.size))} / {formatBytes(entry.file.size)})
+                                    </span>
+                                    {entry.speed && (
+                                      <span className="text-[#34c759] font-medium">
+                                        · {entry.speed}
+                                      </span>
+                                    )}
+                                    {entry.eta && (
+                                      <span className="text-[#ff9500] dark:text-[#ff9f0a] font-medium">
+                                        · {entry.eta}
+                                      </span>
+                                    )}
+                                  </>
                                 )}
                                 {entry.status === 'completed' && (
                                   <span className="text-[#34c759] font-medium">
@@ -1174,6 +1247,30 @@ export function QuickComposer({
                       className="h-full bg-[#007aff] dark:bg-[#0a84ff] transition-all duration-200"
                       style={{ width: `${overallBatchProgress}%` }}
                     />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-[#8e8e93] tabular-nums pt-0.5">
+                    <span>
+                      {formatBytes(
+                        queuedFiles.reduce(
+                          (acc, e) =>
+                            acc + (e.uploadedBytes || Math.round((e.progress / 100) * e.file.size)),
+                          0
+                        )
+                      )}{' '}
+                      / {formatBytes(totalQueuedBytes)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {queuedFiles.find((f) => f.status === 'uploading')?.speed && (
+                        <span className="text-[#34c759] font-medium">
+                          {queuedFiles.find((f) => f.status === 'uploading')?.speed}
+                        </span>
+                      )}
+                      {queuedFiles.find((f) => f.status === 'uploading')?.eta && (
+                        <span className="text-[#ff9500] dark:text-[#ff9f0a] font-medium">
+                          {queuedFiles.find((f) => f.status === 'uploading')?.eta}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

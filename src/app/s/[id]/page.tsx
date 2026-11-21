@@ -27,7 +27,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Logo } from '@/components/ui/Logo';
-import { cn, formatBytes, formatDate } from '@/lib/utils';
+import { cn, formatBytes, formatDate, formatEta } from '@/lib/utils';
 import {
   importKeyFromBase64Url,
   base64UrlToBuffer,
@@ -90,6 +90,7 @@ function ShareReceiverContent() {
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [bytesDownloaded, setBytesDownloaded] = useState(0);
   const [downloadSpeed, setDownloadSpeed] = useState('');
+  const [downloadEta, setDownloadEta] = useState('');
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -180,6 +181,8 @@ function ShareReceiverContent() {
     setIsDownloading(true);
     setDownloadProgress(0);
     setBytesDownloaded(0);
+    setDownloadSpeed('');
+    setDownloadEta('');
     setDownloadError(null);
     setDownloadSuccess(false);
 
@@ -221,11 +224,16 @@ function ShareReceiverContent() {
         }
 
         const now = Date.now();
-        if (now - lastTime >= 500) {
+        if (now - lastTime >= 400) {
           const deltaBytes = receivedBytes - lastBytes;
           const deltaTime = (now - lastTime) / 1000;
           const speedBps = deltaBytes / deltaTime;
           setDownloadSpeed(`${formatBytes(speedBps)}/s`);
+          if (totalExpected > 0 && speedBps > 0) {
+            const remBytes = Math.max(0, totalExpected - receivedBytes);
+            const etaSec = Math.round(remBytes / speedBps);
+            setDownloadEta(formatEta(etaSec));
+          }
           lastTime = now;
           lastBytes = receivedBytes;
         }
@@ -482,7 +490,10 @@ function ShareReceiverContent() {
                       <HardDrive className="w-3.5 h-3.5 text-[#CDFF5D] animate-pulse" />
                       Streaming: {downloadProgress}%
                     </span>
-                    <span>{downloadSpeed}</span>
+                    <div className="flex items-center gap-2">
+                      {downloadSpeed && <span className="text-[#CDFF5D]">{downloadSpeed}</span>}
+                      {downloadEta && <span className="text-neutral-400">· {downloadEta}</span>}
+                    </div>
                   </div>
 
                   <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
@@ -492,8 +503,11 @@ function ShareReceiverContent() {
                     />
                   </div>
 
-                  <div className="text-[10px] font-mono text-neutral-400 text-right">
-                    {formatBytes(bytesDownloaded)} / {formatBytes(metadata.fileSize)}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
+                    <span>
+                      {formatBytes(bytesDownloaded)} / {formatBytes(metadata.fileSize)}
+                    </span>
+                    {downloadEta && <span className="text-[#CDFF5D] font-medium">{downloadEta}</span>}
                   </div>
                 </div>
               )}

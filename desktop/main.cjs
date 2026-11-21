@@ -261,6 +261,7 @@ ipcMain.handle(
       const client = await getTelegramClient(apiId, apiHash, botToken);
       const customFile = new CustomFile(filename, stats.size, filePath);
 
+      const startTime = Date.now();
       let lastProgressTime = 0;
       const msg = await client.sendFile(normalizedChannel, {
         file: customFile,
@@ -269,15 +270,33 @@ ipcMain.handle(
         workers: 16,
         progressCallback: (progress) => {
           const now = Date.now();
-          if (now - lastProgressTime > 50 || progress >= 1) {
+          if (now - lastProgressTime > 80 || progress >= 1) {
             lastProgressTime = now;
             const pct = Math.min(100, Math.round(progress * 100));
-            event.sender.send('upload-progress', { itemId, progress: pct });
+            const uploadedBytes = Math.round(progress * stats.size);
+            const elapsedSec = Math.max(0.1, (now - startTime) / 1000);
+            const speedBps = uploadedBytes / elapsedSec;
+            const remainingBytes = Math.max(0, stats.size - uploadedBytes);
+            const etaSec = speedBps > 0 ? Math.round(remainingBytes / speedBps) : 0;
+
+            event.sender.send('upload-progress', {
+              itemId,
+              progress: pct,
+              uploadedBytes,
+              totalBytes: stats.size,
+              speedBps,
+              etaSec,
+            });
           }
         },
       });
 
-      const partsParam = `${msg.id}:${stats.size}`;
+      const messageId = Array.isArray(msg) ? msg[0]?.id : msg?.id;
+      if (!messageId) {
+        throw new Error('Telegram direct upload completed without returning message id');
+      }
+
+      const partsParam = `${messageId}:${stats.size}`;
       const encodedName = encodeURIComponent(filename);
       const encodedMime = encodeURIComponent(mimeType || 'application/octet-stream');
       const storageKey = `telegram://manifest?channel=${encodeURIComponent(
@@ -286,7 +305,7 @@ ipcMain.handle(
 
       return {
         success: true,
-        messageId: msg.id,
+        messageId,
         fileSize: stats.size,
         filename,
         storageKey,
@@ -294,6 +313,12 @@ ipcMain.handle(
       };
     } catch (err) {
       console.error('[Desktop Direct Upload Error]:', err);
+      if (cachedTgClient) {
+        try {
+          await cachedTgClient.disconnect();
+        } catch {}
+        cachedTgClient = null;
+      }
       return {
         success: false,
         error: err.message || 'Direct upload to Telegram failed',

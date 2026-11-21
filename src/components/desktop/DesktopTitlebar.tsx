@@ -15,7 +15,16 @@ declare global {
       pickFiles: () => Promise<string[]>;
       getPathForFile: (file: File) => string;
       directUpload: (params: any) => Promise<any>;
-      onUploadProgress: (callback: (data: { itemId: string; progress: number }) => void) => () => void;
+      onUploadProgress: (
+        callback: (data: {
+          itemId: string;
+          progress: number;
+          uploadedBytes?: number;
+          totalBytes?: number;
+          speedBps?: number;
+          etaSec?: number;
+        }) => void
+      ) => () => void;
     };
   }
 }
