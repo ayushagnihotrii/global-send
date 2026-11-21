@@ -70,7 +70,7 @@
     "productName": "Global Send",
     "npmRebuild": false,
     "directories": {
-      "output": "release-desktop-v2"
+      "output": "release-desktop-v3"
     },
     "files": [
       "desktop/**/*",

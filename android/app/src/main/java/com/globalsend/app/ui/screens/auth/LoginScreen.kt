@@ -430,21 +430,6 @@ fun LoginScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .clickable { tempServerUrl = "http://10.5.78.14:3000" }
-                                    .background(colors.surfaceSecondary)
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = "Local PC",
-                                    color = colors.textPrimary,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
                                     .clickable { tempServerUrl = "http://10.0.2.2:3000" }
                                     .background(colors.surfaceSecondary)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)

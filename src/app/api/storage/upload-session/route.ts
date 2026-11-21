@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
         success: true,
         sessionId: reservation.sessionId,
         itemId,
-        chunkSize: 2 * 1024 * 1024, // 2 MiB recommended chunk size (multiple of 256 KiB for Drive)
+        chunkSize: 4 * 1024 * 1024, // 4 MiB high-performance chunk size (under 4.5MB Vercel limit)
         expirationDurationSec: expValidation.durationSec,
       },
       { status: 201 }

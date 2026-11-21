@@ -89,6 +89,18 @@ function normalizeChannelId(rawChannelId) {
 function getSessionFilePath(botToken) {
   const tokenHash = crypto.createHash('sha256').update(botToken).digest('hex').slice(0, 16);
   const userDir = app?.getPath ? app.getPath('userData') : path.join(__dirname, '..');
+  const projectRoot = path.resolve(__dirname, '..');
+
+  const candidates = [
+    path.join(userDir, `tg_session_${tokenHash}.dat`),
+    path.join(projectRoot, `tg_session_${tokenHash}.dat`),
+    path.join(projectRoot, `tg_session_8246614873.dat`),
+    path.join(__dirname, `tg_session_${tokenHash}.dat`),
+    path.join(__dirname, `tg_session_8246614873.dat`),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
   return path.join(userDir, `tg_session_${tokenHash}.dat`);
 }
 
@@ -105,8 +117,8 @@ async function getTelegramClient(apiId, apiHash, botToken) {
   }
 
   const sessionFile = getSessionFilePath(botToken);
-  let sessionStr = '';
-  if (fs.existsSync(sessionFile)) {
+  let sessionStr = process.env.TELEGRAM_SESSION_STRING || '';
+  if (!sessionStr && fs.existsSync(sessionFile)) {
     try {
       sessionStr = fs.readFileSync(sessionFile, 'utf8').trim();
     } catch {}
@@ -264,7 +276,22 @@ ipcMain.handle('dialog-pick-files', async () => {
     title: 'Select Files to Upload to Global Send Vault',
   });
   if (result.canceled) return [];
-  return result.filePaths;
+  return result.filePaths.map((filePath) => {
+    try {
+      const stats = fs.statSync(filePath);
+      return {
+        path: filePath,
+        name: path.basename(filePath),
+        size: stats.size,
+      };
+    } catch {
+      return {
+        path: filePath,
+        name: path.basename(filePath),
+        size: 0,
+      };
+    }
+  });
 });
 
 const TELEGRAM_MAX_SEGMENT_SIZE = 1900 * 1024 * 1024; // 1.9 GB (Safe single document MTProto cap)

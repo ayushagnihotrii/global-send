@@ -77,7 +77,11 @@ class SessionManager(context: Context) {
 
     fun getServerUrl(): String {
         val saved = prefs.getString(KEY_SERVER_URL, null)
-        if (saved.isNullOrBlank() || saved.contains("10.5.78.14")) {
+        if (saved.isNullOrBlank() || 
+            saved.contains("10.5.78.14") || 
+            saved.contains("10.0.2.2") || 
+            saved.contains(":3000") || 
+            saved.contains("localhost")) {
             return DEFAULT_SERVER_URL
         }
         return saved

@@ -44,6 +44,7 @@ yarn-error.log*
 dist-desktop/
 release-desktop/
 release-desktop-v2/
+release-desktop-v3/
 
 # vercel
 .vercel

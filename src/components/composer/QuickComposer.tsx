@@ -40,6 +40,8 @@ type ComposerMode = 'text' | 'upload' | 'link';
 interface QueuedFileEntry {
   id: string;
   file: File;
+  localPath?: string;
+  isDesktopDirect?: boolean;
   previewUrl: string | null;
   status: 'pending' | 'uploading' | 'completed' | 'error';
   progress: number;
@@ -195,9 +197,21 @@ export function QuickComposer({
           }
         }
 
+        let resolvedPath = '';
+        if (typeof window !== 'undefined' && window.desktopVault?.isDesktop) {
+          try {
+            resolvedPath =
+              window.desktopVault.getPathForFile?.(file) ||
+              (file as any).path ||
+              '';
+          } catch {}
+        }
+
         newEntries.push({
           id: `${fp}-${Math.random().toString(36).slice(2, 8)}`,
           file,
+          localPath: resolvedPath,
+          isDesktopDirect: Boolean(resolvedPath),
           previewUrl,
           status: 'pending',
           progress: 0,
@@ -261,6 +275,48 @@ export function QuickComposer({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleOpenPicker = async () => {
+    if (isUploading) return;
+    if (typeof window !== 'undefined' && window.desktopVault?.isDesktop && window.desktopVault.pickFiles) {
+      try {
+        const picked = await window.desktopVault.pickFiles();
+        if (picked && Array.isArray(picked) && picked.length > 0) {
+          setQueuedFiles((prev) => {
+            const newEntries: QueuedFileEntry[] = [];
+            for (const rawItem of picked) {
+              const item = rawItem as any;
+              const itemPath = typeof item === 'string' ? item : (item.path as string) || '';
+              const itemName = typeof item === 'string' ? item.split(/[\\/]/).pop() || 'file' : (item.name as string) || 'file';
+              const itemSize = typeof item === 'string' ? 0 : Number(item.size || 0);
+
+              const mockBlob = new Blob([], { type: 'application/octet-stream' });
+              const mockFile = new File([mockBlob], itemName, { type: 'application/octet-stream' });
+              try {
+                Object.defineProperty(mockFile, 'size', { value: itemSize });
+                Object.defineProperty(mockFile, 'path', { value: itemPath });
+              } catch {}
+
+              newEntries.push({
+                id: `${itemPath}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                file: mockFile,
+                localPath: itemPath,
+                isDesktopDirect: true,
+                previewUrl: null,
+                status: 'pending',
+                progress: 0,
+              });
+            }
+            return [...prev, ...newEntries];
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn('Native desktop picker failed, using standard input', err);
+      }
+    }
+    fileInputRef.current?.click();
   };
 
   const totalQueuedBytes = useMemo(
@@ -476,13 +532,15 @@ export function QuickComposer({
     // If running inside the Electron Desktop app, stream directly to Telegram MTProto from local disk.
     // Bypasses Vercel serverless body limits, timeouts, and RAM limitations completely.
     if (typeof window !== 'undefined' && window.desktopVault?.isDesktop) {
-      let localPath = '';
-      try {
-        localPath =
-          window.desktopVault.getPathForFile?.(file) ||
-          (file as any).path ||
-          '';
-      } catch {}
+      let localPath = entry.localPath || '';
+      if (!localPath) {
+        try {
+          localPath =
+            window.desktopVault.getPathForFile?.(file) ||
+            (file as any).path ||
+            '';
+        } catch {}
+      }
 
       if (localPath) {
         try {
@@ -1035,7 +1093,7 @@ export function QuickComposer({
                       addFilesToQueue(e.dataTransfer.files);
                     }
                   }}
-                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  onClick={handleOpenPicker}
                   className={cn(
                     'border-2 border-dashed rounded-[16px] p-7 text-center transition-all cursor-pointer',
                     isDragging
@@ -1093,7 +1151,7 @@ export function QuickComposer({
                       <button
                         type="button"
                         disabled={isUploading}
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={handleOpenPicker}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-white dark:bg-[#2c2c2e] text-[#007aff] dark:text-[#409cff] border border-black/[0.08] dark:border-white/[0.12] hover:bg-[#007aff]/5 transition-colors disabled:opacity-50 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -1142,6 +1200,15 @@ export function QuickComposer({
                                 <p className="text-[13.5px] font-semibold text-[#1c1c1e] dark:text-[#f5f5f7] truncate">
                                   {entry.file.name}
                                 </p>
+                                {entry.localPath ? (
+                                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#34c759]/15 text-[#34c759] uppercase tracking-wide">
+                                    ⚡ Direct MTProto
+                                  </span>
+                                ) : entry.file.size > 50 * 1024 * 1024 ? (
+                                  <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ff9500]/15 text-[#ff9500] uppercase tracking-wide">
+                                    Web Chunks
+                                  </span>
+                                ) : null}
                               </div>
 
                               <div className="flex items-center gap-1.5 mt-0.5 text-[11.5px] text-[#8e8e93] tabular-nums flex-wrap">
@@ -1272,6 +1339,15 @@ export function QuickComposer({
                       )}
                     </div>
                   </div>
+                </div>
+              )}
+
+              {typeof window !== 'undefined' && !window.desktopVault?.isDesktop && queuedFiles.some((f) => f.file.size > 50 * 1024 * 1024) && (
+                <div className="flex items-center gap-2 p-2.5 rounded-[10px] bg-amber-500/10 border border-amber-500/20 text-[12px] text-amber-700 dark:text-amber-300">
+                  <span className="font-bold shrink-0">⚡ Max Speed:</span>
+                  <span className="flex-1">
+                    For multi-gigabit MTProto speeds (12+ MB/s) on large files without web browser limits, open the <strong>Global Send Desktop App</strong>.
+                  </span>
                 </div>
               )}
 
