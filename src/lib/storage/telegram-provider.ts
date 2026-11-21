@@ -244,6 +244,18 @@ export class TelegramStorageProvider implements StorageProvider {
       };
     }
 
+    // For files <= 50 MB with a Bot Token, use high-speed direct HTTP Bot API (lightning fast: ~200ms, zero handshake latency)
+    if (this.config?.botToken && totalBytes <= 50 * 1024 * 1024) {
+      try {
+        return await this.uploadViaBotApi(params, channelId);
+      } catch (botErr: any) {
+        console.warn(
+          '[Telegram Bot API direct upload failed, attempting MTProto]:',
+          botErr?.message
+        );
+      }
+    }
+
     try {
       const client = await this.getClient();
       let channelEntity: any;
