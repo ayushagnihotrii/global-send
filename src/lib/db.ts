@@ -395,9 +395,75 @@ export async function initDb(): Promise<void> {
       await client.execute(stmt).catch(() => {});
     }
   } else {
-    // Ensure PostgreSQL schema has all migration 003/004 tables/columns idempotently
+    // Ensure PostgreSQL schema has all baseline and migration tables/columns idempotently
     try {
       await db.client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          recovery_code_hash TEXT,
+          storage_limit_bytes BIGINT DEFAULT 2147483648,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+        CREATE TABLE IF NOT EXISTS items (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          type VARCHAR(20) NOT NULL CHECK (type IN ('text', 'link', 'image', 'video', 'file')),
+          title TEXT NOT NULL,
+          text_content TEXT,
+          url TEXT,
+          note TEXT,
+          is_favourite BOOLEAN DEFAULT FALSE,
+          deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_items_user_created ON items(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_items_user_type ON items(user_id, type);
+        CREATE INDEX IF NOT EXISTS idx_items_user_favourite ON items(user_id, is_favourite);
+        CREATE INDEX IF NOT EXISTS idx_items_user_deleted ON items(user_id, deleted_at);
+
+        CREATE TABLE IF NOT EXISTS files (
+          id TEXT PRIMARY KEY,
+          item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          storage_key TEXT NOT NULL UNIQUE,
+          original_filename TEXT NOT NULL,
+          mime_type TEXT NOT NULL,
+          file_size BIGINT NOT NULL DEFAULT 0,
+          upload_status VARCHAR(20) DEFAULT 'completed' CHECK (upload_status IN ('pending', 'completed', 'failed')),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_files_user_item ON files(user_id, item_id);
+        CREATE INDEX IF NOT EXISTS idx_files_storage_key ON files(storage_key);
+
+        CREATE TABLE IF NOT EXISTS tags (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name VARCHAR(50) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, name)
+        );
+        CREATE INDEX IF NOT EXISTS idx_tags_user ON tags(user_id);
+
+        CREATE TABLE IF NOT EXISTS item_tags (
+          item_id TEXT NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+          tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+          PRIMARY KEY (item_id, tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_item_tags_item ON item_tags(item_id);
+        CREATE INDEX IF NOT EXISTS idx_item_tags_tag ON item_tags(tag_id);
+
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key VARCHAR(100) PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
         ALTER TABLE users ADD COLUMN IF NOT EXISTS display_username VARCHAR(50);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS key_fingerprint VARCHAR(128);
         ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_storage_key TEXT DEFAULT NULL;
