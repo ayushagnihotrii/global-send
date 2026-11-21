@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.globalsend.app.ui.components.*
+import com.globalsend.app.ui.theme.CardShape
 import com.globalsend.app.ui.theme.GlobalSendThemeTokens
 import com.globalsend.app.ui.theme.ModalSheetShape
 import com.globalsend.app.ui.theme.PillShape
@@ -265,6 +266,76 @@ fun ComposerBottomSheet(
 
             Spacer(modifier = Modifier.height(28.dp))
 
+            val uploadProgress by viewModel.uploadProgress.collectAsState()
+
+            if (uploadProgress.isUploading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CardShape)
+                        .background(colors.surfaceElevated)
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Uploading... ${uploadProgress.progressPercent}%",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = colors.textPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (uploadProgress.speedString.isNotBlank()) {
+                                Text(
+                                    text = uploadProgress.speedString,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colors.accent,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        LinearProgressIndicator(
+                            progress = { (uploadProgress.progressPercent / 100f).coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(PillShape),
+                            color = colors.accent,
+                            trackColor = colors.surfaceSecondary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            val uploadedMb = String.format(java.util.Locale.US, "%.1f MB", uploadProgress.uploadedBytes / (1024.0 * 1024.0))
+                            val totalMb = String.format(java.util.Locale.US, "%.1f MB", uploadProgress.totalBytes / (1024.0 * 1024.0))
+                            Text(
+                                text = "$uploadedMb / $totalMb",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textSecondary
+                            )
+                            if (uploadProgress.etaString.isNotBlank()) {
+                                Text(
+                                    text = uploadProgress.etaString,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // Save / Upload Action
             GlobalSendButton(
                 text = if (currentTab == ComposerTab.File) "Upload to Vault" else "Save to Vault",
@@ -325,7 +396,7 @@ fun ComposerBottomSheet(
                         }
                     }
                 },
-                loading = isUploading,
+                loading = isUploading || uploadProgress.isUploading,
                 modifier = Modifier.fillMaxWidth()
             )
         }

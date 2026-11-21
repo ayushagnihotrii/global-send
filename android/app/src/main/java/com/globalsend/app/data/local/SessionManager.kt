@@ -30,6 +30,9 @@ class SessionManager(context: Context) {
     private val _tokenFlow = MutableStateFlow(getAuthToken())
     val tokenFlow: StateFlow<String?> = _tokenFlow.asStateFlow()
 
+    private val _themeModeFlow = MutableStateFlow(getThemeMode())
+    val themeModeFlow: StateFlow<String> = _themeModeFlow.asStateFlow()
+
     companion object {
         private const val KEY_TOKEN = "auth_token"
         private const val KEY_USER_ID = "user_id"
@@ -101,5 +104,6 @@ class SessionManager(context: Context) {
 
     fun setThemeMode(mode: String) {
         prefs.edit().putString(KEY_THEME_MODE, mode).apply()
+        _themeModeFlow.value = mode
     }
 }

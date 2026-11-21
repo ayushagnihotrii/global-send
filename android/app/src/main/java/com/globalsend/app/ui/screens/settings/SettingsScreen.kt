@@ -212,6 +212,75 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Appearance & Theme Card
+                Text(
+                    text = "APPEARANCE & THEME",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.textSecondary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CardShape)
+                        .background(colors.surfaceElevated)
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "Color Theme",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.textPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Choose light, dark, or follow device system settings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        val currentTheme by viewModel.themeMode.collectAsState()
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(PillShape)
+                                .background(colors.surfaceSecondary)
+                                .padding(4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            listOf(
+                                "dark" to "Dark",
+                                "light" to "Light",
+                                "system" to "System"
+                            ).forEach { (mode, label) ->
+                                val isSelected = currentTheme == mode
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(PillShape)
+                                        .clickable { viewModel.setThemeMode(mode) }
+                                        .background(if (isSelected) colors.accent else Color.Transparent)
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (isSelected) (if (colors.isDark) Color(0xFF111111) else Color.White) else colors.textSecondary,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
                 // Security & System Settings
                 Text(
                     text = "SECURITY & INSTANCE",

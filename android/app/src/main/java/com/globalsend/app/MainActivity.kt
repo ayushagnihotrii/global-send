@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -27,10 +28,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val app = GlobalSendApp.instance
-            val themeMode by remember { mutableStateOf(app.sessionManager.getThemeMode()) }
+            val themeMode by app.sessionManager.themeModeFlow.collectAsState()
+            val isSystemDark = isSystemInDarkTheme()
             val isDark = when (themeMode) {
                 "light" -> false
-                else -> true
+                "dark" -> true
+                else -> isSystemDark
             }
 
             GlobalSendTheme(darkTheme = isDark) {

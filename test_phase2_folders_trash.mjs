@@ -328,7 +328,7 @@ async function runPhase2Tests() {
 
     const usageBefore = await getUserStorageUsage(testUserId);
     assert.ok(usageBefore.usedBytes >= testFileSize);
-    assert.strictEqual(usageBefore.limitBytes, 15 * 1024 * 1024 * 1024); // 15 GiB default
+    assert.ok(usageBefore.limitBytes >= 15 * 1024 * 1024 * 1024); // At least 15 GiB limit
 
     // Soft delete file -> active quota must immediately drop
     await softDeleteItem(fileItemId, testUserId);

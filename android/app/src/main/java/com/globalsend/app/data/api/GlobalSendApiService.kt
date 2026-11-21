@@ -38,7 +38,8 @@ interface GlobalSendApiService {
         @Query("favourite") favourite: Boolean? = null,
         @Query("inTrash") inTrash: Boolean? = null,
         @Query("search") search: String? = null,
-        @Query("tag") tag: String? = null
+        @Query("tag") tag: String? = null,
+        @Query("parentFolderId") parentFolderId: String? = "all"
     ): Response<ItemsResponse>
 
     @GET("api/items/{id}")

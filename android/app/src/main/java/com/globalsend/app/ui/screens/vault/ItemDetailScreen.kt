@@ -78,7 +78,9 @@ fun ItemDetailScreen(
         } else {
             val currentItem = item!!
             val isQuestion = currentItem.tags?.contains("question") == true
-            val copyableContent = currentItem.textContent ?: currentItem.url ?: currentItem.file?.originalFilename ?: currentItem.title
+            val displayTitle = if (!currentItem.title.isNullOrBlank()) currentItem.title else (currentItem.file?.originalFilename ?: currentItem.url ?: "Untitled Item")
+            val copyableContent = currentItem.textContent ?: currentItem.url ?: currentItem.file?.originalFilename ?: displayTitle
+            val isPermanent = currentItem.isPermanent || currentItem.expiresAt == null
 
             Column(
                 modifier = Modifier
@@ -136,14 +138,15 @@ fun ItemDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.Timer,
                                 contentDescription = null,
-                                tint = colors.textSecondary,
+                                tint = if (isPermanent) colors.accent else colors.textSecondary,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Expires in ${(currentItem.expirationDurationSec / 3600)}h",
+                                text = if (isPermanent) "Permanent • Never Expires" else "Expires in ${(currentItem.expirationDurationSec / 3600)}h",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = colors.textSecondary
+                                color = if (isPermanent) colors.accent else colors.textSecondary,
+                                fontWeight = if (isPermanent) FontWeight.Bold else FontWeight.Normal
                             )
                         }
                     }
@@ -152,7 +155,7 @@ fun ItemDetailScreen(
 
                     // Title
                     Text(
-                        text = currentItem.title,
+                        text = displayTitle,
                         style = MaterialTheme.typography.headlineMedium,
                         color = colors.textPrimary,
                         fontWeight = FontWeight.Bold
@@ -273,7 +276,7 @@ fun ItemDetailScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "${currentItem.file.mimeType} • ${(currentItem.file.fileSize / 1024)} KB",
+                                        text = "${currentItem.file.mimeType} • ${formatFileSize(currentItem.file.fileSize)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.textSecondary
                                     )

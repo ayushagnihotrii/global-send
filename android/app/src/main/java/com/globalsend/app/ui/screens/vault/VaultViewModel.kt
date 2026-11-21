@@ -19,6 +19,15 @@ data class DateGroup(
     val items: List<ItemDto>
 )
 
+data class UploadProgressState(
+    val isUploading: Boolean = false,
+    val progressPercent: Int = 0,
+    val uploadedBytes: Long = 0L,
+    val totalBytes: Long = 0L,
+    val speedString: String = "",
+    val etaString: String = ""
+)
+
 class VaultViewModel(
     private val vaultRepository: VaultRepository = GlobalSendApp.instance.vaultRepository
 ) : ViewModel() {
@@ -35,6 +44,9 @@ class VaultViewModel(
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
+    private val _uploadProgress = MutableStateFlow(UploadProgressState())
+    val uploadProgress: StateFlow<UploadProgressState> = _uploadProgress.asStateFlow()
+
     val filteredGroupedItems: StateFlow<List<DateGroup>> = combine(
         vaultRepository.activeItems,
         _searchQuery,
@@ -44,12 +56,13 @@ class VaultViewModel(
             val matchesCategory = when (category) {
                 "all" -> true
                 "favourite" -> item.isFavourite
-                "question" -> item.tags?.contains("question") == true || item.title.contains("question", ignoreCase = true)
+                "question" -> item.tags?.contains("question") == true || (item.title?.contains("question", ignoreCase = true) == true)
                 else -> item.type.equals(category, ignoreCase = true)
             }
 
             val matchesQuery = if (query.isBlank()) true else {
-                item.title.contains(query, ignoreCase = true) ||
+                (item.title?.contains(query, ignoreCase = true) == true) ||
+                        (item.file?.originalFilename?.contains(query, ignoreCase = true) == true) ||
                         (item.textContent?.contains(query, ignoreCase = true) == true) ||
                         (item.url?.contains(query, ignoreCase = true) == true) ||
                         (item.tags?.any { it.contains(query, ignoreCase = true) } == true)
@@ -127,14 +140,43 @@ class VaultViewModel(
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
-            val result = vaultRepository.uploadFile(file, mimeType, title, tags, expirationSeconds)
+            _uploadProgress.value = UploadProgressState(isUploading = true, totalBytes = file.length())
+            val result = vaultRepository.uploadFile(
+                file = file,
+                mimeType = mimeType,
+                title = title,
+                tags = tags,
+                expirationSeconds = expirationSeconds,
+                onProgress = { percent, uploaded, total, speedBps, etaSec ->
+                    val speedStr = if (speedBps > 0) "${formatSpeed(speedBps)}/s" else ""
+                    val etaStr = if (etaSec > 0) "${etaSec}s remaining" else ""
+                    _uploadProgress.value = UploadProgressState(
+                        isUploading = true,
+                        progressPercent = percent,
+                        uploadedBytes = uploaded,
+                        totalBytes = total,
+                        speedString = speedStr,
+                        etaString = etaStr
+                    )
+                }
+            )
+            _uploadProgress.value = UploadProgressState(isUploading = false)
             result.onSuccess {
                 _toastMessage.value = "Uploaded file to vault"
+                refresh()
                 onSuccess()
             }.onFailure {
                 _toastMessage.value = it.localizedMessage ?: "Failed to upload file"
             }
         }
+    }
+
+    private fun formatSpeed(bytesPerSec: Long): String {
+        if (bytesPerSec <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB")
+        val digitGroups = (Math.log10(bytesPerSec.toDouble()) / Math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+        val value = bytesPerSec / Math.pow(1024.0, digitGroups.toDouble())
+        return String.format(Locale.US, "%.1f %s", value, units[digitGroups])
     }
 
     fun toggleFavourite(id: String) {
@@ -186,7 +228,7 @@ class VaultViewModel(
 
         for (item in items) {
             val itemTime = try {
-                isoFormat.parse(item.createdAt.take(19))?.time ?: 0L
+                isoFormat.parse((item.createdAt ?: "").take(19))?.time ?: 0L
             } catch (e: Exception) {
                 0L
             }

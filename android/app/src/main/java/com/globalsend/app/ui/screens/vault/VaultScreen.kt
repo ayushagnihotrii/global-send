@@ -81,6 +81,7 @@ fun VaultScreen(
             // Top App Bar
             GlobalSendTopBar(
                 title = "Vault",
+                onRefreshClick = { viewModel.refresh() },
                 onSearchClick = { isSearchActive = !isSearchActive },
                 onAddClick = { showComposer = true }
             )

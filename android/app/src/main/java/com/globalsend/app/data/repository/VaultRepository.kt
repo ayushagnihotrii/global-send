@@ -120,89 +120,129 @@ class VaultRepository(
         mimeType: String,
         title: String? = null,
         tags: List<String> = emptyList(),
-        expirationSeconds: Long = 86400L
+        expirationSeconds: Long = 86400L,
+        onProgress: ((progressPercent: Int, uploadedBytes: Long, totalBytes: Long, speedBytesPerSec: Long, etaSeconds: Long) -> Unit)? = null
     ): Result<ItemDto> = withContext(Dispatchers.IO) {
         try {
-            // 1. High-Speed Direct Telegram Bot API Upload
+            val totalFileSize = file.length()
+            val startTimeMs = System.currentTimeMillis()
+            var accumulatedPreviousPartsBytes = 0L
+
+            fun report(currentPartBytes: Long, partTotalBytes: Long) {
+                val totalUploadedSoFar = (accumulatedPreviousPartsBytes + currentPartBytes).coerceAtMost(totalFileSize)
+                val percent = if (totalFileSize > 0) ((totalUploadedSoFar * 100) / totalFileSize).toInt().coerceIn(1, 99) else 0
+                val elapsedSec = (System.currentTimeMillis() - startTimeMs) / 1000.0
+                val speedBps = if (elapsedSec > 0.1) (totalUploadedSoFar / elapsedSec).toLong() else 0L
+                val remainingBytes = (totalFileSize - totalUploadedSoFar).coerceAtLeast(0L)
+                val etaSec = if (speedBps > 0) remainingBytes / speedBps else 0L
+                onProgress?.invoke(percent, totalUploadedSoFar, totalFileSize, speedBps, etaSec)
+            }
+
+            // 1. High-Speed Direct Telegram Bot API Upload (Sliced into 45MB chunks to stay within bot limits)
             // Bypasses Vercel serverless payload limits & timeouts completely.
-            if (file.length() <= 50 * 1024 * 1024) {
-                try {
-                    val directConfigRes = apiClient.getService().getDirectConfig()
-                    if (directConfigRes.isSuccessful && directConfigRes.body()?.success == true) {
-                        val config = directConfigRes.body()!!
-                        if (config.provider == "telegram" && config.telegram != null) {
-                            val tg = config.telegram
-                            val itemId = java.util.UUID.randomUUID().toString()
-                            val filename = file.name
+            try {
+                val directConfigRes = apiClient.getService().getDirectConfig()
+                if (directConfigRes.isSuccessful && directConfigRes.body()?.success == true) {
+                    val config = directConfigRes.body()!!
+                    if (config.provider == "telegram" && config.telegram != null) {
+                        val tg = config.telegram
+                        val itemId = java.util.UUID.randomUUID().toString()
+                        val filename = file.name
 
-                            val directClient = okhttp3.OkHttpClient.Builder()
-                                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                                .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
-                                .writeTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
-                                .build()
+                        val directClient = okhttp3.OkHttpClient.Builder()
+                            .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                            .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                            .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                            .build()
 
-                            val requestBody = MultipartBody.Builder()
-                                .setType(MultipartBody.FORM)
-                                .addFormDataPart("chat_id", tg.channelId)
-                                .addFormDataPart(
-                                    "document",
-                                    filename,
-                                    file.asRequestBody(mimeType.toMediaTypeOrNull())
-                                )
-                                .addFormDataPart(
-                                    "caption",
-                                    "[Global Send Mobile Vault] $filename [Item: $itemId]"
-                                )
-                                .build()
+                        val sliceSize = 45L * 1024 * 1024 // 45 MB per slice
+                        val numParts = if (totalFileSize <= sliceSize) 1 else ((totalFileSize + sliceSize - 1) / sliceSize).toInt()
+                        val manifestParts = mutableListOf<String>()
 
-                            val request = okhttp3.Request.Builder()
-                                .url("https://api.telegram.org/bot${tg.botToken}/sendDocument")
-                                .post(requestBody)
-                                .build()
+                        val raf = java.io.RandomAccessFile(file, "r")
+                        try {
+                            for (partIdx in 0 until numParts) {
+                                val offset = partIdx * sliceSize
+                                val partLength = Math.min(sliceSize, totalFileSize - offset)
+                                val buffer = ByteArray(partLength.toInt())
+                                raf.seek(offset)
+                                raf.readFully(buffer)
 
-                            val tgResponse = directClient.newCall(request).execute()
-                            val responseBodyString = tgResponse.body?.string().orEmpty()
-                            if (tgResponse.isSuccessful) {
+                                val partFileName = if (numParts == 1) filename else "$filename.part${partIdx + 1}"
+                                val rawBody = buffer.toRequestBody(mimeType.toMediaTypeOrNull())
+                                val progressBody = com.globalsend.app.data.api.ProgressRequestBody(rawBody) { written, total ->
+                                    report(written, total)
+                                }
+
+                                val requestBody = MultipartBody.Builder()
+                                    .setType(MultipartBody.FORM)
+                                    .addFormDataPart("chat_id", tg.channelId)
+                                    .addFormDataPart("document", partFileName, progressBody)
+                                    .addFormDataPart(
+                                        "caption",
+                                        "[Global Send Vault] $filename (part ${partIdx + 1}/$numParts) [Item: $itemId]"
+                                    )
+                                    .build()
+
+                                val request = okhttp3.Request.Builder()
+                                    .url("https://api.telegram.org/bot${tg.botToken}/sendDocument")
+                                    .post(requestBody)
+                                    .build()
+
+                                val tgResponse = directClient.newCall(request).execute()
+                                val responseBodyString = tgResponse.body?.string().orEmpty()
+                                if (!tgResponse.isSuccessful) {
+                                    throw Exception("Telegram bot error: $responseBodyString")
+                                }
+
                                 val json = com.google.gson.JsonParser.parseString(responseBodyString).asJsonObject
                                 val resultObj = json.getAsJsonObject("result")
-                                val messageId = resultObj?.get("message_id")?.asLong ?: 1L
-                                val fileSize = file.length()
+                                val messageId = resultObj?.get("message_id")?.asLong ?: throw Exception("Missing message_id from Telegram response")
+                                manifestParts.add("$messageId:$partLength")
 
-                                val encodedName = java.net.URLEncoder.encode(filename, "UTF-8")
-                                val encodedMime = java.net.URLEncoder.encode(mimeType, "UTF-8")
-                                val partsParam = "$messageId:$fileSize"
-                                val storageKey = "telegram://manifest?channel=${java.net.URLEncoder.encode(tg.channelId, "UTF-8")}&parts=$partsParam&total=$fileSize&name=$encodedName&mime=$encodedMime"
-
-                                val confirmRes = apiClient.getService().confirmUpload(
-                                    ConfirmUploadRequest(
-                                        itemId = itemId,
-                                        storageKey = storageKey,
-                                        originalFilename = filename,
-                                        mimeType = mimeType,
-                                        fileSize = fileSize,
-                                        title = title ?: filename,
-                                        tags = tags,
-                                        isPermanent = expirationSeconds == 0L,
-                                        expirationSeconds = expirationSeconds
-                                    )
-                                )
-
-                                if (confirmRes.isSuccessful && confirmRes.body()?.item != null) {
-                                    val item = confirmRes.body()!!.item!!
-                                    itemDao.insertItem(ItemEntity.fromDto(item))
-                                    return@withContext Result.success(item)
-                                }
+                                accumulatedPreviousPartsBytes += partLength
                             }
+                        } finally {
+                            raf.close()
+                        }
+
+                        val encodedName = java.net.URLEncoder.encode(filename, "UTF-8")
+                        val encodedMime = java.net.URLEncoder.encode(mimeType, "UTF-8")
+                        val partsParam = manifestParts.joinToString(",")
+                        val storageKey = "telegram://manifest?channel=${java.net.URLEncoder.encode(tg.channelId, "UTF-8")}&parts=$partsParam&total=$totalFileSize&name=$encodedName&mime=$encodedMime"
+
+                        val confirmRes = apiClient.getService().confirmUpload(
+                            ConfirmUploadRequest(
+                                itemId = itemId,
+                                storageKey = storageKey,
+                                originalFilename = filename,
+                                mimeType = mimeType,
+                                fileSize = totalFileSize,
+                                title = title ?: filename,
+                                tags = tags,
+                                isPermanent = expirationSeconds == 0L,
+                                expirationSeconds = expirationSeconds
+                            )
+                        )
+
+                        if (confirmRes.isSuccessful && confirmRes.body()?.item != null) {
+                            val item = confirmRes.body()!!.item!!
+                            itemDao.insertItem(ItemEntity.fromDto(item))
+                            onProgress?.invoke(100, totalFileSize, totalFileSize, 0L, 0L)
+                            return@withContext Result.success(item)
                         }
                     }
-                } catch (directErr: Exception) {
-                    // Fall back to server endpoint if direct telegram call fails
                 }
+            } catch (directErr: Exception) {
+                // Fall back to server endpoint if direct telegram call fails
             }
 
             // 2. Standard server multipart upload fallback
-            val requestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
-            val filePart = MultipartBody.Part.createFormData("file", file.name, requestFile)
+            val rawRequestFile = file.asRequestBody(mimeType.toMediaTypeOrNull())
+            val progressFile = com.globalsend.app.data.api.ProgressRequestBody(rawRequestFile) { written, total ->
+                report(written, total)
+            }
+            val filePart = MultipartBody.Part.createFormData("file", file.name, progressFile)
             val titlePart = (title ?: file.name).toRequestBody("text/plain".toMediaTypeOrNull())
             val tagsPart = tags.joinToString(",").toRequestBody("text/plain".toMediaTypeOrNull())
             val expPart = expirationSeconds.toString().toRequestBody("text/plain".toMediaTypeOrNull())
@@ -217,6 +257,7 @@ class VaultRepository(
             if (response.isSuccessful && response.body()?.item != null) {
                 val item = response.body()!!.item!!
                 itemDao.insertItem(ItemEntity.fromDto(item))
+                onProgress?.invoke(100, totalFileSize, totalFileSize, 0L, 0L)
                 Result.success(item)
             } else {
                 val err = response.errorBody()?.string() ?: "Upload failed"

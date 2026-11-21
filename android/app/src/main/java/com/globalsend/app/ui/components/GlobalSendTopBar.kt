@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +25,7 @@ import com.globalsend.app.ui.theme.GlobalSendThemeTokens
 fun GlobalSendTopBar(
     title: String = "Global Send",
     onSearchClick: (() -> Unit)? = null,
+    onRefreshClick: (() -> Unit)? = null,
     onAddClick: (() -> Unit)? = null,
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null
@@ -33,7 +35,6 @@ fun GlobalSendTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .height(56.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -75,6 +76,15 @@ fun GlobalSendTopBar(
             if (actions != null) {
                 actions()
             } else {
+                if (onRefreshClick != null) {
+                    IconButton(onClick = onRefreshClick) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = colors.textSecondary
+                        )
+                    }
+                }
                 if (onSearchClick != null) {
                     IconButton(onClick = onSearchClick) {
                         Icon(

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -18,16 +19,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.globalsend.app.data.model.ItemDto
 import com.globalsend.app.ui.components.ItemTypeBadge
 import com.globalsend.app.ui.components.TagBadge
 import com.globalsend.app.ui.theme.CardShape
 import com.globalsend.app.ui.theme.GlobalSendThemeTokens
 import com.globalsend.app.ui.theme.MonospaceCodeStyle
+import com.globalsend.app.ui.theme.PillShape
+import java.util.Locale
 
 @Composable
 fun ItemCard(
@@ -39,9 +43,20 @@ fun ItemCard(
     modifier: Modifier = Modifier
 ) {
     val colors = GlobalSendThemeTokens.colors
-    val isQuestion = item.tags?.contains("question") == true || item.title.contains("question", ignoreCase = true)
+    val isQuestion = item.tags?.contains("question") == true || (item.title?.contains("question", ignoreCase = true) == true)
 
-    val copyableContent = item.textContent ?: item.url ?: item.file?.originalFilename ?: item.title
+    val displayTitle = if (!item.title.isNullOrBlank()) {
+        item.title
+    } else if (item.file != null && !item.file.originalFilename.isNullOrBlank()) {
+        item.file.originalFilename
+    } else if (!item.url.isNullOrBlank()) {
+        item.url
+    } else {
+        "Untitled Item"
+    }
+
+    val copyableContent = item.textContent ?: item.url ?: item.file?.originalFilename ?: displayTitle
+    val isPermanent = item.isPermanent || item.expiresAt == null
 
     Box(
         modifier = modifier
@@ -53,7 +68,7 @@ fun ItemCard(
             .padding(16.dp)
     ) {
         Column {
-            // Top Row: Category Badge + Tags + Favourite Star
+            // Top Row: Category Badge + Tags + Permanent Badge + Favourite Star
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -61,9 +76,27 @@ fun ItemCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     ItemTypeBadge(type = item.type, isQuestion = isQuestion)
+
+                    if (isPermanent) {
+                        Box(
+                            modifier = Modifier
+                                .clip(PillShape)
+                                .background(if (colors.isDark) Color(0x33CDFF5D) else Color(0x1F007AFF))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "PERMANENT",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (colors.isDark) Color(0xFFCDFF5D) else Color(0xFF007AFF)
+                            )
+                        }
+                    }
 
                     item.tags?.filter { it != "question" }?.take(2)?.forEach { tag ->
                         TagBadge(text = tag)
@@ -87,7 +120,7 @@ fun ItemCard(
 
             // Title
             Text(
-                text = item.title,
+                text = displayTitle,
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
                 fontWeight = FontWeight.Bold,
@@ -117,14 +150,14 @@ fun ItemCard(
             } else if (item.file != null) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "${item.file.originalFilename} • ${(item.file.fileSize / 1024)} KB",
+                    text = "${item.file.originalFilename} • ${formatFileSize(item.file.fileSize)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                     maxLines = 1
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Bottom Actions: Copy Button + Delete Button
             Row(
@@ -171,4 +204,12 @@ fun ItemCard(
             }
         }
     }
+}
+
+fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt().coerceIn(0, units.size - 1)
+    val value = bytes / Math.pow(1024.0, digitGroups.toDouble())
+    return String.format(Locale.US, "%.1f %s", value, units[digitGroups])
 }

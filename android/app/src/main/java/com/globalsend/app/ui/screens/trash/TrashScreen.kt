@@ -117,8 +117,9 @@ fun TrashScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
+                                    val displayTitle = if (!item.title.isNullOrBlank()) item.title else (item.file?.originalFilename ?: item.url ?: "Untitled")
                                     Text(
-                                        text = item.title,
+                                        text = displayTitle,
                                         style = MaterialTheme.typography.titleMedium,
                                         color = colors.textPrimary,
                                         fontWeight = FontWeight.Bold
