@@ -87,28 +87,20 @@ function startLocalServer(port = 3000) {
 }
 
 async function launchLocalApp(win, port = 3000) {
-  const localUrl = `http://127.0.0.1:${port}`;
-  fileLog('launchLocalApp starting, checking port:', port);
-
-  let isReady = await checkLocalServer(port);
-  fileLog('checkLocalServer initial isReady:', isReady);
-  if (!isReady && !app.isPackaged) {
-    serverProcess = startLocalServer(port);
-    for (let i = 0; i < 10; i++) {
-      await new Promise((r) => setTimeout(r, 400));
-      isReady = await checkLocalServer(port);
-      if (isReady) break;
-    }
-    fileLog('after startLocalServer loop isReady:', isReady);
-  }
-
   const remoteUrl =
     process.env.ELECTRON_START_URL || 'https://global-send-v2.vercel.app';
 
-  if (isReady && win && !win.isDestroyed()) {
-    fileLog('loading localUrl:', localUrl);
-    win.loadURL(localUrl);
-  } else if (win && !win.isDestroyed()) {
+  if (!app.isPackaged && process.env.USE_LOCAL_SERVER === 'true') {
+    const localUrl = `http://127.0.0.1:${port}`;
+    let isReady = await checkLocalServer(port);
+    if (isReady && win && !win.isDestroyed()) {
+      fileLog('loading localUrl:', localUrl);
+      win.loadURL(localUrl);
+      return;
+    }
+  }
+
+  if (win && !win.isDestroyed()) {
     fileLog('loading remoteUrl:', remoteUrl);
     win.loadURL(remoteUrl);
   }
