@@ -1,6 +1,8 @@
 {
   "name": "quickvault",
   "version": "0.1.0",
+  "description": "Global Send Desktop Vault — High-Speed Encrypted Cloud Storage",
+  "author": "Ayush Agnihotri",
   "private": true,
   "main": "desktop/main.cjs",
   "scripts": {
@@ -61,6 +63,7 @@
   "build": {
     "appId": "in.gsend.vault.desktop",
     "productName": "Global Send",
+    "npmRebuild": false,
     "directories": {
       "output": "dist-desktop"
     },
@@ -75,7 +78,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/favicon.ico"
+      "icon": "public/icon-512.png"
     },
     "nsis": {
       "oneClick": true,
